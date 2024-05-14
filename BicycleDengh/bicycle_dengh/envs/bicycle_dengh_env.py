@@ -22,9 +22,9 @@ class BicycleDenghEnv(gym.Env):
 
         # observation_space[离目标点的距离, 翻滚角roll, 车速, 车把角度]
         self.observation_space = gym.spaces.box.Box(
-            low=np.array([-100, -3.14, 0, -1.57]),
-            high=np.array([100, 3.14, 5, 1.57]),
-            shape=(4,),
+            low=np.array([0.0, -3.14, -10.0, -1.57, -10.0, 0.0, -10.0]),
+            high=np.array([35.0, 3.14, 10.0, 1.57, 10.0, 2 * math.pi, 10.0]),
+            shape=(7,),
             dtype=np.float32)
 
         self.bicycle = None
@@ -37,9 +37,6 @@ class BicycleDenghEnv(gym.Env):
 
         if gui:
             self.client = p.connect(p.GUI)
-            self.bicycle_vel_param = p.addUserDebugParameter('bicycle_vel_param', 0.0, 3.0, 1.0)
-            self.handlebar_angle_param = p.addUserDebugParameter('handlebar_angle_param', -1.57, 1.57, 0)
-            self.flywheel_param = p.addUserDebugParameter('flywheel_param', -40, 40, 0)
             self.camera_distance_param = p.addUserDebugParameter('camera_distance_param', 2, 60, 2)
             self.camera_yaw_param = p.addUserDebugParameter('camera_yaw_param', -180, 180, 0)
             self.camera_pitch_param = p.addUserDebugParameter('camera_pitch_param', -90, 90, -25)
@@ -47,17 +44,14 @@ class BicycleDenghEnv(gym.Env):
             self.client = p.connect(p.DIRECT)
 
         p.setTimeStep(1. / 24., self.client)
+        self.bicycle_vel_param = p.addUserDebugParameter('bicycle_vel_param', 0.0, 3.0, 1.0)
+        self.handlebar_angle_param = p.addUserDebugParameter('handlebar_angle_param', -1.57, 1.57, 0)
+        self.flywheel_param = p.addUserDebugParameter('flywheel_param', -40, 40, 0)
 
     def step(self, action):
         self.bicycle.apply_action(action)
         p.stepSimulation(physicsClientId=self.client)
         obs = self.bicycle.get_observation()
-
-        dist_to_goal = math.sqrt(((obs[0] - self.goal[0]) ** 2 + (obs[1] - self.goal[1]) ** 2))
-        self.prev_dist_to_goal = dist_to_goal
-
-        if obs[0] >= 100 or obs[0] <= -100 or obs[1] >= 100 or obs[1] <= -100:
-            self.terminated = True
 
         if self.gui:
             bike_pos, _ = p.getBasePositionAndOrientation(self.bicycle.bicycleId, physicsClientId=self.client)
@@ -66,15 +60,16 @@ class BicycleDenghEnv(gym.Env):
             camera_pitch = p.readUserDebugParameter(self.camera_pitch_param)
             p.resetDebugVisualizerCamera(camera_distance, camera_yaw, camera_pitch, bike_pos)
 
-        # 计算奖励值
-        # self._reward_fun(roll_angle=obs[2])
-        roll_angle = obs[2]
-        reward = self._reward_fun(roll_angle, action, self.prev_action)
-        # print(np.array(self.prev_action) - np.array(action))
-        self.prev_action = action
+        dis_x = self.goal[0] - obs[0]
+        dis_y = self.goal[1] - obs[1]
+        dis_to_goal = math.sqrt(dis_x ** 2 + dis_y ** 2)
 
-        # [离目标点的距离, 翻滚角roll, 车把角度]
-        obs = np.array([dist_to_goal, obs[2], obs[3], obs[4]], dtype=np.float32)
+        # 计算奖励值
+        reward = self._reward_fun(obs, dis_to_goal)
+
+        obs = np.array([
+            dis_to_goal, obs[2], obs[3], obs[4], obs[5], obs[6], obs[7]
+        ], dtype=np.float32)
 
         return obs, reward, self.terminated, self.truncated, {}
 
@@ -89,8 +84,8 @@ class BicycleDenghEnv(gym.Env):
 
         self.bicycle = Bicycle(client=self.client)
         # 设置目标点
-        x = (random.uniform(30, 40) if random.choice([True, False]) else random.uniform(-30, -40))
-        y = (random.uniform(30, 40) if random.choice([True, False]) else random.uniform(-30, -40))
+        x = (random.uniform(10, 20) if random.choice([True, False]) else random.uniform(-20, -10))
+        y = (random.uniform(10, 20) if random.choice([True, False]) else random.uniform(-20, -10))
         self.goal = (x, y)
         Goal(self.client, self.goal)
 
@@ -98,38 +93,47 @@ class BicycleDenghEnv(gym.Env):
         # Wall(self.client, [0, -0.7, 0])
 
         obs = self.bicycle.get_observation()
-        self.prev_dist_to_goal = math.sqrt(((obs[0] - self.goal[0]) ** 2 + (obs[1] - self.goal[1]) ** 2))
-        return np.array([self.prev_dist_to_goal, obs[2], obs[3], obs[4]], dtype=np.float32), {}
 
-    def _reward_fun(self, roll_angle, action, prev_action):
+        dis_x = self.goal[0] - obs[0]
+        dis_y = self.goal[1] - obs[1]
+        dis_to_goal = math.sqrt(dis_x ** 2 + dis_y ** 2)
+
+        self.prev_dist_to_goal = math.sqrt(((obs[0] - self.goal[0]) ** 2 + (obs[1] - self.goal[1]) ** 2))
+        return np.array([
+            dis_to_goal, obs[2], obs[3], obs[4], obs[5], obs[6], obs[7]
+        ], dtype=np.float32), {}
+
+    def _reward_fun(self, obs, dist_to_goal):
         self.terminated = False
         self.truncated = False
 
-        wheel_vel_change_reward = 0.0
-
-        diff_handlebar_angle = math.fabs(action[0] - prev_action[0])
-        diff_wheel_vel = math.fabs(action[1] - prev_action[1])
-        diff_flywheel = math.fabs(action[2] - prev_action[2])
-
-        # 车把角度变化不能太大
-        if diff_handlebar_angle > 0.5:
-            handlebar_angle_change_reward = -1.0
-        else:
-            handlebar_angle_change_reward = 1.0
-
-        # 车速变化不能太大
-        # if diff_wheel_vel > 0.5:
-        #     wheel_vel_change_reward = -1.0
-        # else:
-        #     wheel_vel_change_reward = 1.0
-
+        roll_angle = obs[2]
         if roll_angle >= math.pi / 2 + 0.1 or roll_angle <= math.pi / 2 - 0.1:
             self.terminated = True
-            balance_reward = -1.0
+            balance_reward = -10.0
         else:
-            balance_reward = 1.0
-        
-        total_reward = balance_reward + handlebar_angle_change_reward + wheel_vel_change_reward
+            balance_reward = 10.0
+
+        # 越界惩罚
+        if obs[0] >= 35.0 or obs[0] <= -35.0 or obs[1] >= 35.0 or obs[1] <= -35.0:
+            self.terminated = True
+            bound_reward = -10.0
+        else:
+            bound_reward = 0.0
+
+        # 达到目标点奖励
+        # D是靠近目的地阈值，当自行车到目标点的距离小于D时，即不受到惩罚，当离目标点的距离大于D时，随着距离越大，惩罚值越大
+        D = 5.0
+        reach_goal_reward = -max(dist_to_goal - D, 0.0)
+        # 当自行车靠近目标附近的一个小区域时，增加奖励值使自行车加速接近目标点
+        k1 = 0.5
+        k2 = -1.0
+        additional_reward = k1 * reach_goal_reward + k2 * math.log(reach_goal_reward + 10e6, math.e)
+
+        total_reward = (balance_reward +
+                        bound_reward +
+                        additional_reward
+                        )
 
         return total_reward
 

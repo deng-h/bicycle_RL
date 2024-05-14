@@ -78,16 +78,25 @@ class Bicycle:
         """
         # Get the position位置 and orientation方向(姿态) of the bicycle in the simulation
         pos, ang = p.getBasePositionAndOrientation(self.bicycleId, self.client)
-        # Convert the orientation to euler angles
-        # 欧拉角 The rotation order is first roll around X, then pitch around Y and finally yaw around Z
+        # The rotation order is first roll around X, then pitch around Y and finally yaw around Z
         ang = p.getEulerFromQuaternion(ang)
+        roll_angle = ang[0]
+        # p.getBaseVelocity()返回的格式 (线速度(x, y, z), 角速度(wx, wy, wz))
+        _, angular_velocity = p.getBaseVelocity(self.bicycleId, self.client)
+        roll_vel = angular_velocity[0]
 
-        # p.getBaseVelocity()返回的格式 (线速度(x, y, z), 角速度(wx, wy, wz)) 这里只取线速度的x, y
-        vel_xy = p.getBaseVelocity(self.bicycleId, self.client)[0][0:2]
-        vel_x = vel_xy[0]
-        vel_y = vel_xy[1]
-        vel = math.sqrt(vel_x ** 2 + vel_y ** 2)
+        handlebar_joint_state = p.getJointState(self.bicycleId, self.handlebar_joint, self.client)
+        handlebar_joint_ang = handlebar_joint_state[0]
+        handlebar_joint_vel = handlebar_joint_state[1]
 
-        observation = (pos[0], pos[1], ang[0], vel, self.handlebar_angle)
+        back_wheel_joint_state = p.getJointState(self.bicycleId, self.back_wheel_joint, self.client)
+        back_wheel_joint_ang = back_wheel_joint_state[0] % (2 * math.pi)
+        back_wheel_joint_vel = back_wheel_joint_state[1]
+
+        observation = (pos[0], pos[1],
+                       roll_angle, roll_vel,
+                       handlebar_joint_ang, handlebar_joint_vel,
+                       back_wheel_joint_ang, back_wheel_joint_vel,
+                       )
 
         return observation

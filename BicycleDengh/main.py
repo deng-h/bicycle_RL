@@ -1,13 +1,10 @@
 import gymnasium as gym
-import numpy as np
 import bicycle_dengh
-import stable_baselines3 as sb3
 from stable_baselines3 import PPO
 from stable_baselines3.common.logger import configure
 import time
-from stable_baselines3.common.monitor import Monitor
 from normalize_action import NormalizeAction
-from gymnasium.wrappers.normalize import NormalizeObservation
+from gymnasium.wrappers.normalize import NormalizeObservation, NormalizeReward
 from gymnasium.wrappers.time_limit import TimeLimit
 import os
 
@@ -25,6 +22,7 @@ def ppo(train=False):
         env = gym.make('BicycleDengh-v0', gui=False)
         normalized_env = NormalizeAction(env)
         normalized_env = NormalizeObservation(normalized_env)
+        normalized_env = NormalizeReward(normalized_env)
         normalized_env = TimeLimit(normalized_env, max_episode_steps=100000)
 
         new_logger = configure(logger_output_dir, ["stdout", "csv", "tensorboard"])
@@ -57,6 +55,7 @@ def ppo(train=False):
         env = gym.make('BicycleDengh-v0', gui=True)
         normalized_env = NormalizeAction(env)
         normalized_env = NormalizeObservation(normalized_env)
+        normalized_env = NormalizeReward(normalized_env)
         normalized_env = TimeLimit(normalized_env, max_episode_steps=100000)
 
         model = PPO.load(models_output_dir)
@@ -73,4 +72,4 @@ def ppo(train=False):
 
 
 if __name__ == '__main__':
-    ppo(train=False)
+    ppo(train=True)
