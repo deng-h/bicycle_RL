@@ -30,7 +30,9 @@ for joint_number in range(number_of_joints):
     joint_index = joint_info[0]
     joint_name = joint_info[1]
     link_name = joint_info[12]
-    print(f"jointIndex={joint_index}, jointName={joint_name.decode('utf-8')}, linkName={link_name.decode('utf-8')}")
+    jointMaxVelocity = joint_info[11]
+    print(f"jointIndex={joint_index}, jointName={joint_name.decode('utf-8')}, linkName={link_name.decode('utf-8')}, "
+          f"jointMaxVelocity={jointMaxVelocity}")
 
 i = 0
 try:
@@ -39,7 +41,9 @@ try:
         # bicycle_handlebar = p.readUserDebugParameter(bicycle_handlebar)
         # bicycle_flywheel = p.readUserDebugParameter(bicycle_flywheel)
         i += 1
-        bicycle.apply_action([0, 0, 0])
+        bicycle.apply_action([0, 0, 1.0])
+        obs = bicycle.get_observation()
+        print(obs)
         p.stepSimulation()
         time.sleep(1. / 240.)
 finally:

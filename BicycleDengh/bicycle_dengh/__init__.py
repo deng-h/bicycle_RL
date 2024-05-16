@@ -7,3 +7,8 @@ register(
     id="BicycleDengh-v0",
     entry_point='bicycle_dengh.envs:BicycleDenghEnv'
 )
+
+register(
+    id="BalanceBicycleDengh-v0",
+    entry_point='bicycle_dengh.envs:BalanceBicycleDenghEnv'
+)

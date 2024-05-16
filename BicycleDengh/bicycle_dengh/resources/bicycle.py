@@ -8,16 +8,14 @@ class Bicycle:
     def __init__(self, client):
         self.client = client
         f_name = os.path.join(os.path.dirname(__file__), 'bicycle_urdf\\bike.xml')
-        self.bicycleId = p.loadURDF(fileName=f_name,
-                                    basePosition=[0, 0, 1])
+        self.bicycleId = p.loadURDF(fileName=f_name, basePosition=[0, 0, 1])
         self.handlebar_joint = 0
         self.front_wheel_joint = 1
         self.back_wheel_joint = 2
         self.fly_wheel_joint = 4
         self.MAX_FORCE = 500
-        self.handlebar_angle = 0
         # 30%的概率触发扰动
-        self.noise_probability = 0.3
+        # self.noise_probability = 0.3
 
     def apply_action(self, action):
         """
@@ -35,7 +33,6 @@ class Bicycle:
                                 targetPosition=action[0],
                                 force=self.MAX_FORCE,
                                 physicsClientId=self.client)
-        self.handlebar_angle = action[0]
 
         # action[1] = handlebar_to_frontwheel 前轮速度控制
         p.setJointMotorControl2(bodyUniqueId=self.bicycleId,
@@ -56,8 +53,9 @@ class Bicycle:
         # action[2] = flyWheelLink_to_flyWheel 飞轮控制
         p.setJointMotorControl2(bodyUniqueId=self.bicycleId,
                                 jointIndex=self.fly_wheel_joint,
-                                controlMode=p.TORQUE_CONTROL,
-                                force=action[2],
+                                controlMode=p.VELOCITY_CONTROL,
+                                targetVelocity=action[2],
+                                force=self.MAX_FORCE,
                                 physicsClientId=self.client)
 
         # 产生随机扰动
@@ -90,13 +88,18 @@ class Bicycle:
         handlebar_joint_vel = handlebar_joint_state[1]
 
         back_wheel_joint_state = p.getJointState(self.bicycleId, self.back_wheel_joint, self.client)
-        back_wheel_joint_ang = back_wheel_joint_state[0] % (2 * math.pi)
+        back_wheel_joint_ang = back_wheel_joint_state[0]
         back_wheel_joint_vel = back_wheel_joint_state[1]
 
-        observation = (pos[0], pos[1],
+        fly_wheel_joint_state = p.getJointState(self.bicycleId, self.fly_wheel_joint, self.client)
+        fly_wheel_joint_ang = fly_wheel_joint_state[0] % (2 * math.pi)
+        fly_wheel_joint_vel = fly_wheel_joint_state[1]
+
+        observation = [pos[0], pos[1],
                        roll_angle, roll_vel,
                        handlebar_joint_ang, handlebar_joint_vel,
                        back_wheel_joint_ang, back_wheel_joint_vel,
-                       )
+                       fly_wheel_joint_ang, fly_wheel_joint_vel
+                       ]
 
         return observation
