@@ -9,7 +9,7 @@
     <link name="base_link">
         <visual>
             <geometry>
-                <box size="3 0.3 1.2"/>
+                <box size="3 0.3 2.0"/>
                 <origin rpy="0 0 0" xyz="0 0 0.5"/>
             </geometry>
             <material name="green"/>

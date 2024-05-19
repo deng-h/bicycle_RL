@@ -1,11 +1,11 @@
 import gymnasium as gym
+import numpy as np
 from stable_baselines3.common.evaluation import evaluate_policy
 import bicycle_dengh
-from stable_baselines3 import PPO
+from stable_baselines3 import PPO, SAC
 from stable_baselines3.common.logger import configure
 import time
 from normalize_action import NormalizeAction
-from gymnasium.wrappers.normalize import NormalizeObservation, NormalizeReward
 from gymnasium.wrappers.time_limit import TimeLimit
 import os
 import winsound
@@ -13,18 +13,17 @@ import winsound
 
 def ppo(train=False):
     current_dir = os.getcwd()
-
-    # 构建输出文件夹的路径
     models_output_dir = os.path.join(current_dir, "output", "ppo_model")
     logger_output_dir = os.path.join(current_dir, "output", "logs")
 
     # env = gym.make('BicycleDengh-v0', gui=not train)
     env = gym.make('BalanceBicycleDengh-v0', gui=not train)
-
     normalized_env = NormalizeAction(env)
-    normalized_env = NormalizeObservation(normalized_env)
-    normalized_env = NormalizeReward(normalized_env)
-    normalized_env = TimeLimit(normalized_env, max_episode_steps=100000)
+    normalized_env = TimeLimit(normalized_env, max_episode_steps=1000)
+
+    print("Initial normalized observation after reset:")
+    observation, _ = normalized_env.reset()
+    print(observation)
 
     if train:
         start_time = time.time()
@@ -33,9 +32,8 @@ def ppo(train=False):
         model = PPO(policy="MlpPolicy",
                     env=normalized_env,
                     # 在 n_steps * n_envs 步之后更新策略
-                    n_steps=256,
-                    batch_size=256,
-                    # 折扣因子
+                    n_steps=512,
+                    batch_size=512,
                     gamma=0.99,
                     # n_epochs 在每次策略更新中，使用相同的样本数据进行梯度下降优化的次数
                     n_epochs=4,
@@ -45,7 +43,7 @@ def ppo(train=False):
                     verbose=0,
                     )
         model.set_logger(new_logger)
-        model.learn(total_timesteps=100000,
+        model.learn(total_timesteps=500000,
                     log_interval=1,)
         model.save(models_output_dir)
         # mean_reward, std_reward = evaluate_policy(model, normalized_env, n_eval_episodes=100, warn=False)
@@ -70,4 +68,4 @@ def ppo(train=False):
 
 
 if __name__ == '__main__':
-    ppo(train=True)
+    ppo(train=False)

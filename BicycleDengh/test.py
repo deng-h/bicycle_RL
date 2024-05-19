@@ -2,6 +2,7 @@ import pybullet as p
 import time
 import pybullet_data
 from BicycleDengh.bicycle_dengh.resources import bicycle
+from BicycleDengh.bicycle_dengh.resources import balance_bicycle
 
 physicsClient = p.connect(p.GUI)
 p.setAdditionalSearchPath(pybullet_data.getDataPath())
@@ -21,29 +22,27 @@ camera_pitch = -45
 camera_target_position = [0, 0, 0]
 p.resetDebugVisualizerCamera(camera_distance, camera_yaw, camera_pitch, camera_target_position)
 
-bicycle = bicycle.Bicycle(client=physicsClient)
+# b = bicycle.Bicycle(client=physicsClient)
+b = balance_bicycle.BalanceBicycle(client=physicsClient)
 
-number_of_joints = p.getNumJoints(bicycle.bicycleId)
+number_of_joints = p.getNumJoints(b.bicycleId)
 print(f"共有{number_of_joints}个关节")
 for joint_number in range(number_of_joints):
-    joint_info = p.getJointInfo(bicycle.bicycleId, joint_number)
+    joint_info = p.getJointInfo(b.bicycleId, joint_number)
     joint_index = joint_info[0]
-    joint_name = joint_info[1]
-    link_name = joint_info[12]
-    jointMaxVelocity = joint_info[11]
-    print(f"jointIndex={joint_index}, jointName={joint_name.decode('utf-8')}, linkName={link_name.decode('utf-8')}, "
-          f"jointMaxVelocity={jointMaxVelocity}")
+    joint_name = joint_info[1].decode('utf-8')
+    link_name = joint_info[12].decode('utf-8')
+    print(f"jointIndex={joint_index}, jointName={joint_name}, linkName={link_name}")
 
-i = 0
+
 try:
     while True:
         # bicycle_vel = p.readUserDebugParameter(bicycle_vel)
         # bicycle_handlebar = p.readUserDebugParameter(bicycle_handlebar)
         # bicycle_flywheel = p.readUserDebugParameter(bicycle_flywheel)
-        i += 1
-        bicycle.apply_action([0, 0, 1.0])
-        obs = bicycle.get_observation()
-        print(obs)
+        # b.apply_action([0, 0, 1.0])
+        obs = b.get_observation()
+        print(obs[0])
         p.stepSimulation()
         time.sleep(1. / 240.)
 finally:

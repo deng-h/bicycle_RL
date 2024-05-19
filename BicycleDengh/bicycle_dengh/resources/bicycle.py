@@ -8,12 +8,14 @@ class Bicycle:
     def __init__(self, client):
         self.client = client
         f_name = os.path.join(os.path.dirname(__file__), 'bicycle_urdf\\bike.xml')
+        # f_name = os.path.join(os.path.dirname(__file__), 'bicycle_urdf/bike.xml')
         self.bicycleId = p.loadURDF(fileName=f_name, basePosition=[0, 0, 1])
         self.handlebar_joint = 0
         self.front_wheel_joint = 1
         self.back_wheel_joint = 2
         self.fly_wheel_joint = 4
-        self.MAX_FORCE = 500
+        self.gyros_link = 5
+        self.MAX_FORCE = 2000
         # 30%的概率触发扰动
         # self.noise_probability = 0.3
 
@@ -75,13 +77,20 @@ class Bicycle:
         (位置x, 位置y, 翻滚角roll, 车把角度)
         """
         # Get the position位置 and orientation方向(姿态) of the bicycle in the simulation
-        pos, ang = p.getBasePositionAndOrientation(self.bicycleId, self.client)
+        pos, _ = p.getBasePositionAndOrientation(self.bicycleId, self.client)
         # The rotation order is first roll around X, then pitch around Y and finally yaw around Z
-        ang = p.getEulerFromQuaternion(ang)
-        roll_angle = ang[0]
+        # ang = p.getEulerFromQuaternion(ang)
+        # roll_angle = ang[0]
         # p.getBaseVelocity()返回的格式 (线速度(x, y, z), 角速度(wx, wy, wz))
-        _, angular_velocity = p.getBaseVelocity(self.bicycleId, self.client)
-        roll_vel = angular_velocity[0]
+        # _, angular_velocity = p.getBaseVelocity(self.bicycleId, self.client)
+        # roll_vel = angular_velocity[0]
+
+        gyros_link_state = p.getLinkState(self.bicycleId, self.gyros_link, computeLinkVelocity=1)
+        gyros_link_orientation = gyros_link_state[1]
+        link_ang = p.getEulerFromQuaternion(gyros_link_orientation)
+        roll_angle = link_ang[0]
+        gyros_link_angular_vel = gyros_link_state[7]
+        roll_angular_vel= gyros_link_angular_vel[0]
 
         handlebar_joint_state = p.getJointState(self.bicycleId, self.handlebar_joint, self.client)
         handlebar_joint_ang = handlebar_joint_state[0]
@@ -96,7 +105,7 @@ class Bicycle:
         fly_wheel_joint_vel = fly_wheel_joint_state[1]
 
         observation = [pos[0], pos[1],
-                       roll_angle, roll_vel,
+                       roll_angle, roll_angular_vel,
                        handlebar_joint_ang, handlebar_joint_vel,
                        back_wheel_joint_ang, back_wheel_joint_vel,
                        fly_wheel_joint_ang, fly_wheel_joint_vel
