@@ -54,39 +54,14 @@ def ppo(train=False):
         print(f"训练时间：{execution_time // 60:.0f}分{execution_time % 60:.0f}秒")
     else:
         model = PPO.load(models_output_dir)
-
-        roll_angles = []
-        steps = []
-        step = 0
-
-        obs, infos = normalized_env.reset()
-        # while True:
-        for i in range(600):
-            origin_obs = infos['origin_obs']
+        obs, _ = normalized_env.reset()
+        while True:
             action, _ = model.predict(obs, deterministic=True)
-            obs, _, terminated, truncated, infos = normalized_env.step(action)
-
-            roll_angles.append(origin_obs[0])
-            steps.append(step)
-            step += 1
-            if step % 100 == 0:
-                print(f"roll_angle: {origin_obs[0]:.2f}, i={i}")
-
+            obs, _, terminated, truncated, _ = normalized_env.step(action)
             if terminated or truncated:
                 obs, _ = normalized_env.reset()
-                step = 0
 
             time.sleep(1. / 24.)
-        normalized_env.close()
-        # with open('roll_angle_data_7_degree.csv', 'w', newline='') as csvfile:
-        #     fieldnames = ['Step', 'Roll Angle']
-        #     writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-        #
-        #     writer.writeheader()
-        #     for step, roll_angle in zip(steps, roll_angles):
-        #         writer.writerow({'Step': step, 'Roll Angle': roll_angle})
-        #
-        # print("Data saved to roll_angle_data.csv")
 
 
 if __name__ == '__main__':

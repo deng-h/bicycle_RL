@@ -125,8 +125,8 @@ class BalanceBicycleDenghEnv(gym.Env):
         # 惯性轮角速度
         # flywheel_joint_vel = action[0]
         reward_roll_angle = (0.3 - min(self.balance_alpha * (roll_angle ** 2), 0.3)) / 0.3
-        reward_roll_angle_vel = (144 - min(self.balance_beta * (roll_angle_vel ** 2), 144)) / 144
-        action_penalty = (72 - min(0.005 * (action[0] ** 2), 72)) / 72
+        reward_roll_angle_vel = (144.0 - min(self.balance_beta * (roll_angle_vel ** 2), 144.0)) / 144.0
+        action_penalty = (72.0 - min(0.005 * (action[0] ** 2), 72.0)) / 72.0
 
         # print(f"reward_roll_angle: {self.balance_alpha * roll_angle ** 2:.2f}, "
         #       f"reward_roll_angle_vel: {self.balance_beta * roll_angle_vel ** 2:.2f}")

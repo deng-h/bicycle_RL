@@ -12,8 +12,8 @@ def degrees_to_radians(degrees):
 class BalanceBicycle:
     def __init__(self, client):
         self.client = client
-        f_name = os.path.join(os.path.dirname(__file__), 'bicycle_urdf\\bike.xml')
-        # f_name = os.path.join(os.path.dirname(__file__), 'bicycle_urdf/bike.xml')
+        # f_name = os.path.join(os.path.dirname(__file__), 'bicycle_urdf\\bike.xml')
+        f_name = os.path.join(os.path.dirname(__file__), 'bicycle_urdf/bike.xml')
         roll_radians = degrees_to_radians(0.0)
         euler_angles = [roll_radians, 0.0, 0.0]
         quaternion = p.getQuaternionFromEuler(euler_angles)
