@@ -21,10 +21,6 @@ def ppo(train=False):
     normalized_env = NormalizeAction(env)
     normalized_env = TimeLimit(normalized_env, max_episode_steps=1000)
 
-    print("Initial normalized observation after reset:")
-    observation, _ = normalized_env.reset()
-    print(observation)
-
     if train:
         start_time = time.time()
         new_logger = configure(logger_output_dir, ["stdout", "csv", "tensorboard"])
@@ -43,7 +39,7 @@ def ppo(train=False):
                     verbose=0,
                     )
         model.set_logger(new_logger)
-        model.learn(total_timesteps=500000,
+        model.learn(total_timesteps=400000,
                     log_interval=1,)
         model.save(models_output_dir)
         # mean_reward, std_reward = evaluate_policy(model, normalized_env, n_eval_episodes=100, warn=False)

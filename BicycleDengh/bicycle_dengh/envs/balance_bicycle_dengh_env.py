@@ -1,5 +1,3 @@
-import time
-
 import gymnasium as gym
 import numpy as np
 import pybullet as p
@@ -39,7 +37,7 @@ class BalanceBicycleDenghEnv(gym.Env):
 
         # 平衡奖励函数参数
         self.balance_alpha = 10.0
-        self.balance_beta = 0.1
+        self.balance_beta = 0.01
         self.balance_gamma = 0.0
 
         self.max_flywheel_vel = 120.0
@@ -87,11 +85,10 @@ class BalanceBicycleDenghEnv(gym.Env):
         self.bicycle.apply_action(action)
         p.stepSimulation(physicsClientId=self.client)
         obs = self.bicycle.get_observation()
+        reward = self._reward_fun(obs, action)
+
         normalized_obs = normalize_array_to_minus_one_to_one(obs, self.actual_observation_space.low,
                                                              self.actual_observation_space.high)
-
-        reward = self._reward_fun(obs, action)
-        # print(f"action:{action[0]}")
         normalized_obs = np.array(normalized_obs, dtype=np.float32)
 
         if self.gui:
@@ -101,7 +98,7 @@ class BalanceBicycleDenghEnv(gym.Env):
             camera_pitch = p.readUserDebugParameter(self.camera_pitch_param)
             p.resetDebugVisualizerCamera(camera_distance, camera_yaw, camera_pitch, bike_pos)
 
-        return normalized_obs, reward, self.terminated, self.truncated, {}
+        return normalized_obs, reward, self.terminated, self.truncated, {"origin_obs": obs}
 
     def reset(self, seed=None, options=None):
         self.terminated = False
@@ -116,7 +113,7 @@ class BalanceBicycleDenghEnv(gym.Env):
         obs = self.bicycle.reset()
         normalized_obs = normalize_array_to_minus_one_to_one(obs, self.actual_observation_space.low,
                                                              self.actual_observation_space.high)
-        return np.array(normalized_obs, dtype=np.float32), {}
+        return np.array(normalized_obs, dtype=np.float32), {"origin_obs": obs}
 
     def _reward_fun(self, obs, action):
         self.terminated = False
@@ -127,32 +124,21 @@ class BalanceBicycleDenghEnv(gym.Env):
         roll_angle_vel = obs[1]
         # 惯性轮角速度
         # flywheel_joint_vel = action[0]
-        # print(f"roll_angle:{roll_angle:.2f}, roll_angle_vel:{roll_angle_vel:.2f}, flywheel_joint_vel:{flywheel_joint_vel:.2f}")
-        reward_roll_angle = (100.0 - min(self.balance_alpha * roll_angle ** 2, 100.0)) / 100.0
-        reward_roll_angle_vel = (22.5 - min(self.balance_beta * roll_angle_vel ** 2, 22.5)) / 22.5
+        reward_roll_angle = (0.3 - min(self.balance_alpha * (roll_angle ** 2), 0.3)) / 0.3
+        reward_roll_angle_vel = (144 - min(self.balance_beta * (roll_angle_vel ** 2), 144)) / 144
+        action_penalty = (72 - min(0.005 * (action[0] ** 2), 72)) / 72
 
-        reward = 0.4 * reward_roll_angle + 0.6 * reward_roll_angle_vel
+        # print(f"reward_roll_angle: {self.balance_alpha * roll_angle ** 2:.2f}, "
+        #       f"reward_roll_angle_vel: {self.balance_beta * roll_angle_vel ** 2:.2f}")
+
+        reward = 0.4 * reward_roll_angle + 0.3 * reward_roll_angle_vel + 0.3 * action_penalty
+
         balance_reward = 0.0
-        # 5°以内
-        # if math.fabs(roll_angle) <= 0.09:
-        #     balance_reward = 10.0
-        #     pass
-        # # 5°~20°以内
-        # elif 0.09 < math.fabs(roll_angle) <= 0.35:
-        #     balance_reward = -10.0
-        # # 超过20°直接结束
-        # else:
-        #     self.terminated = True
-        #     balance_reward = -100.0
         if math.fabs(roll_angle) >= 0.17:
             self.terminated = True
             balance_reward = -10.0
         elif math.fabs(roll_angle) <= 0.02:
             balance_reward = 10.0
-
-        # action_change_penalty = 1 * (action[0] - self.last_action[0]) ** 2  # 动作变化惩罚项
-        # reward -= action_change_penalty
-        # self.last_action = action  # 记录当前动作
 
         total_reward = reward + balance_reward
 
