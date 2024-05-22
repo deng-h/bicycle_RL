@@ -4,7 +4,6 @@ import pybullet as p
 import pybullet_data
 from bicycle_dengh.resources.bicycle import Bicycle
 from bicycle_dengh.resources.goal import Goal
-from bicycle_dengh.resources.wall import Wall
 import math
 import random
 
@@ -22,7 +21,7 @@ class BicycleDenghEnv(gym.Env):
         self.gui = gui
         # 限制倾斜角度
         self.roll_angle_epsilon = 0.3
-        self.max_flywheel_vel = 200.0
+        self.max_flywheel_vel = 120.0
 
         # action_space[车把角度，前后轮速度，飞轮转速]
         self.action_space = gym.spaces.box.Box(
@@ -96,9 +95,6 @@ class BicycleDenghEnv(gym.Env):
         y = (random.uniform(10, 20) if random.choice([True, False]) else random.uniform(-20, -10))
         self.goal = (x, y)
         Goal(self.client, self.goal)
-
-        # Wall(self.client, [0, 0.7, 0])
-        # Wall(self.client, [0, -0.7, 0])
 
         obs = self.bicycle.get_observation()
         dis_x = self.goal[0] - obs[0]

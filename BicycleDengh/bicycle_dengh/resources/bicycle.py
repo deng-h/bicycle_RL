@@ -90,7 +90,7 @@ class Bicycle:
         link_ang = p.getEulerFromQuaternion(gyros_link_orientation)
         roll_angle = link_ang[0]
         gyros_link_angular_vel = gyros_link_state[7]
-        roll_angular_vel= gyros_link_angular_vel[0]
+        roll_angular_vel = gyros_link_angular_vel[0]
 
         handlebar_joint_state = p.getJointState(self.bicycleId, self.handlebar_joint, self.client)
         handlebar_joint_ang = handlebar_joint_state[0]
