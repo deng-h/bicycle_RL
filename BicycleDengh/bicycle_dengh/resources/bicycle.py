@@ -76,10 +76,6 @@ class Bicycle:
         #                          flags=p.LINK_FRAME)
 
     def get_observation(self):
-        """ 
-        Returns:
-        (位置x, 位置y, 翻滚角roll, 车把角度)
-        """
         # Get the position位置 and orientation方向(姿态) of the bicycle in the simulation
         pos, _ = p.getBasePositionAndOrientation(self.bicycleId, self.client)
         # The rotation order is first roll around X, then pitch around Y and finally yaw around Z
@@ -105,14 +101,13 @@ class Bicycle:
         back_wheel_joint_vel = back_wheel_joint_state[1]
 
         fly_wheel_joint_state = p.getJointState(self.bicycleId, self.fly_wheel_joint, self.client)
-        fly_wheel_joint_ang = fly_wheel_joint_state[0] % (2 * math.pi)
+        # fly_wheel_joint_ang = fly_wheel_joint_state[0] % (2 * math.pi)
         fly_wheel_joint_vel = fly_wheel_joint_state[1]
 
         observation = [pos[0], pos[1],
                        roll_angle, roll_angular_vel,
                        handlebar_joint_ang, handlebar_joint_vel,
-                       back_wheel_joint_vel,
-                       fly_wheel_joint_ang, fly_wheel_joint_vel
+                       back_wheel_joint_vel, fly_wheel_joint_vel
                        ]
 
         return observation
@@ -120,4 +115,7 @@ class Bicycle:
     def reset(self):
         p.resetBasePositionAndOrientation(self.bicycleId, self.initial_position, self.initial_orientation)
         p.resetJointState(self.bicycleId, self.handlebar_joint, targetValue=0, targetVelocity=0)
+        p.resetJointState(self.bicycleId, self.fly_wheel_joint, targetValue=0, targetVelocity=0)
+        p.resetJointState(self.bicycleId, self.front_wheel_joint, targetValue=0, targetVelocity=0)
+        p.resetJointState(self.bicycleId, self.back_wheel_joint, targetValue=0, targetVelocity=0)
         return self.get_observation()

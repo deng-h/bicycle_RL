@@ -37,7 +37,6 @@ for joint_number in range(number_of_joints):
     link_name = joint_info[12].decode('utf-8')
     print(f"jointIndex={joint_index}, jointName={joint_name}, linkName={link_name}")
 
-
 try:
     while True:
         bicycle_vel_param = p.readUserDebugParameter(bicycle_vel)

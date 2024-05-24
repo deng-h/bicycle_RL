@@ -34,7 +34,7 @@ for i in range(4000):
     if terminated or truncated:
         obs, _ = env.reset()
         roll_angle_pid.reset()
-        step = 0
+        # step = 0
     time.sleep(1. / 24.)
 
 

@@ -30,8 +30,8 @@ def ppo(train=False):
         model = PPO(policy="MlpPolicy",
                     env=normalized_env,
                     # 在 n_steps * n_envs 步之后更新策略
-                    n_steps=512,
-                    batch_size=512,
+                    n_steps=128,
+                    batch_size=128,
                     gamma=0.99,
                     # n_epochs 在每次策略更新中，使用相同的样本数据进行梯度下降优化的次数
                     n_epochs=4,
@@ -41,7 +41,7 @@ def ppo(train=False):
                     verbose=0,
                     )
         model.set_logger(new_logger)
-        model.learn(total_timesteps=100000,
+        model.learn(total_timesteps=500000,
                     log_interval=1,)
         model.save(models_output_dir)
         # mean_reward, std_reward = evaluate_policy(model, normalized_env, n_eval_episodes=100, warn=False)
@@ -81,5 +81,5 @@ def test():
 
 
 if __name__ == '__main__':
-    ppo(train=False)
+    ppo(train=True)
     # test()
