@@ -35,13 +35,10 @@ class BalanceBicycleDenghEnv(gym.Env):
         self.truncated = False
         self.gui = gui
 
-        # 平衡奖励函数参数
         self.balance_alpha = 10.0
         self.balance_beta = 0.01
-        self.balance_gamma = 0.0
 
         self.max_flywheel_vel = 120.0
-        self.last_action = [0]
 
         # [飞轮]
         self.action_space = gym.spaces.box.Box(
@@ -103,7 +100,6 @@ class BalanceBicycleDenghEnv(gym.Env):
     def reset(self, seed=None, options=None):
         self.terminated = False
         self.truncated = False
-        self.last_action = [0]
         # 设置飞轮速度上限
         p.changeDynamics(self.bicycle.bicycleId,
                          self.bicycle.fly_wheel_joint,
@@ -127,9 +123,6 @@ class BalanceBicycleDenghEnv(gym.Env):
         reward_roll_angle = (0.3 - min(self.balance_alpha * (roll_angle ** 2), 0.3)) / 0.3
         reward_roll_angle_vel = (144.0 - min(self.balance_beta * (roll_angle_vel ** 2), 144.0)) / 144.0
         action_penalty = (72.0 - min(0.005 * (action[0] ** 2), 72.0)) / 72.0
-
-        # print(f"reward_roll_angle: {self.balance_alpha * roll_angle ** 2:.2f}, "
-        #       f"reward_roll_angle_vel: {self.balance_beta * roll_angle_vel ** 2:.2f}")
 
         reward = 0.4 * reward_roll_angle + 0.3 * reward_roll_angle_vel + 0.3 * action_penalty
 

@@ -19,6 +19,10 @@ class Bicycle:
         # 30%的概率触发扰动
         # self.noise_probability = 0.3
 
+        self.initial_joint_positions = None
+        self.initial_joint_velocities = None
+        self.initial_position, self.initial_orientation = p.getBasePositionAndOrientation(self.bicycleId)
+
     def apply_action(self, action):
         """
         Apply the action to the bicycle.
@@ -97,7 +101,7 @@ class Bicycle:
         handlebar_joint_vel = handlebar_joint_state[1]
 
         back_wheel_joint_state = p.getJointState(self.bicycleId, self.back_wheel_joint, self.client)
-        back_wheel_joint_ang = back_wheel_joint_state[0]
+        # back_wheel_joint_ang = back_wheel_joint_state[0]
         back_wheel_joint_vel = back_wheel_joint_state[1]
 
         fly_wheel_joint_state = p.getJointState(self.bicycleId, self.fly_wheel_joint, self.client)
@@ -107,8 +111,13 @@ class Bicycle:
         observation = [pos[0], pos[1],
                        roll_angle, roll_angular_vel,
                        handlebar_joint_ang, handlebar_joint_vel,
-                       back_wheel_joint_ang, back_wheel_joint_vel,
+                       back_wheel_joint_vel,
                        fly_wheel_joint_ang, fly_wheel_joint_vel
                        ]
 
         return observation
+
+    def reset(self):
+        p.resetBasePositionAndOrientation(self.bicycleId, self.initial_position, self.initial_orientation)
+        p.resetJointState(self.bicycleId, self.handlebar_joint, targetValue=0, targetVelocity=0)
+        return self.get_observation()

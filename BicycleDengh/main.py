@@ -2,7 +2,7 @@ import gymnasium as gym
 import numpy as np
 from stable_baselines3.common.evaluation import evaluate_policy
 import bicycle_dengh
-from stable_baselines3 import PPO, SAC
+from stable_baselines3 import PPO
 from stable_baselines3.common.logger import configure
 import time
 from normalize_action import NormalizeAction
@@ -14,11 +14,12 @@ import csv
 
 def ppo(train=False):
     current_dir = os.getcwd()
-    models_output_dir = os.path.join(current_dir, "output", "ppo_model")
+    # models_output_dir = os.path.join(current_dir, "output", "ppo_model")
+    models_output_dir = os.path.join(current_dir, "output", "ppo_model_omni")
     logger_output_dir = os.path.join(current_dir, "output", "logs")
 
-    # env = gym.make('BicycleDengh-v0', gui=not train)
-    env = gym.make('BalanceBicycleDengh-v0', gui=not train)
+    env = gym.make('BicycleDengh-v0', gui=not train)
+    # env = gym.make('BalanceBicycleDengh-v0', gui=not train)
     normalized_env = NormalizeAction(env)
     normalized_env = TimeLimit(normalized_env, max_episode_steps=1000)
 
@@ -40,7 +41,7 @@ def ppo(train=False):
                     verbose=0,
                     )
         model.set_logger(new_logger)
-        model.learn(total_timesteps=400000,
+        model.learn(total_timesteps=100000,
                     log_interval=1,)
         model.save(models_output_dir)
         # mean_reward, std_reward = evaluate_policy(model, normalized_env, n_eval_episodes=100, warn=False)
@@ -54,6 +55,7 @@ def ppo(train=False):
         print(f"训练时间：{execution_time // 60:.0f}分{execution_time % 60:.0f}秒")
     else:
         model = PPO.load(models_output_dir)
+        # model = PPO.load('D:\data\\1-L\9-bicycle\Bicycle_PyBullet_Gym_Proj\models_backup\\balance_ppo_model')
         obs, _ = normalized_env.reset()
         while True:
             action, _ = model.predict(obs, deterministic=True)
@@ -64,5 +66,20 @@ def ppo(train=False):
             time.sleep(1. / 24.)
 
 
+def test():
+    env = gym.make('BicycleDengh-v0', gui=True)
+    normalized_env = NormalizeAction(env)
+    normalized_env = TimeLimit(normalized_env, max_episode_steps=1000)
+
+    obs, _ = normalized_env.reset()
+    while True:
+        action = normalized_env.action_space.sample()
+        obs, reward, terminated, truncated, _ = normalized_env.step(action)
+        if terminated or truncated:
+            obs, _ = normalized_env.reset()
+        time.sleep(1. / 24.)
+
+
 if __name__ == '__main__':
     ppo(train=False)
+    # test()

@@ -3,6 +3,7 @@ import time
 import pybullet_data
 from BicycleDengh.bicycle_dengh.resources import bicycle
 from BicycleDengh.bicycle_dengh.resources import balance_bicycle
+from simple_pid import PID
 
 physicsClient = p.connect(p.GUI)
 p.setAdditionalSearchPath(pybullet_data.getDataPath())
@@ -15,6 +16,8 @@ planeId = p.loadURDF("plane.urdf")
 bicycle_vel = p.addUserDebugParameter('bicycle_vel', 0.0, 20.0, 10.0)
 bicycle_handlebar = p.addUserDebugParameter('bicycle_handlebar', -1.57, 1.57, 0)
 bicycle_flywheel = p.addUserDebugParameter('bicycle_flywheel', -20, 20, 0)
+
+roll_angle_pid = PID(2500, 100, 100, setpoint=0.0)  # 初始翻滚角为0.0°的情况
 
 camera_distance = 3
 camera_yaw = 0
@@ -37,12 +40,14 @@ for joint_number in range(number_of_joints):
 
 try:
     while True:
-        # bicycle_vel = p.readUserDebugParameter(bicycle_vel)
-        # bicycle_handlebar = p.readUserDebugParameter(bicycle_handlebar)
-        # bicycle_flywheel = p.readUserDebugParameter(bicycle_flywheel)
+        bicycle_vel_param = p.readUserDebugParameter(bicycle_vel)
+        bicycle_handlebar_param = p.readUserDebugParameter(bicycle_handlebar)
+        bicycle_flywheel_param = p.readUserDebugParameter(bicycle_flywheel)
         # b.apply_action([0, 0, 1.0])
         obs = b.get_observation()
-        print(obs[0])
+        roll_angle_control = roll_angle_pid(obs[0])
+        action = [-roll_angle_control]
+        b.apply_action(action)
         p.stepSimulation()
         time.sleep(1. / 240.)
 finally:

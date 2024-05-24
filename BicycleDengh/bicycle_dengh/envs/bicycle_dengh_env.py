@@ -6,36 +6,67 @@ from bicycle_dengh.resources.bicycle import Bicycle
 from bicycle_dengh.resources.goal import Goal
 import math
 import random
+from simple_pid import PID
+
+
+def normalize_array_to_minus_one_to_one(arr, a, b):
+    """
+    将数组arr从区间[a, b]归一化到[-1, 1]
+
+    参数:
+    arr -- 要归一化的数组
+    a -- 区间下限
+    b -- 区间上限
+
+    返回:
+    归一化后的数组
+    """
+    if a.all() == b.all():
+        raise ValueError("a 和 b 不能相等")
+
+    m = 2 / (b - a)
+    c = - (b + a) / (b - a)
+    return m * arr + c
 
 
 class BicycleDenghEnv(gym.Env):
     metadata = {'render_modes': ['human']}
 
     def __init__(self, gui=False):
-        self.bicycle = None
         self.goal = (0, 0)
         self.terminated = False
         self.truncated = False
         self.prev_dist_to_goal = 0.0
-        self.prev_action = [0.0, 0.0, 0.0]
         self.gui = gui
-        # 限制倾斜角度
-        self.roll_angle_epsilon = 0.3
-        self.max_flywheel_vel = 120.0
+        self.max_flywheel_vel = 200.0
 
-        # action_space[车把角度，前后轮速度，飞轮转速]
+        self.balance_alpha = 10.0
+        self.balance_beta = 0.01
+
+        self.roll_angle_pid = PID(2500, 100, 100, setpoint=0.0)
+
+        # action_space[车把角度，前后轮速度, 飞轮速度]
         self.action_space = gym.spaces.box.Box(
-            low=np.array([-1.57, -5.0, -self.max_flywheel_vel]),
-            high=np.array([1.57, 5.0, self.max_flywheel_vel]),
-            shape=(3,),
+            low=np.array([-1.57, 0.0]),
+            high=np.array([1.57, 5.0]),
+            shape=(2,),
             dtype=np.float32)
 
-        # [pos[0], pos[1],roll_angle, roll_vel,handlebar_joint_ang, handlebar_joint_vel,
-        #  back_wheel_joint_ang, back_wheel_joint_vel,fly_wheel_joint_ang, fly_wheel_joint_vel]
+        # 机器人位置与目标位置差x, 机器人位置与目标位置差y, 速度, 车把角度, 翻滚角, 翻滚角角速度, 飞轮角度, 飞轮角速度
+        self.actual_observation_space = gym.spaces.box.Box(
+            low=np.array([-50.0, -50.0, 0.0, -1.57]),
+            high=np.array([50.0, 50.0, 5.0, 1.57]),
+            # low=np.array([-50.0, -50.0, 0.0, -1.57, -math.pi, -15.0, 0.0, -self.max_flywheel_vel]),
+            # high=np.array([50.0, 50.0, 5.0, 1.57, math.pi, 15.0, 2 * math.pi, self.max_flywheel_vel]),
+            shape=(4,),
+            dtype=np.float32)
+
         self.observation_space = gym.spaces.box.Box(
-            low=np.array([0.0, -3.14, -10.0, -1.57, -10.0, -10.0]),
-            high=np.array([35.0, 3.14, 10.0, 1.57, 10.0, 10.0]),
-            shape=(6,),
+            low=np.array([-1.0, -1.0, -1.0, -1.0]),
+            high=np.array([1.0, 1.0, 1.0, 1.0]),
+            # low=np.array([-1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0, -1.0]),
+            # high=np.array([1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]),
+            shape=(4,),
             dtype=np.float32)
 
         if gui:
@@ -51,10 +82,36 @@ class BicycleDenghEnv(gym.Env):
         self.handlebar_angle_param = p.addUserDebugParameter('handlebar_angle_param', -1.57, 1.57, 0)
         self.flywheel_param = p.addUserDebugParameter('flywheel_param', -40, 40, 0)
 
+        self.bicycle = Bicycle(client=self.client)
+        p.setGravity(0, 0, -10, physicsClientId=self.client)
+        p.setAdditionalSearchPath(pybullet_data.getDataPath())
+        p.loadURDF("plane.urdf", physicsClientId=self.client)
+
+        # 设置目标点
+        x = (random.uniform(10, 20) if random.choice([True, False]) else random.uniform(-20, -10))
+        y = (random.uniform(10, 20) if random.choice([True, False]) else random.uniform(-20, -10))
+        self.goal = (x, y)
+        Goal(self.client, self.goal)
+
     def step(self, action):
-        self.bicycle.apply_action(action)
+        bicycle_obs = self.bicycle.get_observation()
+        roll_angle_action = self.roll_angle_pid(bicycle_obs[2])
+        all_action = [action[0], action[1], roll_angle_action]
+        self.bicycle.apply_action(all_action)
         p.stepSimulation(physicsClientId=self.client)
-        obs = self.bicycle.get_observation()
+        bicycle_obs = self.bicycle.get_observation()
+
+        obs = [self.goal[0] - bicycle_obs[0], self.goal[1] - bicycle_obs[1],
+               bicycle_obs[6], bicycle_obs[4]]
+
+        # obs = [self.goal[0] - bicycle_obs[0], self.goal[1] - bicycle_obs[1],
+        #        bicycle_obs[6], bicycle_obs[4],
+        #        bicycle_obs[2], bicycle_obs[3],
+        #        bicycle_obs[7], bicycle_obs[8]]
+
+        normalized_obs = normalize_array_to_minus_one_to_one(obs, self.actual_observation_space.low,
+                                                             self.actual_observation_space.high)
+        normalized_obs = np.array(normalized_obs, dtype=np.float32)
 
         if self.gui:
             bike_pos, _ = p.getBasePositionAndOrientation(self.bicycle.bicycleId, physicsClientId=self.client)
@@ -63,75 +120,68 @@ class BicycleDenghEnv(gym.Env):
             camera_pitch = p.readUserDebugParameter(self.camera_pitch_param)
             p.resetDebugVisualizerCamera(camera_distance, camera_yaw, camera_pitch, bike_pos)
 
-        dis_x = self.goal[0] - obs[0]
-        dis_y = self.goal[1] - obs[1]
-        dis_to_goal = math.sqrt(dis_x ** 2 + dis_y ** 2)
-
         # 计算奖励值
-        reward = self._reward_fun(obs, dis_to_goal)
+        reward = self._reward_fun(obs, action)
 
-        obs = np.array([dis_to_goal, obs[2], obs[3], obs[4], obs[5], obs[6]], dtype=np.float32)
-
-        return obs, reward, self.terminated, self.truncated, {}
+        return normalized_obs, reward, self.terminated, self.truncated, {"origin_obs": obs}
 
     def reset(self, seed=None, options=None):
-        p.resetSimulation(physicsClientId=self.client)
-        p.setGravity(0, 0, -10, physicsClientId=self.client)
-        p.setAdditionalSearchPath(pybullet_data.getDataPath())
-        p.loadURDF("plane.urdf", physicsClientId=self.client)
-
         self.terminated = False
         self.truncated = False
-
-        self.bicycle = Bicycle(client=self.client)
         # 设置飞轮速度上限
         p.changeDynamics(self.bicycle.bicycleId,
                          self.bicycle.fly_wheel_joint,
                          maxJointVelocity=self.max_flywheel_vel,
                          physicsClientId=self.client)
 
-        # 设置目标点
-        x = (random.uniform(10, 20) if random.choice([True, False]) else random.uniform(-20, -10))
-        y = (random.uniform(10, 20) if random.choice([True, False]) else random.uniform(-20, -10))
-        self.goal = (x, y)
-        Goal(self.client, self.goal)
+        # 机器人位置与目标位置差x, 机器人位置与目标位置差y, 速度, 车把角度, 翻滚角, 翻滚角角速度, 飞轮角度, 飞轮角速度
+        bicycle_obs = self.bicycle.reset()
 
-        obs = self.bicycle.get_observation()
-        dis_x = self.goal[0] - obs[0]
-        dis_y = self.goal[1] - obs[1]
-        dis_to_goal = math.sqrt(dis_x ** 2 + dis_y ** 2)
-        self.prev_dist_to_goal = math.sqrt(((obs[0] - self.goal[0]) ** 2 + (obs[1] - self.goal[1]) ** 2))
-        return np.array([dis_to_goal, obs[2], obs[3], obs[4], obs[5], obs[6]], dtype=np.float32), {}
+        self.roll_angle_pid.reset()
 
-    def _reward_fun(self, obs, dist_to_goal):
+        obs = [self.goal[0] - bicycle_obs[0], self.goal[1] - bicycle_obs[1],
+               bicycle_obs[6], bicycle_obs[4]]
+
+        # obs = [self.goal[0] - bicycle_obs[0], self.goal[1] - bicycle_obs[1],
+        #        bicycle_obs[6], bicycle_obs[4],
+        #        bicycle_obs[2], bicycle_obs[3],
+        #        bicycle_obs[7], bicycle_obs[8]]
+        normalized_obs = normalize_array_to_minus_one_to_one(obs, self.actual_observation_space.low,
+                                                             self.actual_observation_space.high)
+        normalized_obs = np.array(normalized_obs, dtype=np.float32)
+
+        return normalized_obs, {"origin_obs": obs}
+
+    def _reward_fun(self, obs, action):
         self.terminated = False
         self.truncated = False
 
-        roll_angle = obs[2]
-        if math.fabs(roll_angle - math.pi / 2) > self.roll_angle_epsilon:
-            self.terminated = True
-            balance_reward = -1.0
-        else:
-            balance_reward = 1.0
+        # 横滚角
+        # roll_angle = obs[4]
+        # 横滚角速度
+        # roll_angle_vel = obs[5]
+        # 飞轮速度
+        # flywheel_vel = action[2]
+        #
+        # reward_roll_angle = (0.3 - min(self.balance_alpha * (roll_angle ** 2), 0.3)) / 0.3
+        # reward_roll_angle_vel = (144.0 - min(self.balance_beta * (roll_angle_vel ** 2), 144.0)) / 144.0
+        # action_penalty = (40.0 - min(0.001 * (flywheel_vel ** 2), 40.0)) / 40.0
+        #
+        # reward_1 = 0.4 * reward_roll_angle + 0.3 * reward_roll_angle_vel + 0.3 * action_penalty
 
-        # 越界惩罚
-        if obs[0] >= 35.0 or obs[0] <= -35.0 or obs[1] >= 35.0 or obs[1] <= -35.0:
-            self.terminated = True
-            bound_reward = -10.0
-        else:
-            bound_reward = 0.0
+        # balance_reward = 0.0
+        # if math.fabs(roll_angle) >= 0.17:
+        #     self.terminated = True
+        #     balance_reward = -10.0
+        # elif math.fabs(roll_angle) <= 0.02:
+        #     balance_reward = 2.0
 
-        # 达到目标点奖励
-        # D是靠近目的地阈值，当自行车到目标点的距离小于D时，即不受到惩罚，当离目标点的距离大于D时，随着距离越大，惩罚值越大
-        D = 5.0
-        reach_goal_reward = -max(dist_to_goal - D, 0.0)
-        # 当自行车靠近目标附近的一个小区域时，增加奖励值使自行车加速接近目标点
-        k1 = 0.5
-        k2 = -1.0
-        # additional_reward = k1 * reach_goal_reward + k2 * math.log(reach_goal_reward + 1e-6, math.e)
+        reward_distance_x = (2500 - min(obs[0] ** 2, 2500)) / 2500
+        reward_distance_y = (2500 - min(obs[1] ** 2, 2500)) / 2500
 
-        total_reward = balance_reward + bound_reward
+        reward_2 = 0.5 * reward_distance_x + 0.5 * reward_distance_y
 
+        total_reward = reward_2
         return total_reward
 
     def render(self):
@@ -139,3 +189,7 @@ class BicycleDenghEnv(gym.Env):
 
     def close(self):
         p.disconnect(self.client)
+
+
+if __name__ == '__main__':
+    env = BicycleDenghEnv(gui=False)
