@@ -25,8 +25,8 @@ camera_pitch = -45
 camera_target_position = [0, 0, 0]
 p.resetDebugVisualizerCamera(camera_distance, camera_yaw, camera_pitch, camera_target_position)
 
-# b = bicycle.Bicycle(client=physicsClient)
-b = balance_bicycle.BalanceBicycle(client=physicsClient)
+b = bicycle.Bicycle(client=physicsClient)
+# b = balance_bicycle.BalanceBicycle(client=physicsClient)
 
 number_of_joints = p.getNumJoints(b.bicycleId)
 print(f"共有{number_of_joints}个关节")
@@ -44,9 +44,11 @@ try:
         bicycle_flywheel_param = p.readUserDebugParameter(bicycle_flywheel)
         # b.apply_action([0, 0, 1.0])
         obs = b.get_observation()
+        print(obs[0], obs[1], obs[2])
         roll_angle_control = roll_angle_pid(obs[0])
-        action = [-roll_angle_control]
-        b.apply_action(action)
+        # action = [-roll_angle_control]
+        action = [0.0, 0.0, -roll_angle_control]
+        # b.apply_action(action)
         p.stepSimulation()
         time.sleep(1. / 240.)
 finally:

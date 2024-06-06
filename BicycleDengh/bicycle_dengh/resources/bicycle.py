@@ -79,16 +79,21 @@ class Bicycle:
         # Get the position位置 and orientation方向(姿态) of the bicycle in the simulation
         pos, _ = p.getBasePositionAndOrientation(self.bicycleId, self.client)
         # The rotation order is first roll around X, then pitch around Y and finally yaw around Z
-        # ang = p.getEulerFromQuaternion(ang)
+        # 将四元数转换为欧拉角
+        # euler_angles = p.getEulerFromQuaternion(orn)
+        # 获取偏航角（yaw）
+        # yaw = euler_angles[2]
         # roll_angle = ang[0]
         # p.getBaseVelocity()返回的格式 (线速度(x, y, z), 角速度(wx, wy, wz))
         # _, angular_velocity = p.getBaseVelocity(self.bicycleId, self.client)
         # roll_vel = angular_velocity[0]
 
         gyros_link_state = p.getLinkState(self.bicycleId, self.gyros_link, computeLinkVelocity=1)
+        # gyros_link_position = gyros_link_state[0]
         gyros_link_orientation = gyros_link_state[1]
         link_ang = p.getEulerFromQuaternion(gyros_link_orientation)
         roll_angle = link_ang[0]
+        yaw_angle = link_ang[2]
         gyros_link_angular_vel = gyros_link_state[7]
         roll_angular_vel = gyros_link_angular_vel[0]
 
@@ -104,7 +109,7 @@ class Bicycle:
         # fly_wheel_joint_ang = fly_wheel_joint_state[0] % (2 * math.pi)
         fly_wheel_joint_vel = fly_wheel_joint_state[1]
 
-        observation = [pos[0], pos[1],
+        observation = [pos[0], pos[1], yaw_angle,
                        roll_angle, roll_angular_vel,
                        handlebar_joint_ang, handlebar_joint_vel,
                        back_wheel_joint_vel, fly_wheel_joint_vel

@@ -14,7 +14,7 @@ import csv
 
 def ppo(train=False):
     current_dir = os.getcwd()
-    # models_output_dir = os.path.join(current_dir, "output", "ppo_model")
+    # models_output_dir = os.path.join(current_dir, "output", "ppo_model_balance")
     models_output_dir = os.path.join(current_dir, "output", "ppo_model_omni")
     logger_output_dir = os.path.join(current_dir, "output", "logs")
 
@@ -81,5 +81,5 @@ def test():
 
 
 if __name__ == '__main__':
-    ppo(train=True)
+    ppo(train=False)
     # test()
