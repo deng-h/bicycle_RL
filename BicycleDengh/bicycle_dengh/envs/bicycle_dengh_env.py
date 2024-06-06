@@ -155,7 +155,7 @@ class BicycleDenghEnv(gym.Env):
         distance_to_goal = math.sqrt((self.goal[0] - obs[0]) ** 2 + (self.goal[1] - obs[1]) ** 2)
         self.prev_dist_to_goal = distance_to_goal
         angle_to_target = calculate_angle_to_target(obs[0], obs[1], obs[2], self.goal[0], self.goal[1])
-        obs = [distance_to_goal, angle_to_target, obs[2], obs[3], obs[4], obs[5], obs[6], obs[7]]
+        obs = [distance_to_goal, angle_to_target, obs[3], obs[4], obs[5], obs[6], obs[7], obs[8]]
 
         normalized_obs = normalize_array_to_minus_one_to_one(obs, self.actual_observation_space.low,
                                                              self.actual_observation_space.high)
@@ -178,7 +178,7 @@ class BicycleDenghEnv(gym.Env):
         reward_roll_angle = (0.3 - min(self.balance_alpha * (roll_angle ** 2), 0.3)) / 0.3
         reward_roll_angle_vel = (144.0 - min(self.balance_beta * (roll_angle_vel ** 2), 144.0)) / 144.0
         action_penalty = (40.0 - min(0.001 * (flywheel_vel ** 2), 40.0)) / 40.0
-        # handlebar_angle_vel_penalty = (25.0 - min(handlebar_angle_vel, 25.0)) / 25.0
+        handlebar_angle_vel_penalty = (25.0 - min(handlebar_angle_vel, 25.0)) / 25.0
 
         balance_reward = 0.0
         if math.fabs(roll_angle) >= 0.17:
@@ -199,8 +199,8 @@ class BicycleDenghEnv(gym.Env):
             still_penalty = -1.0
 
         # 距离目标点奖励
-        reward_distance = -(obs[0] / 30.0) ** 2
-        # diff_dist_to_goal = self.prev_dist_to_goal - obs[0]
+        diff_dist_to_goal = self.prev_dist_to_goal - obs[0]
+        reward_distance = diff_dist_to_goal * 100
 
         total_reward = (0.4 * reward_roll_angle +
                         0.3 * reward_roll_angle_vel +
@@ -208,7 +208,11 @@ class BicycleDenghEnv(gym.Env):
                         reward_distance +
                         balance_reward +
                         reward_goal +
+                        handlebar_angle_vel_penalty +
                         still_penalty)
+        # print(f"reward_roll_angle: {reward_roll_angle}, reward_roll_angle_vel: {reward_roll_angle_vel}, "
+        #       f"action_penalty: {action_penalty}, reward_distance: {reward_distance}, balance_reward: {balance_reward}, "
+        #       f"reward_goal: {reward_goal}, still_penalty: {still_penalty}")
 
         return total_reward
 

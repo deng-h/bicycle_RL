@@ -8,7 +8,7 @@ import time
 from normalize_action import NormalizeAction
 from gymnasium.wrappers.time_limit import TimeLimit
 import os
-import winsound
+# import winsound
 import csv
 
 
@@ -30,8 +30,8 @@ def ppo(train=False):
         model = PPO(policy="MlpPolicy",
                     env=normalized_env,
                     # 在 n_steps * n_envs 步之后更新策略
-                    n_steps=128,
-                    batch_size=128,
+                    n_steps=256,
+                    batch_size=256,
                     gamma=0.99,
                     # n_epochs 在每次策略更新中，使用相同的样本数据进行梯度下降优化的次数
                     n_epochs=4,
@@ -41,14 +41,14 @@ def ppo(train=False):
                     verbose=0,
                     )
         model.set_logger(new_logger)
-        model.learn(total_timesteps=500000,
+        model.learn(total_timesteps=1000000,
                     log_interval=1,)
         model.save(models_output_dir)
         # mean_reward, std_reward = evaluate_policy(model, normalized_env, n_eval_episodes=100, warn=False)
         # print(f"mean_reward: {mean_reward:.2f} +/- {std_reward:.2f}")
         del model
-        for _ in range(3):
-            winsound.Beep(300, 500)
+        # for _ in range(3):
+        #     winsound.Beep(300, 500)
 
         end_time = time.time()
         execution_time = end_time - start_time
@@ -81,5 +81,5 @@ def test():
 
 
 if __name__ == '__main__':
-    ppo(train=False)
+    ppo(train=True)
     # test()
