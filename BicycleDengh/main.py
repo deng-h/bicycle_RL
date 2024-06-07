@@ -1,9 +1,10 @@
 import gymnasium as gym
 import numpy as np
-from stable_baselines3.common.evaluation import evaluate_policy
 import bicycle_dengh
 from stable_baselines3 import PPO
 from stable_baselines3.common.logger import configure
+from stable_baselines3.common.callbacks import CheckpointCallback
+from stable_baselines3.common.evaluation import evaluate_policy
 import time
 from normalize_action import NormalizeAction
 from gymnasium.wrappers.time_limit import TimeLimit
@@ -13,6 +14,7 @@ import csv
 
 
 def ppo(train=False):
+    # cd ~/denghang/bicycle-rl/BicycleDengh
     current_dir = os.getcwd()
     # models_output_dir = os.path.join(current_dir, "output", "ppo_model_balance")
     models_output_dir = os.path.join(current_dir, "output", "ppo_model_omni")
@@ -27,25 +29,37 @@ def ppo(train=False):
         start_time = time.time()
         new_logger = configure(logger_output_dir, ["stdout", "csv", "tensorboard"])
 
-        model = PPO(policy="MlpPolicy",
-                    env=normalized_env,
-                    # 在 n_steps * n_envs 步之后更新策略
-                    n_steps=256,
-                    batch_size=256,
-                    gamma=0.99,
-                    # n_epochs 在每次策略更新中，使用相同的样本数据进行梯度下降优化的次数
-                    n_epochs=4,
-                    ent_coef=0.01,
-                    tensorboard_log=logger_output_dir,
-                    # 0 for no output, 1 for info messages (such as device or wrappers used), 2 for debug messages
-                    verbose=0,
-                    )
+        # model = PPO(policy="MlpPolicy",
+        #             env=normalized_env,
+        #             # 在 n_steps * n_envs 步之后更新策略
+        #             n_steps=256,
+        #             batch_size=256,
+        #             gamma=0.99,
+        #             # n_epochs 在每次策略更新中，使用相同的样本数据进行梯度下降优化的次数
+        #             n_epochs=4,
+        #             ent_coef=0.01,
+        #             tensorboard_log=logger_output_dir,
+        #             # 0 for no output, 1 for info messages (such as device or wrappers used), 2 for debug messages
+        #             verbose=0,
+        #             )
+
+        checkpoint_callback = CheckpointCallback(
+            save_freq=20000,
+            save_path="./checkpoint/",
+            name_prefix="rl_model",
+        )
+
+        model_path = "/home/chen/denghang/bicycle-rl/BicycleDengh/output/ppo_model_omni_0607_1413.zip"
+        model = PPO.load(path=model_path,env=normalized_env)
         model.set_logger(new_logger)
-        model.learn(total_timesteps=1000000,
-                    log_interval=1,)
+        model.learn(total_timesteps=100000,
+                    log_interval=1,
+                    callback=checkpoint_callback)
         model.save(models_output_dir)
+
         # mean_reward, std_reward = evaluate_policy(model, normalized_env, n_eval_episodes=100, warn=False)
         # print(f"mean_reward: {mean_reward:.2f} +/- {std_reward:.2f}")
+
         del model
         # for _ in range(3):
         #     winsound.Beep(300, 500)

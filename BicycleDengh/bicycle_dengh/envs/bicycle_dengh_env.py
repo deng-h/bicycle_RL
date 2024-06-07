@@ -67,8 +67,16 @@ class BicycleDenghEnv(gym.Env):
         self.gui = gui
         self.max_flywheel_vel = 120.0
 
-        self.balance_alpha = 10.0
-        self.balance_beta = 0.01
+        self.reward_dict = {
+            "roll_angle_rwd" : 0.0,
+            "roll_angle_vel_rwd" : 0.0,
+            "flywheel_rwd" : 0.0,
+            "distance_rwd" : 0.0,
+            "balance_rwd" : 0.0,
+            "goal_rwd" : 0.0,
+            "handlebar_angle_vel_rwd" : 0.0,
+            "still_penalty" : 0.0,
+        }
 
         # action_space[车把角度，前后轮速度, 飞轮速度]
         self.action_space = gym.spaces.box.Box(
@@ -77,11 +85,10 @@ class BicycleDenghEnv(gym.Env):
             shape=(3,),
             dtype=np.float32)
 
-        # (废弃)机器人位置与目标位置差x, 机器人位置与目标位置差y, 翻滚角, 翻滚角角速度, 车把角度, 车把角速度, 后轮速度, 飞轮速度
         # 机器人与目标点距离, 机器人与目标点的角度, 翻滚角, 翻滚角角速度, 车把角度, 车把角速度, 后轮速度, 飞轮速度
         self.actual_observation_space = gym.spaces.box.Box(
             low=np.array([0.0, -math.pi, -math.pi, -15.0, -1.57, -15.0, 0.0, -self.max_flywheel_vel]),
-            high=np.array([100.0, math.pi, math.pi, 15.0, 1.57, 15.0, 5.0, self.max_flywheel_vel]),
+            high=np.array([100.0, math.pi, math.pi, 15.0, 1.57, 15.0, 10.0, self.max_flywheel_vel]),
             shape=(8,),
             dtype=np.float32)
 
@@ -114,12 +121,6 @@ class BicycleDenghEnv(gym.Env):
                          maxJointVelocity=self.max_flywheel_vel,
                          physicsClientId=self.client)
 
-        # 设置目标点
-        # x = (random.uniform(10, 20) if random.choice([True, False]) else random.uniform(-20, -10))
-        # y = (random.uniform(10, 20) if random.choice([True, False]) else random.uniform(-20, -10))
-        self.goal = (20, 20)
-        Goal(self.client, self.goal)
-
     def step(self, action):
         self.bicycle.apply_action(action)
         p.stepSimulation(physicsClientId=self.client)
@@ -149,7 +150,11 @@ class BicycleDenghEnv(gym.Env):
     def reset(self, seed=None, options=None):
         self.terminated = False
         self.truncated = False
-
+        # 设置目标点
+        x = (random.uniform(10, 20) if random.choice([True, False]) else random.uniform(-20, -10))
+        y = (random.uniform(10, 20) if random.choice([True, False]) else random.uniform(-20, -10))
+        self.goal = (x, y)
+        Goal(self.client, self.goal)
         # 机器人位置与目标位置差x, 机器人位置与目标位置差y, 偏航角, 翻滚角, 翻滚角角速度, 车把角度, 车把角速度, 后轮速度, 飞轮速度
         obs = self.bicycle.reset()
         distance_to_goal = math.sqrt((self.goal[0] - obs[0]) ** 2 + (self.goal[1] - obs[1]) ** 2)
@@ -160,6 +165,32 @@ class BicycleDenghEnv(gym.Env):
         normalized_obs = normalize_array_to_minus_one_to_one(obs, self.actual_observation_space.low,
                                                              self.actual_observation_space.high)
         normalized_obs = np.array(normalized_obs, dtype=np.float32)
+
+        # print(
+        #       f"distance_rwd={self.reward_dict['distance_rwd']:.2f}," + 
+        #       f"balance_rwd={self.reward_dict['balance_rwd']:.2f}," + 
+        #       f"goal_rwd={self.reward_dict['goal_rwd']:.2f}," + 
+        #       f"still_penalty={self.reward_dict['still_penalty']:.2f}")
+
+        # print(f"roll_angle_rwd={self.reward_dict['roll_angle_rwd']:.2f}," + 
+        #       f"roll_angle_vel_rwd={self.reward_dict['roll_angle_vel_rwd']:.2f}," +
+        #       f"flywheel_rwd={self.reward_dict['flywheel_rwd']:.2f}," +
+        #       f"distance_rwd={self.reward_dict['distance_rwd']:.2f}," + 
+        #       f"balance_rwd={self.reward_dict['balance_rwd']:.2f}," + 
+        #       f"goal_rwd={self.reward_dict['goal_rwd']:.2f}," + 
+        #       f"handlebar_angle_vel_rwd={self.reward_dict['handlebar_angle_vel_rwd']:.2f}," + 
+        #       f"still_penalty={self.reward_dict['still_penalty']:.2f}")
+
+        self.reward_dict = {
+            "roll_angle_rwd" : 0.0,
+            "roll_angle_vel_rwd" : 0.0,
+            "flywheel_rwd" : 0.0,
+            "distance_rwd" : 0.0,
+            "balance_rwd" : 0.0,
+            "goal_rwd" : 0.0,
+            "handlebar_angle_vel_rwd" : 0.0,
+            "still_penalty" : 0.0,
+        }
 
         return normalized_obs, {"origin_obs": obs}
 
@@ -175,23 +206,25 @@ class BicycleDenghEnv(gym.Env):
         bicycle_vel = obs[6]
         flywheel_vel = obs[7]
 
-        reward_roll_angle = (0.3 - min(self.balance_alpha * (roll_angle ** 2), 0.3)) / 0.3
-        reward_roll_angle_vel = (144.0 - min(self.balance_beta * (roll_angle_vel ** 2), 144.0)) / 144.0
-        action_penalty = (40.0 - min(0.001 * (flywheel_vel ** 2), 40.0)) / 40.0
-        handlebar_angle_vel_penalty = (25.0 - min(handlebar_angle_vel, 25.0)) / 25.0
+        roll_angle_rwd = 0.4 * (0.3 - min(10.0 * (roll_angle ** 2), 0.3)) / 0.3
+        roll_angle_vel_rwd = 0.3 * (225.0 - min((roll_angle_vel ** 2), 225.0)) / 225.0
+        # handlebar_angle_vel_rwd = 0.0
+        flywheel_rwd = 0.3 * (40.0 - min(0.001 * (flywheel_vel ** 2), 40.0)) / 40.0
 
-        balance_reward = 0.0
+        balance_rwd = 0.0
         if math.fabs(roll_angle) >= 0.17:
             self.terminated = True
-            balance_reward = -1.0
+            balance_rwd = -8.0
+        elif 0.08 <= math.fabs(roll_angle) < 0.17:
+            balance_rwd = -0.4
         elif math.fabs(roll_angle) <= 0.02:
-            balance_reward = 1.0
+            balance_rwd = 0.2
 
         #  到达目标点奖励
-        reward_goal = 0.0
-        if math.fabs(obs[0]) <= 1.0 and math.fabs(obs[1]) <= 1.0:
+        goal_rwd = 0.0
+        if math.fabs(obs[0]) <= 1.2:
             self.truncated = True
-            reward_goal = 100.0
+            goal_rwd = 10.0
 
         # 静止惩罚
         still_penalty = 0.0
@@ -200,19 +233,31 @@ class BicycleDenghEnv(gym.Env):
 
         # 距离目标点奖励
         diff_dist_to_goal = self.prev_dist_to_goal - obs[0]
-        reward_distance = diff_dist_to_goal * 100
+        distance_rwd = diff_dist_to_goal / (5.0 / 24.0)
+        if diff_dist_to_goal > 0.0:
+            distance_rwd = (1.0 / 10.0) * distance_rwd
+        else:
+            distance_rwd = (1.2 / 10.0) * distance_rwd
 
-        total_reward = (0.4 * reward_roll_angle +
-                        0.3 * reward_roll_angle_vel +
-                        0.3 * action_penalty +
-                        reward_distance +
-                        balance_reward +
-                        reward_goal +
-                        handlebar_angle_vel_penalty +
-                        still_penalty)
-        # print(f"reward_roll_angle: {reward_roll_angle}, reward_roll_angle_vel: {reward_roll_angle_vel}, "
-        #       f"action_penalty: {action_penalty}, reward_distance: {reward_distance}, balance_reward: {balance_reward}, "
-        #       f"reward_goal: {reward_goal}, still_penalty: {still_penalty}")
+        # total_reward = (roll_angle_rwd +
+        #                 roll_angle_vel_rwd +
+        #                 flywheel_rwd +
+        #                 distance_rwd +
+        #                 balance_rwd +
+        #                 goal_rwd +
+        #                 handlebar_angle_vel_rwd +
+        #                 still_penalty)
+
+        total_reward = goal_rwd + distance_rwd + balance_rwd + still_penalty
+
+        # self.reward_dict["roll_angle_rwd"] += roll_angle_rwd
+        # self.reward_dict["roll_angle_vel_rwd"] += roll_angle_vel_rwd
+        # self.reward_dict["flywheel_rwd"] += flywheel_rwd
+        # self.reward_dict["distance_rwd"] += distance_rwd
+        # self.reward_dict["balance_rwd"] += balance_rwd
+        # self.reward_dict["goal_rwd"] += goal_rwd
+        # self.reward_dict["handlebar_angle_vel_rwd"] += handlebar_angle_vel_rwd
+        # self.reward_dict["still_penalty"] += still_penalty
 
         return total_reward
 
