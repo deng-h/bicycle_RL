@@ -20,18 +20,16 @@ def ppo(train=False):
     now = datetime.now()
     # 格式化时间为 mmdd_hhmm
     formatted_time = now.strftime("%m%d_%H%M")
-    train_model_name = "ppo_model_omni_" + formatted_time
-    test_model_name = "ppo_model_omni_"
-    # models_output_dir = os.path.join(current_dir, "output", "ppo_model_balance")
-    models_output_dir = os.path.join(current_dir, "output", train_model_name)
-    logger_output_dir = os.path.join(current_dir, "output", "logs")
-
     env = gym.make('BicycleDengh-v0', gui=not train)
     # env = gym.make('BalanceBicycleDengh-v0', gui=not train)
     normalized_env = NormalizeAction(env)
     normalized_env = TimeLimit(normalized_env, max_episode_steps=1000)
 
     if train:
+        train_model_name = "ppo_model_omni_" + formatted_time
+        # models_output_dir = os.path.join(current_dir, "output", "ppo_model_balance")
+        models_output_dir = os.path.join(current_dir, "output", train_model_name)
+        logger_output_dir = os.path.join(current_dir, "output", "logs")
         start_time = time.time()
         new_logger = configure(logger_output_dir, ["stdout", "csv", "tensorboard"])
 
@@ -72,7 +70,8 @@ def ppo(train=False):
         execution_time = end_time - start_time
         print(f"训练时间：{execution_time // 60:.0f}分{execution_time % 60:.0f}秒")
     else:
-        model = PPO.load(models_output_dir)
+        models_dir = os.path.join(current_dir, "output", "ppo_model_omni_0607_1655")
+        model = PPO.load(models_dir)
         # model = PPO.load('D:\data\\1-L\9-bicycle\Bicycle_PyBullet_Gym_Proj\models_backup\\balance_ppo_model')
         obs, _ = normalized_env.reset()
         while True:
@@ -99,5 +98,5 @@ def test():
 
 
 if __name__ == '__main__':
-    ppo(train=True)
+    ppo(train=False)
     # test()
