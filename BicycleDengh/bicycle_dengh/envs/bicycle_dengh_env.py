@@ -8,6 +8,22 @@ import math
 import random
 
 
+def generate_goal_point():
+    # 随机生成距离，范围在10到20米之间
+    distance = random.uniform(10, 20)
+    
+    # 随机生成角度，范围在0到180度之间（对应一二象限）
+    angle_deg = random.uniform(0, 180)
+    
+    # 将角度转换为弧度
+    angle_rad = math.radians(angle_deg)
+    
+    # 计算笛卡尔坐标
+    x = distance * math.cos(angle_rad)
+    y = distance * math.sin(angle_rad)
+    
+    return (x, y)
+
 def normalize_array_to_minus_one_to_one(arr, a, b):
     """
     将数组arr从区间[a, b]归一化到[-1, 1]
@@ -151,13 +167,10 @@ class BicycleDenghEnv(gym.Env):
     def reset(self, seed=None, options=None):
         self.terminated = False
         self.truncated = False
-        # 设置目标点
-        x = (random.uniform(10, 20) if random.choice([True, False]) else random.uniform(-20, -10))
-        y = (random.uniform(10, 20) if random.choice([True, False]) else random.uniform(-20, -10))
-        self.goal = (x, y)
+        self.goal = generate_goal_point()
         goal = Goal(self.client, self.goal)
         # 因为没有重置环境，每次reset后要清除先前的Goal
-        if self.prev_goal_id != None:
+        if self.prev_goal_id is not None:
             p.removeBody(self.prev_goal_id)
         self.prev_goal_id = goal.id
 

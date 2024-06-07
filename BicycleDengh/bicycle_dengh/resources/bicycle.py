@@ -2,13 +2,17 @@ import pybullet as p
 import random
 import math
 import os
+import platform
 
 
 class Bicycle:
     def __init__(self, client):
         self.client = client
-        # f_name = os.path.join(os.path.dirname(__file__), 'bicycle_urdf\\bike.xml')
-        f_name = os.path.join(os.path.dirname(__file__), 'bicycle_urdf/bike.xml')
+        system = platform.system()
+        if system == "Windows":
+            f_name = os.path.join(os.path.dirname(__file__), 'bicycle_urdf\\bike.xml')
+        else:
+            f_name = os.path.join(os.path.dirname(__file__), 'bicycle_urdf/bike.xml')
         self.bicycleId = p.loadURDF(fileName=f_name, basePosition=[0, 0, 1])
         self.handlebar_joint = 0
         self.front_wheel_joint = 1

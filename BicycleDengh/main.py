@@ -14,15 +14,16 @@ from datetime import datetime
 
 
 def ppo(train=False):
-    # cd ~/denghang/bicycle-rl/BicycleDengh
+    # linux下训练前先到这个路径下 cd ~/denghang/bicycle-rl/BicycleDengh
     current_dir = os.getcwd()
     # 获取当前时间
     now = datetime.now()
     # 格式化时间为 mmdd_hhmm
     formatted_time = now.strftime("%m%d_%H%M")
-    model_name = "ppo_model_omni_" + formatted_time
+    train_model_name = "ppo_model_omni_" + formatted_time
+    test_model_name = "ppo_model_omni_"
     # models_output_dir = os.path.join(current_dir, "output", "ppo_model_balance")
-    models_output_dir = os.path.join(current_dir, "output", model_name)
+    models_output_dir = os.path.join(current_dir, "output", train_model_name)
     logger_output_dir = os.path.join(current_dir, "output", "logs")
 
     env = gym.make('BicycleDengh-v0', gui=not train)
