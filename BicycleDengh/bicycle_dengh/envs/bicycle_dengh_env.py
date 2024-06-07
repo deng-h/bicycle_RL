@@ -66,6 +66,7 @@ class BicycleDenghEnv(gym.Env):
         self.prev_dist_to_goal = 0.0
         self.gui = gui
         self.max_flywheel_vel = 120.0
+        self.prev_goal_id = None
 
         self.reward_dict = {
             "roll_angle_rwd" : 0.0,
@@ -154,7 +155,12 @@ class BicycleDenghEnv(gym.Env):
         x = (random.uniform(10, 20) if random.choice([True, False]) else random.uniform(-20, -10))
         y = (random.uniform(10, 20) if random.choice([True, False]) else random.uniform(-20, -10))
         self.goal = (x, y)
-        Goal(self.client, self.goal)
+        goal = Goal(self.client, self.goal)
+        # 因为没有重置环境，每次reset后要清除先前的Goal
+        if self.prev_goal_id != None:
+            p.removeBody(self.prev_goal_id)
+        self.prev_goal_id = goal.id
+
         # 机器人位置与目标位置差x, 机器人位置与目标位置差y, 偏航角, 翻滚角, 翻滚角角速度, 车把角度, 车把角速度, 后轮速度, 飞轮速度
         obs = self.bicycle.reset()
         distance_to_goal = math.sqrt((self.goal[0] - obs[0]) ** 2 + (self.goal[1] - obs[1]) ** 2)

@@ -9,15 +9,20 @@ import time
 from normalize_action import NormalizeAction
 from gymnasium.wrappers.time_limit import TimeLimit
 import os
-# import winsound
 import csv
+from datetime import datetime
 
 
 def ppo(train=False):
     # cd ~/denghang/bicycle-rl/BicycleDengh
     current_dir = os.getcwd()
+    # 获取当前时间
+    now = datetime.now()
+    # 格式化时间为 mmdd_hhmm
+    formatted_time = now.strftime("%m%d_%H%M")
+    model_name = "ppo_model_omni_" + formatted_time
     # models_output_dir = os.path.join(current_dir, "output", "ppo_model_balance")
-    models_output_dir = os.path.join(current_dir, "output", "ppo_model_omni")
+    models_output_dir = os.path.join(current_dir, "output", model_name)
     logger_output_dir = os.path.join(current_dir, "output", "logs")
 
     env = gym.make('BicycleDengh-v0', gui=not train)
@@ -44,15 +49,15 @@ def ppo(train=False):
         #             )
 
         checkpoint_callback = CheckpointCallback(
-            save_freq=20000,
+            save_freq=50000,
             save_path="./checkpoint/",
-            name_prefix="rl_model",
+            name_prefix=formatted_time,
         )
 
         model_path = "/home/chen/denghang/bicycle-rl/BicycleDengh/output/ppo_model_omni_0607_1413.zip"
         model = PPO.load(path=model_path,env=normalized_env)
         model.set_logger(new_logger)
-        model.learn(total_timesteps=100000,
+        model.learn(total_timesteps=500000,
                     log_interval=1,
                     callback=checkpoint_callback)
         model.save(models_output_dir)
@@ -61,8 +66,6 @@ def ppo(train=False):
         # print(f"mean_reward: {mean_reward:.2f} +/- {std_reward:.2f}")
 
         del model
-        # for _ in range(3):
-        #     winsound.Beep(300, 500)
 
         end_time = time.time()
         execution_time = end_time - start_time
