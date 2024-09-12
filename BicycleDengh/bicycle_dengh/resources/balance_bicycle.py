@@ -1,12 +1,7 @@
 import pybullet as p
-import random
 import math
 import os
-
-
-# 将角度从度数转换为弧度
-def degrees_to_radians(degrees):
-    return degrees * (math.pi / 180.0)
+from utils.my_tools import degrees_to_radians
 
 
 class BalanceBicycle:
@@ -25,7 +20,6 @@ class BalanceBicycle:
         self.fly_wheel_joint = 4
         self.gyros_link = 5
         self.MAX_FORCE = 2000
-        # self.noise_probability = 0.3  # 30%的概率触发扰动
 
         self.initial_joint_positions = None
         self.initial_joint_velocities = None

@@ -6,70 +6,7 @@ from bicycle_dengh.resources.bicycle import Bicycle
 from bicycle_dengh.resources.goal import Goal
 import math
 import random
-
-
-def generate_goal_point():
-    # 随机生成距离，范围在10到20米之间
-    distance = random.uniform(10, 20)
-    
-    # 随机生成角度，范围在0到180度之间（对应一二象限）
-    angle_deg = random.uniform(0, 180)
-    
-    # 将角度转换为弧度
-    angle_rad = math.radians(angle_deg)
-    
-    # 计算笛卡尔坐标
-    x = distance * math.cos(angle_rad)
-    y = distance * math.sin(angle_rad)
-    
-    return (x, y)
-
-def normalize_array_to_minus_one_to_one(arr, a, b):
-    """
-    将数组arr从区间[a, b]归一化到[-1, 1]
-
-    参数:
-    arr -- 要归一化的数组
-    a -- 区间下限
-    b -- 区间上限
-
-    返回:
-    归一化后的数组
-    """
-    if a.all() == b.all():
-        raise ValueError("a 和 b 不能相等")
-
-    m = 2 / (b - a)
-    c = - (b + a) / (b - a)
-    return m * arr + c
-
-
-def calculate_angle_to_target(a, b, phi, x, y):
-    """
-    计算机器人与目标点之间的角度
-
-    参数：
-    a, b - 机器人的当前坐标 (a, b)
-    phi - 机器人的当前偏航角，单位为弧度
-    x, y - 目标点的坐标 (x, y)
-
-    返回：
-    机器人与目标点之间的角度，单位为弧度
-    """
-    # 计算目标点相对于机器人的方向
-    delta_x = x - a
-    delta_y = y - b
-
-    # 计算目标方向的角度
-    target_angle = math.atan2(delta_y, delta_x)
-
-    # 计算机器人与目标点之间的相对角度
-    angle_to_target = target_angle - phi
-
-    # 将角度规范化到 [-π, π] 范围内
-    angle_to_target = (angle_to_target + math.pi) % (2 * math.pi) - math.pi
-
-    return angle_to_target
+from utils.my_tools import normalize_array_to_minus_one_to_one, calculate_angle_to_target
 
 
 class BicycleDenghEnv(gym.Env):
@@ -83,17 +20,6 @@ class BicycleDenghEnv(gym.Env):
         self.gui = gui
         self.max_flywheel_vel = 120.0
         self.prev_goal_id = None
-
-        self.reward_dict = {
-            "roll_angle_rwd" : 0.0,
-            "roll_angle_vel_rwd" : 0.0,
-            "flywheel_rwd" : 0.0,
-            "distance_rwd" : 0.0,
-            "balance_rwd" : 0.0,
-            "goal_rwd" : 0.0,
-            "handlebar_angle_vel_rwd" : 0.0,
-            "still_penalty" : 0.0,
-        }
 
         # action_space[车把角度，前后轮速度, 飞轮速度]
         self.action_space = gym.spaces.box.Box(
@@ -142,6 +68,7 @@ class BicycleDenghEnv(gym.Env):
         self.bicycle.apply_action(action)
         p.stepSimulation(physicsClientId=self.client)
         obs = self.bicycle.get_observation()
+        current_position = (obs[0], obs[1])
 
         # 机器人位置与目标位置差x, 机器人位置与目标位置差y, 偏航角, 翻滚角, 翻滚角角速度, 车把角度, 车把角速度, 后轮速度, 飞轮速度
         distance_to_goal = math.sqrt((self.goal[0] - obs[0]) ** 2 + (self.goal[1] - obs[1]) ** 2)
@@ -162,12 +89,13 @@ class BicycleDenghEnv(gym.Env):
         reward = self._reward_fun(obs, action)
         self.prev_dist_to_goal = distance_to_goal
 
-        return normalized_obs, reward, self.terminated, self.truncated, {"origin_obs": obs}
+        return normalized_obs, reward, self.terminated, self.truncated, {"current_position": current_position}
 
     def reset(self, seed=None, options=None):
         self.terminated = False
         self.truncated = False
-        self.goal = generate_goal_point()
+
+        self.goal = (10, 10)
         goal = Goal(self.client, self.goal)
         # 因为没有重置环境，每次reset后要清除先前的Goal
         if self.prev_goal_id is not None:
@@ -185,33 +113,7 @@ class BicycleDenghEnv(gym.Env):
                                                              self.actual_observation_space.high)
         normalized_obs = np.array(normalized_obs, dtype=np.float32)
 
-        # print(
-        #       f"distance_rwd={self.reward_dict['distance_rwd']:.2f}," + 
-        #       f"balance_rwd={self.reward_dict['balance_rwd']:.2f}," + 
-        #       f"goal_rwd={self.reward_dict['goal_rwd']:.2f}," + 
-        #       f"still_penalty={self.reward_dict['still_penalty']:.2f}")
-
-        # print(f"roll_angle_rwd={self.reward_dict['roll_angle_rwd']:.2f}," + 
-        #       f"roll_angle_vel_rwd={self.reward_dict['roll_angle_vel_rwd']:.2f}," +
-        #       f"flywheel_rwd={self.reward_dict['flywheel_rwd']:.2f}," +
-        #       f"distance_rwd={self.reward_dict['distance_rwd']:.2f}," + 
-        #       f"balance_rwd={self.reward_dict['balance_rwd']:.2f}," + 
-        #       f"goal_rwd={self.reward_dict['goal_rwd']:.2f}," + 
-        #       f"handlebar_angle_vel_rwd={self.reward_dict['handlebar_angle_vel_rwd']:.2f}," + 
-        #       f"still_penalty={self.reward_dict['still_penalty']:.2f}")
-
-        self.reward_dict = {
-            "roll_angle_rwd" : 0.0,
-            "roll_angle_vel_rwd" : 0.0,
-            "flywheel_rwd" : 0.0,
-            "distance_rwd" : 0.0,
-            "balance_rwd" : 0.0,
-            "goal_rwd" : 0.0,
-            "handlebar_angle_vel_rwd" : 0.0,
-            "still_penalty" : 0.0,
-        }
-
-        return normalized_obs, {"origin_obs": obs}
+        return normalized_obs, {"target": self.goal}
 
     def _reward_fun(self, obs, action):
         self.terminated = False
@@ -241,7 +143,7 @@ class BicycleDenghEnv(gym.Env):
 
         #  到达目标点奖励
         goal_rwd = 0.0
-        if math.fabs(obs[0]) <= 1.2:
+        if math.fabs(obs[0]) <= 1.0:
             self.truncated = True
             goal_rwd = 10.0
 
@@ -258,25 +160,7 @@ class BicycleDenghEnv(gym.Env):
         else:
             distance_rwd = (1.2 / 10.0) * distance_rwd
 
-        # total_reward = (roll_angle_rwd +
-        #                 roll_angle_vel_rwd +
-        #                 flywheel_rwd +
-        #                 distance_rwd +
-        #                 balance_rwd +
-        #                 goal_rwd +
-        #                 handlebar_angle_vel_rwd +
-        #                 still_penalty)
-
         total_reward = goal_rwd + distance_rwd + balance_rwd + still_penalty
-
-        # self.reward_dict["roll_angle_rwd"] += roll_angle_rwd
-        # self.reward_dict["roll_angle_vel_rwd"] += roll_angle_vel_rwd
-        # self.reward_dict["flywheel_rwd"] += flywheel_rwd
-        # self.reward_dict["distance_rwd"] += distance_rwd
-        # self.reward_dict["balance_rwd"] += balance_rwd
-        # self.reward_dict["goal_rwd"] += goal_rwd
-        # self.reward_dict["handlebar_angle_vel_rwd"] += handlebar_angle_vel_rwd
-        # self.reward_dict["still_penalty"] += still_penalty
 
         return total_reward
 

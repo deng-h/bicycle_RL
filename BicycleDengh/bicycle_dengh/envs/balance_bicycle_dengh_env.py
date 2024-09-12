@@ -5,26 +5,7 @@ import pybullet_data
 from bicycle_dengh.resources.balance_bicycle import BalanceBicycle
 import math
 from bicycle_dengh.resources.wall import Wall
-
-
-def normalize_array_to_minus_one_to_one(arr, a, b):
-    """
-    将数组arr从区间[a, b]归一化到[-1, 1]
-
-    参数:
-    arr -- 要归一化的数组
-    a -- 区间下限
-    b -- 区间上限
-
-    返回:
-    归一化后的数组
-    """
-    if a.all() == b.all():
-        raise ValueError("a 和 b 不能相等")
-
-    m = 2 / (b - a)
-    c = - (b + a) / (b - a)
-    return m * arr + c
+from utils.my_tools import normalize_array_to_minus_one_to_one
 
 
 class BalanceBicycleDenghEnv(gym.Env):

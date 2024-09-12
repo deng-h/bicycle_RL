@@ -8,11 +8,13 @@ import platform
 class Bicycle:
     def __init__(self, client):
         self.client = client
+
         system = platform.system()
         if system == "Windows":
             f_name = os.path.join(os.path.dirname(__file__), 'bicycle_urdf\\bike.xml')
         else:
             f_name = os.path.join(os.path.dirname(__file__), 'bicycle_urdf/bike.xml')
+
         startOrientation = p.getQuaternionFromEuler([0, 0, 1.57])
         self.bicycleId = p.loadURDF(fileName=f_name, basePosition=[0, 0, 1], baseOrientation=startOrientation)
         self.handlebar_joint = 0
@@ -21,8 +23,6 @@ class Bicycle:
         self.fly_wheel_joint = 4
         self.gyros_link = 5
         self.MAX_FORCE = 2000
-        # 30%的概率触发扰动
-        # self.noise_probability = 0.3
 
         self.initial_joint_positions = None
         self.initial_joint_velocities = None
@@ -31,11 +31,6 @@ class Bicycle:
     def apply_action(self, action):
         """
         Apply the action to the bicycle.
-
-        Parameters:
-        action[0]控制车把位置
-        action[1]控制前后轮速度
-        action[2]控制飞轮
         """
         # action[0] = frame_to_handlebar 车把位置控制
         p.setJointMotorControl2(bodyUniqueId=self.bicycleId,
@@ -68,17 +63,6 @@ class Bicycle:
                                 targetVelocity=action[2],
                                 force=self.MAX_FORCE,
                                 physicsClientId=self.client)
-
-        # 产生随机扰动
-        # random_number = random.random()
-        # if random_number < self.noise_probability:
-        #     force_magnitude = 30
-        #     p.applyExternalForce(objectUniqueId=self.bicycle,
-        #                          linkIndex=-1,  # link index or -1 for the base
-        #                          forceObj=[random.uniform(-force_magnitude, force_magnitude),
-        #                                    random.uniform(-force_magnitude, force_magnitude), 0],
-        #                          posObj=[0, 0, 0],
-        #                          flags=p.LINK_FRAME)
 
     def get_observation(self):
         # Get the position位置 and orientation方向(姿态) of the bicycle in the simulation
