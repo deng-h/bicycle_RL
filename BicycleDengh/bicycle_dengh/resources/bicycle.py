@@ -3,20 +3,16 @@ import random
 import math
 import os
 import platform
-import numpy as np
-import gymnasium as gym
 
 
 class Bicycle:
     def __init__(self, client):
         self.client = client
-
         system = platform.system()
         if system == "Windows":
             f_name = os.path.join(os.path.dirname(__file__), 'bicycle_urdf\\bike.xml')
         else:
             f_name = os.path.join(os.path.dirname(__file__), 'bicycle_urdf/bike.xml')
-
         startOrientation = p.getQuaternionFromEuler([0, 0, 1.57])
         self.bicycleId = p.loadURDF(fileName=f_name, basePosition=[0, 0, 1], baseOrientation=startOrientation)
         self.handlebar_joint = 0
@@ -25,7 +21,8 @@ class Bicycle:
         self.fly_wheel_joint = 4
         self.gyros_link = 5
         self.MAX_FORCE = 2000
-        self.max_flywheel_vel = 120.0  # 飞轮速度上限
+        # 30%的概率触发扰动
+        # self.noise_probability = 0.3
 
         self.initial_joint_positions = None
         self.initial_joint_velocities = None
@@ -34,6 +31,11 @@ class Bicycle:
     def apply_action(self, action):
         """
         Apply the action to the bicycle.
+
+        Parameters:
+        action[0]控制车把位置
+        action[1]控制前后轮速度
+        action[2]控制飞轮
         """
         # action[0] = frame_to_handlebar 车把位置控制
         p.setJointMotorControl2(bodyUniqueId=self.bicycleId,
@@ -67,12 +69,25 @@ class Bicycle:
                                 force=self.MAX_FORCE,
                                 physicsClientId=self.client)
 
+        # 产生随机扰动
+        # random_number = random.random()
+        # if random_number < self.noise_probability:
+        #     force_magnitude = 30
+        #     p.applyExternalForce(objectUniqueId=self.bicycle,
+        #                          linkIndex=-1,  # link index or -1 for the base
+        #                          forceObj=[random.uniform(-force_magnitude, force_magnitude),
+        #                                    random.uniform(-force_magnitude, force_magnitude), 0],
+        #                          posObj=[0, 0, 0],
+        #                          flags=p.LINK_FRAME)
+
     def get_observation(self):
-        # Get the position and orientation of the bicycle in the simulation
+        # Get the position位置 and orientation方向(姿态) of the bicycle in the simulation
         pos, _ = p.getBasePositionAndOrientation(self.bicycleId, self.client)
         # The rotation order is first roll around X, then pitch around Y and finally yaw around Z
-        # euler_angles = p.getEulerFromQuaternion(orn)  # 将四元数转换为欧拉角
-        # yaw = euler_angles[2]  # 获取偏航角（yaw）
+        # 将四元数转换为欧拉角
+        # euler_angles = p.getEulerFromQuaternion(orn)
+        # 获取偏航角（yaw）
+        # yaw = euler_angles[2]
         # roll_angle = ang[0]
         # p.getBaseVelocity()返回的格式 (线速度(x, y, z), 角速度(wx, wy, wz))
         # _, angular_velocity = p.getBaseVelocity(self.bicycleId, self.client)
@@ -106,28 +121,6 @@ class Bicycle:
                        ]
 
         return observation
-
-    def get_action_space(self):
-        """
-        返回动作空间
-        :return: [车把角度，前后轮速度, 飞轮速度]
-        """
-        return gym.spaces.box.Box(
-            low=np.array([-1.57, 0.0, -self.max_flywheel_vel]),
-            high=np.array([1.57, 5.0, self.max_flywheel_vel]),
-            shape=(3,),
-            dtype=np.float32)
-
-    def get_observation_space(self):
-        """
-        返回观测空间
-        :return: [机器人与目标点距离, 机器人与目标点的角度, 翻滚角, 翻滚角角速度, 车把角度, 车把角速度, 后轮速度, 飞轮速度]
-        """
-        return gym.spaces.box.Box(
-            low=np.array([0.0, -math.pi, -math.pi, -15.0, -1.57, -15.0, 0.0, -self.max_flywheel_vel]),
-            high=np.array([100.0, math.pi, math.pi, 15.0, 1.57, 15.0, 10.0, self.max_flywheel_vel]),
-            shape=(8,),
-            dtype=np.float32)
 
     def reset(self):
         p.resetBasePositionAndOrientation(self.bicycleId, self.initial_position, self.initial_orientation)
