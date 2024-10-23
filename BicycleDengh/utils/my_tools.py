@@ -2,6 +2,7 @@
 常用工具
 """
 import math
+import random
 
 
 def degrees_to_radians(degrees):
@@ -59,3 +60,19 @@ def calculate_angle_to_target(a, b, phi, x, y):
     angle_to_target = (angle_to_target + math.pi) % (2 * math.pi) - math.pi
 
     return angle_to_target
+
+def generate_goal_point():
+    # 随机生成距离，范围在10到20米之间
+    distance = random.uniform(10, 20)
+
+    # 随机生成角度，范围在0到180度之间（对应一二象限）
+    angle_deg = random.uniform(0, 180)
+
+    # 将角度转换为弧度
+    angle_rad = math.radians(angle_deg)
+
+    # 计算笛卡尔坐标
+    x = distance * math.cos(angle_rad)
+    y = distance * math.sin(angle_rad)
+
+    return (x, y)

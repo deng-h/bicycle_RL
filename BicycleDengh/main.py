@@ -9,17 +9,13 @@ import time
 from utils.normalize_action import NormalizeAction
 from gymnasium.wrappers.time_limit import TimeLimit
 import os
-import csv
 from datetime import datetime
 
 
 def ppo(train=False):
-    # linux下训练前先到这个路径下 cd ~/denghang/bicycle-rl/BicycleDengh
-    current_dir = os.getcwd()
-    # 获取当前时间
-    now = datetime.now()
-    # 格式化时间为 mmdd_hhmm
-    formatted_time = now.strftime("%m%d_%H%M")
+    current_dir = os.getcwd()  # linux下训练前先 cd ~/denghang/bicycle-rl/BicycleDengh
+    now = datetime.now()  # 获取当前时间
+    formatted_time = now.strftime("%m%d_%H%M")  # 格式化时间为 mmdd_hhmm
     env = gym.make('BicycleDengh-v0', gui=not train)
     # env = gym.make('BalanceBicycleDengh-v0', gui=not train)
     normalized_env = NormalizeAction(env)
@@ -27,7 +23,6 @@ def ppo(train=False):
 
     if train:
         train_model_name = "ppo_model_omni_" + formatted_time
-        # models_output_dir = os.path.join(current_dir, "output", "ppo_model_balance")
         models_output_dir = os.path.join(current_dir, "output", train_model_name)
         logger_output_dir = os.path.join(current_dir, "output", "logs")
         start_time = time.time()
@@ -72,31 +67,14 @@ def ppo(train=False):
     else:
         models_dir = os.path.join(current_dir, "output", "ppo_model_omni_0607_1655")
         model = PPO.load(models_dir)
-        # model = PPO.load('D:\data\\1-L\9-bicycle\Bicycle_PyBullet_Gym_Proj\models_backup\\balance_ppo_model')
         obs, _ = normalized_env.reset()
         while True:
             action, _ = model.predict(obs, deterministic=True)
             obs, _, terminated, truncated, _ = normalized_env.step(action)
             if terminated or truncated:
                 obs, _ = normalized_env.reset()
-
             time.sleep(1. / 24.)
-
-
-def test():
-    env = gym.make('BicycleDengh-v0', gui=True)
-    normalized_env = NormalizeAction(env)
-    normalized_env = TimeLimit(normalized_env, max_episode_steps=1000)
-
-    obs, _ = normalized_env.reset()
-    while True:
-        action = normalized_env.action_space.sample()
-        obs, reward, terminated, truncated, _ = normalized_env.step(action)
-        if terminated or truncated:
-            obs, _ = normalized_env.reset()
-        time.sleep(1. / 24.)
 
 
 if __name__ == '__main__':
     ppo(train=False)
-    # test()

@@ -6,13 +6,15 @@ import platform
 
 
 class Bicycle:
-    def __init__(self, client):
+    def __init__(self, client, max_flywheel_vel):
         self.client = client
+
         system = platform.system()
         if system == "Windows":
             f_name = os.path.join(os.path.dirname(__file__), 'bicycle_urdf\\bike.xml')
         else:
             f_name = os.path.join(os.path.dirname(__file__), 'bicycle_urdf/bike.xml')
+
         startOrientation = p.getQuaternionFromEuler([0, 0, 1.57])
         self.bicycleId = p.loadURDF(fileName=f_name, basePosition=[0, 0, 1], baseOrientation=startOrientation)
         self.handlebar_joint = 0
@@ -27,6 +29,12 @@ class Bicycle:
         self.initial_joint_positions = None
         self.initial_joint_velocities = None
         self.initial_position, self.initial_orientation = p.getBasePositionAndOrientation(self.bicycleId)
+
+        # 设置飞轮速度上限
+        p.changeDynamics(self.bicycleId,
+                         self.fly_wheel_joint,
+                         maxJointVelocity=max_flywheel_vel,
+                         physicsClientId=self.client)
 
     def apply_action(self, action):
         """
