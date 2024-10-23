@@ -27,7 +27,6 @@ def ppo(train=False):
         start_time = time.time()
 
 
-
         end_time = time.time()
         execution_time = end_time - start_time
         print(f"训练时间：{execution_time // 60:.0f}分{execution_time % 60:.0f}秒")
