@@ -49,15 +49,15 @@ def ppo(train=False):
         )
 
         model_path = "/home/chen/denghang/bicycle-rl/BicycleDengh/output/ppo_model_omni_0607_1413.zip"
-        model = PPO.load(path=model_path,env=normalized_env)
+        model = PPO.load(path=model_path, env=normalized_env)
         model.set_logger(new_logger)
         model.learn(total_timesteps=500000,
                     log_interval=1,
                     callback=checkpoint_callback)
         model.save(models_output_dir)
 
-        # mean_reward, std_reward = evaluate_policy(model, normalized_env, n_eval_episodes=100, warn=False)
-        # print(f"mean_reward: {mean_reward:.2f} +/- {std_reward:.2f}")
+        mean_reward, std_reward = evaluate_policy(model, normalized_env, n_eval_episodes=100, warn=False)
+        print(f"mean_reward: {mean_reward:.2f} +/- {std_reward:.2f}")
 
         del model
 
@@ -74,6 +74,14 @@ def ppo(train=False):
             if terminated or truncated:
                 obs, _ = normalized_env.reset()
             time.sleep(1. / 24.)
+
+def ppo_train():
+    current_dir = os.getcwd()  # linux下训练前先 cd ~/denghang/bicycle-rl/BicycleDengh
+    now = datetime.now()  # 获取当前时间
+    formatted_time = now.strftime("%m%d_%H%M")  # 格式化时间为 mmdd_hhmm
+    env = gym.make('BicycleDengh-v0', gui=False)
+    normalized_env = NormalizeAction(env)
+    normalized_env = TimeLimit(normalized_env, max_episode_steps=1000)
 
 
 if __name__ == '__main__':
