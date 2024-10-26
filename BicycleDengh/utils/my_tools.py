@@ -2,8 +2,18 @@
 常用工具
 """
 import math
+import os
 import random
 import numpy as np
+import pybullet as p
+import json
+
+boundary_urdf = "../bicycle_dengh/resources/maze/maze_boundary.xml"
+corner_urdf = "../bicycle_dengh/resources/maze/maze_corner.xml"
+wall_urdf = "../bicycle_dengh/resources/maze/maze_wall.xml"
+wall_length = 2.0
+wall_height = 1.5
+maze_size = 25
 
 
 def degrees_to_radians(degrees):
@@ -63,6 +73,7 @@ def calculate_angle_to_target(a, b, phi, x, y):
 
     return angle_to_target
 
+
 def generate_goal_point():
     # 随机生成距离，范围在10到20米之间
     distance = random.uniform(10, 20)
@@ -78,3 +89,63 @@ def generate_goal_point():
     y = distance * math.sin(angle_rad)
 
     return (x, y)
+
+
+# 根据json文件生成地图
+def build_maze():
+    filename = os.path.join(os.path.dirname(__file__), "../bicycle_dengh/resources/maze/maze_layout.json")
+    # Define the maze layout as a 2D array
+    with open(filename, 'r') as file:
+        data = json.load(file)
+        maze_layout = np.array(data['maze'])
+
+    assert maze_layout.shape == (maze_size, maze_size)
+
+    # Load maze boundary
+    p.loadURDF(boundary_urdf,
+               basePosition=[0.0, -3.0, 0.0],
+               baseOrientation=p.getQuaternionFromEuler([0, 0, 0]),
+               useFixedBase=True)
+
+    # Loop through the maze_layout and add wall segments
+    for y, row in enumerate(maze_layout):
+        for x, obs_type in enumerate(row):
+            if obs_type != 0:
+                add_wall_segment(x, maze_size - y, obs_type)
+
+
+def add_wall_segment(x, y, value):
+    """
+    Args:
+        x (int): x index
+        y (int): y index
+        value (int): wall type, 1 for horizontal, 2 for vertical, 3-6 for corners in clockwise direction
+    """
+    position = [x * wall_length - maze_size,
+                y * wall_length - maze_size,
+                0]
+
+    if value == 1:  # Horizontal wall
+        # Place horizontal wall code here
+        orientation = p.getQuaternionFromEuler([0, 0, 0])
+        p.loadURDF(wall_urdf, basePosition=position, baseOrientation=orientation, useFixedBase=True)
+    elif value == 2:  # Vertical wall
+        # Place vertical wall code here
+        orientation = p.getQuaternionFromEuler([0, 0, 1.5707963268])
+        p.loadURDF(wall_urdf, basePosition=position, baseOrientation=orientation, useFixedBase=True)
+    elif value == 3:  # Top-left corner
+        # Place top-left corner wall code here
+        orientation = p.getQuaternionFromEuler([0, 0, 3.1415926536])
+        p.loadURDF(corner_urdf, basePosition=position, baseOrientation=orientation, useFixedBase=True)
+    elif value == 4:  # Top-right corner
+        # Place top-right corner wall code here
+        orientation = p.getQuaternionFromEuler([0, 0, 1.5707963268])
+        p.loadURDF(corner_urdf, basePosition=position, baseOrientation=orientation, useFixedBase=True)
+    elif value == 5:  # Bottom-left corner
+        # Place bottom-left corner wall code here
+        orientation = p.getQuaternionFromEuler([0, 0, 0])
+        p.loadURDF(corner_urdf, basePosition=position, baseOrientation=orientation, useFixedBase=True)
+    elif value == 6:  # Bottom-right corner
+        # Place bottom-right corner wall code here
+        orientation = p.getQuaternionFromEuler([0, 0, -1.5707963268])
+        p.loadURDF(corner_urdf, basePosition=position, baseOrientation=orientation, useFixedBase=True)
