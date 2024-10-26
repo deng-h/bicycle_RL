@@ -2,6 +2,7 @@ import pybullet as p
 import random
 import math
 import os
+import numpy as np
 import platform
 
 
@@ -24,6 +25,20 @@ class Bicycle:
         self.fly_wheel_joint = 5
         self.gyros_link = 6
         self.MAX_FORCE = 2000
+
+        self.pitch_angle_rad = np.radians(-20.0)  # 定义相机的俯仰角（正值为向上俯仰，负值为向下俯仰）
+        self.camera_offset_distance = 0.05  # 定义需要将相机视角位置移出的距离，使相机移到长方体外部
+        self.camera_target_distance = 0.7  # 定义目标位置距离相机的前进距离，也就是定义相机的视野距离
+        self.local_camera_direction = [1, 0, 0]  # 相机前方向向量（局部坐标系中）[1, 0, 0] 表示相机的前方
+        # 在局部坐标系中通过俯仰角度调整相机前方向的y、z分量
+        self.local_pitched_direction = [np.cos(self.pitch_angle_rad), 0, np.sin(self.pitch_angle_rad)]
+
+        # projectionMatrix定义了如何将三维场景投影到二维图像上，包括视野、长宽比和远近裁剪平面。可以理解为“拍摄效果的配置”
+        self.projectionMatrix = p.computeProjectionMatrixFOV(
+            fov=60.0,  # 视野角度，角度越大视野越宽，但失真可能越明显
+            aspect=1.0,  # 图像的宽高比，例如 640/480 或 1.0，确保图像不被拉伸或压缩
+            nearVal=0.1,  # nearVal 和 farVal 决定了渲染图像的范围 远近裁剪平面通常分别设置为 0.1 和 100，确保在视图中显示足够的景物而不出现异常裁剪
+            farVal=100.0)
 
         self.initial_joint_positions = None
         self.initial_joint_velocities = None
@@ -80,17 +95,10 @@ class Bicycle:
         # Get the position位置 and orientation方向(姿态) of the bicycle in the simulation
         pos, _ = p.getBasePositionAndOrientation(self.bicycleId, self.client)
         # The rotation order is first roll around X, then pitch around Y and finally yaw around Z
-        # 将四元数转换为欧拉角
-        # euler_angles = p.getEulerFromQuaternion(orn)
-        # 获取偏航角（yaw）
-        # yaw = euler_angles[2]
-        # roll_angle = ang[0]
         # p.getBaseVelocity()返回的格式 (线速度(x, y, z), 角速度(wx, wy, wz))
         # _, angular_velocity = p.getBaseVelocity(self.bicycleId, self.client)
-        # roll_vel = angular_velocity[0]
 
         gyros_link_state = p.getLinkState(self.bicycleId, self.gyros_link, computeLinkVelocity=1)
-        # gyros_link_position = gyros_link_state[0]
         gyros_link_orientation = gyros_link_state[1]
         link_ang = p.getEulerFromQuaternion(gyros_link_orientation)
         roll_angle = link_ang[0]
@@ -103,35 +111,39 @@ class Bicycle:
         handlebar_joint_vel = handlebar_joint_state[1]
 
         back_wheel_joint_state = p.getJointState(self.bicycleId, self.back_wheel_joint, self.client)
-        # back_wheel_joint_ang = back_wheel_joint_state[0]
         back_wheel_joint_vel = back_wheel_joint_state[1]
 
         fly_wheel_joint_state = p.getJointState(self.bicycleId, self.fly_wheel_joint, self.client)
         # fly_wheel_joint_ang = fly_wheel_joint_state[0] % (2 * math.pi)
         fly_wheel_joint_vel = fly_wheel_joint_state[1]
 
-        camera_state = p.getLinkState(self.bicycleId, self.camera_joint)
+        camera_state = p.getLinkState(self.bicycleId, self.camera_joint, physicsClientId=self.client)
         camera_position = camera_state[0]  # 相机的位置
-        camera_orientation = camera_state[1]  # 相机的四元数方向
-        # 使用相机方向作为目标方向，使相机视角保持前向
+        camera_orientation = camera_state[1]  # 包含四元数（x, y, z, w）
+        # 使用四元数将局部方向转换到世界坐标系中 将方向向量转换为世界坐标系
+        world_camera_direction = p.rotateVector(camera_orientation, self.local_camera_direction)
+        # 将俯仰调整后的前方向量转换为世界坐标系，用于计算 target_position，从而让相机在俯仰角度调整的视线方向上拍摄
+        world_pitched_direction = p.rotateVector(camera_orientation, self.local_pitched_direction)
+
+        # 计算相机在世界坐标系中的目标位置
         target_position = [
-            camera_position[0] + camera_orientation[0],
-            camera_position[1] + camera_orientation[1],
-            camera_position[2] + camera_orientation[2]
+            camera_position[0] + self.camera_target_distance * world_pitched_direction[0],
+            camera_position[1] + self.camera_target_distance * world_pitched_direction[1],
+            camera_position[2] + self.camera_target_distance * world_pitched_direction[2]
+        ]
+
+        # 计算新的相机位置，使相机在长方体前方
+        cameraEyePosition = [
+            camera_position[0] + self.camera_offset_distance * world_camera_direction[0],
+            camera_position[1] + self.camera_offset_distance * world_camera_direction[1],
+            camera_position[2] + self.camera_offset_distance * world_camera_direction[2]
         ]
 
         # 获取视图矩阵
         viewMatrix = p.computeViewMatrix(
-            cameraEyePosition=camera_position,  # 相机的实际位置，例如 [x, y, z] 坐标
+            cameraEyePosition=cameraEyePosition,  # 相机的实际位置，例如 [x, y, z] 坐标
             cameraTargetPosition=target_position,  # 相机所看的目标点位置，例如设置在相机前方的一点，通常与相机的前进方向一致
             cameraUpVector=[0, 0, 1])  # 决定相机的“上”方向，例如 [0, 0, 1] 表示 z 轴为上。若要倾斜相机可以更改该向量
-
-        # projectionMatrix定义了如何将三维场景投影到二维图像上，包括视野、长宽比和远近裁剪平面。可以理解为“拍摄效果的配置”
-        projectionMatrix = p.computeProjectionMatrixFOV(
-            fov=60.0,  # 视野角度，角度越大视野越宽，但失真可能越明显
-            aspect=1.0,  # 图像的宽高比，例如 640/480 或 1.0，确保图像不被拉伸或压缩
-            nearVal=0.1,  # nearVal 和 farVal 决定了渲染图像的范围 远近裁剪平面通常分别设置为 0.1 和 100，确保在视图中显示足够的景物而不出现异常裁剪
-            farVal=100.0)
 
         # 获取并渲染相机画面
         # DIRECT mode does allow rendering of images using the built-in software renderer
@@ -141,9 +153,8 @@ class Bicycle:
             width=320,
             height=240,
             viewMatrix=viewMatrix,
-            projectionMatrix=projectionMatrix,
+            projectionMatrix=self.projectionMatrix,
             physicsClientId=self.client,
-            flags=p.ER_NO_SEGMENTATION_MASK,  # 不使用分割实例图
         )
 
         observation = [pos[0], pos[1], yaw_angle,
