@@ -3,7 +3,6 @@ from bicycle_dengh.resources import bicycle
 from simple_pid import PID
 import math
 import gymnasium as gym
-import csv
 
 roll_angles = []
 steps = []
@@ -39,12 +38,3 @@ for i in range(4000):
 
 
 env.close()
-# with open('roll_angle_data_7_degree.csv', 'w', newline='') as csvfile:
-#     fieldnames = ['Step', 'Roll Angle']
-#     writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-#
-#     writer.writeheader()
-#     for step, roll_angle in zip(steps, roll_angles):
-#         writer.writerow({'Step': step, 'Roll Angle': roll_angle})
-#
-# print("Data saved to roll_angle_data.csv")

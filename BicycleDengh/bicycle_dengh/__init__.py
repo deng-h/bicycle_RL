@@ -12,3 +12,8 @@ register(
     id="BalanceBicycleDengh-v0",
     entry_point='bicycle_dengh.envs:BalanceBicycleDenghEnv'
 )
+
+register(
+    id="BicycleCamera-v0",
+    entry_point='bicycle_dengh.envs:BicycleCameraEnv'
+)

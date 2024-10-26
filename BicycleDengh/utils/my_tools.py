@@ -3,6 +3,7 @@
 """
 import math
 import random
+import numpy as np
 
 
 def degrees_to_radians(degrees):
@@ -31,7 +32,8 @@ def normalize_array_to_minus_one_to_one(arr, a, b):
 
     m = 2 / (b - a)
     c = - (b + a) / (b - a)
-    return m * arr + c
+    res = m * arr + c
+    return np.array(res, dtype=np.float32)
 
 
 def calculate_angle_to_target(a, b, phi, x, y):

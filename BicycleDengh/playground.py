@@ -25,7 +25,7 @@ camera_pitch = -45
 camera_target_position = [0, 0, 0]
 p.resetDebugVisualizerCamera(camera_distance, camera_yaw, camera_pitch, camera_target_position)
 
-b = bicycle.Bicycle(client=physicsClient)
+b = bicycle.Bicycle(client=physicsClient, max_flywheel_vel=200)
 # b = balance_bicycle.BalanceBicycle(client=physicsClient)
 
 number_of_joints = p.getNumJoints(b.bicycleId)
@@ -44,7 +44,7 @@ try:
         bicycle_flywheel_param = p.readUserDebugParameter(bicycle_flywheel)
         # b.apply_action([0, 0, 1.0])
         obs = b.get_observation()
-        print(obs[0], obs[1], obs[2])
+        # print(obs[0], obs[1], obs[2])
         roll_angle_control = roll_angle_pid(obs[0])
         # action = [-roll_angle_control]
         action = [0.0, 0.0, -roll_angle_control]

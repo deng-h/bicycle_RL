@@ -16,7 +16,8 @@ def ppo(train=False):
     current_dir = os.getcwd()  # linux下训练前先 cd ~/denghang/bicycle-rl/BicycleDengh
     now = datetime.now()  # 获取当前时间
     formatted_time = now.strftime("%m%d_%H%M")  # 格式化时间为 mmdd_hhmm
-    env = gym.make('BicycleDengh-v0', gui=not train)
+    # env = gym.make('BicycleDengh-v0', gui=not train)
+    env = gym.make('BicycleCamera-v0', gui=not train)
     # env = gym.make('BalanceBicycleDengh-v0', gui=not train)
     normalized_env = NormalizeAction(env)
     normalized_env = TimeLimit(normalized_env, max_episode_steps=1000)
@@ -65,7 +66,7 @@ def ppo(train=False):
         execution_time = end_time - start_time
         print(f"训练时间：{execution_time // 60:.0f}分{execution_time % 60:.0f}秒")
     else:
-        models_dir = os.path.join(current_dir, "output", "ppo_model_omni_0607_1655")
+        models_dir = os.path.join(current_dir, "output", "ppo_model_omni_0607_1820")
         model = PPO.load(models_dir)
         obs, _ = normalized_env.reset()
         while True:

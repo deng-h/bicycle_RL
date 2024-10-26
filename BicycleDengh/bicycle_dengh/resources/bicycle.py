@@ -18,13 +18,12 @@ class Bicycle:
         startOrientation = p.getQuaternionFromEuler([0, 0, 1.57])
         self.bicycleId = p.loadURDF(fileName=f_name, basePosition=[0, 0, 1], baseOrientation=startOrientation)
         self.handlebar_joint = 0
-        self.front_wheel_joint = 1
-        self.back_wheel_joint = 2
-        self.fly_wheel_joint = 4
-        self.gyros_link = 5
+        self.camera_joint = 1
+        self.front_wheel_joint = 2
+        self.back_wheel_joint = 3
+        self.fly_wheel_joint = 5
+        self.gyros_link = 6
         self.MAX_FORCE = 2000
-        # 30%的概率触发扰动
-        # self.noise_probability = 0.3
 
         self.initial_joint_positions = None
         self.initial_joint_velocities = None
@@ -77,17 +76,6 @@ class Bicycle:
                                 force=self.MAX_FORCE,
                                 physicsClientId=self.client)
 
-        # 产生随机扰动
-        # random_number = random.random()
-        # if random_number < self.noise_probability:
-        #     force_magnitude = 30
-        #     p.applyExternalForce(objectUniqueId=self.bicycle,
-        #                          linkIndex=-1,  # link index or -1 for the base
-        #                          forceObj=[random.uniform(-force_magnitude, force_magnitude),
-        #                                    random.uniform(-force_magnitude, force_magnitude), 0],
-        #                          posObj=[0, 0, 0],
-        #                          flags=p.LINK_FRAME)
-
     def get_observation(self):
         # Get the position位置 and orientation方向(姿态) of the bicycle in the simulation
         pos, _ = p.getBasePositionAndOrientation(self.bicycleId, self.client)
@@ -121,6 +109,42 @@ class Bicycle:
         fly_wheel_joint_state = p.getJointState(self.bicycleId, self.fly_wheel_joint, self.client)
         # fly_wheel_joint_ang = fly_wheel_joint_state[0] % (2 * math.pi)
         fly_wheel_joint_vel = fly_wheel_joint_state[1]
+
+        camera_state = p.getLinkState(self.bicycleId, self.camera_joint)
+        camera_position = camera_state[0]  # 相机的位置
+        camera_orientation = camera_state[1]  # 相机的四元数方向
+        # 使用相机方向作为目标方向，使相机视角保持前向
+        target_position = [
+            camera_position[0] + camera_orientation[0],
+            camera_position[1] + camera_orientation[1],
+            camera_position[2] + camera_orientation[2]
+        ]
+
+        # 获取视图矩阵
+        viewMatrix = p.computeViewMatrix(
+            cameraEyePosition=camera_position,  # 相机的实际位置，例如 [x, y, z] 坐标
+            cameraTargetPosition=target_position,  # 相机所看的目标点位置，例如设置在相机前方的一点，通常与相机的前进方向一致
+            cameraUpVector=[0, 0, 1])  # 决定相机的“上”方向，例如 [0, 0, 1] 表示 z 轴为上。若要倾斜相机可以更改该向量
+
+        # projectionMatrix定义了如何将三维场景投影到二维图像上，包括视野、长宽比和远近裁剪平面。可以理解为“拍摄效果的配置”
+        projectionMatrix = p.computeProjectionMatrixFOV(
+            fov=60.0,  # 视野角度，角度越大视野越宽，但失真可能越明显
+            aspect=1.0,  # 图像的宽高比，例如 640/480 或 1.0，确保图像不被拉伸或压缩
+            nearVal=0.1,  # nearVal 和 farVal 决定了渲染图像的范围 远近裁剪平面通常分别设置为 0.1 和 100，确保在视图中显示足够的景物而不出现异常裁剪
+            farVal=100.0)
+
+        # 获取并渲染相机画面
+        # DIRECT mode does allow rendering of images using the built-in software renderer
+        # through the 'getCameraImage' API. 也就是说开DIRECT模式也能获取图像
+        # getCameraImage 将返回一幅 RGB 图像、一个深度缓冲区和一个分割掩码缓冲区，其中每个像素都有可见物体的唯一 ID
+        width, height, _, depth_img, _ = p.getCameraImage(
+            width=320,
+            height=240,
+            viewMatrix=viewMatrix,
+            projectionMatrix=projectionMatrix,
+            physicsClientId=self.client,
+            flags=p.ER_NO_SEGMENTATION_MASK,  # 不使用分割实例图
+        )
 
         observation = [pos[0], pos[1], yaw_angle,
                        roll_angle, roll_angular_vel,
