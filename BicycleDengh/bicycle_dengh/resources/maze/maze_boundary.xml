@@ -17,7 +17,7 @@
         <visual name="">
             <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
             <geometry>
-                <box size="50.0 0.1 3.0"/>
+                <box size="50.0 0.1 2.0"/>
             </geometry>
             <material name="">
                 <color rgba="0.0 1.0 1.0 1.0"/>
@@ -26,7 +26,7 @@
         <collision>
             <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
             <geometry>
-                <box size="50.0 0.1 3.0"/>
+                <box size="50.0 0.1 2.0"/>
             </geometry>
         </collision>
     </link>
@@ -40,7 +40,7 @@
         <visual name="">
             <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
             <geometry>
-                <box size="50.0 0.1 3.0"/>
+                <box size="50.0 0.1 2.0"/>
             </geometry>
             <material name="">
                 <color rgba="0.0 1.0 1.0 1.0"/>
@@ -49,7 +49,7 @@
         <collision>
             <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
             <geometry>
-                <box size="50.0 0.1 3.0"/>
+                <box size="50.0 0.1 2.0"/>
             </geometry>
         </collision>
     </link>
@@ -63,7 +63,7 @@
         <visual name="">
             <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
             <geometry>
-                <box size="50.0 0.1 3.0"/>
+                <box size="50.0 0.1 2.0"/>
             </geometry>
             <material name="">
                 <color rgba="0.0 1.0 1.0 1.0"/>
@@ -72,7 +72,7 @@
         <collision>
             <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
             <geometry>
-                <box size="50.0 0.1 3.0"/>
+                <box size="50.0 0.1 2.0"/>
             </geometry>
         </collision>
     </link>
@@ -86,7 +86,7 @@
         <visual name="">
             <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
             <geometry>
-                <box size="50.0 0.1 3.0"/>
+                <box size="50.0 0.1 2.0"/>
             </geometry>
             <material name="">
                 <color rgba="0.0 1.0 1.0 1.0"/>
@@ -95,7 +95,7 @@
         <collision>
             <origin xyz="0.0 0.0 0.0" rpy="0.0 0.0 0.0"/>
             <geometry>
-                <box size="50.0 0.1 3.0"/>
+                <box size="50.0 0.1 2.0"/>
             </geometry>
         </collision>
     </link>

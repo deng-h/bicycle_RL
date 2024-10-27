@@ -60,23 +60,28 @@ class BicycleMazeEnv(gym.Env):
 
         if gui:
             self.client = p.connect(p.GUI)
-            self.camera_distance_param = p.addUserDebugParameter('camera_distance_param', 2, 60, 25)
+            self.camera_distance_param = p.addUserDebugParameter('camera_distance_param', 2, 60, 40)
             self.camera_yaw_param = p.addUserDebugParameter('camera_yaw_param', -180, 180, 0)
-            self.camera_pitch_param = p.addUserDebugParameter('camera_pitch_param', -90, 90, -25)
+            self.camera_pitch_param = p.addUserDebugParameter('camera_pitch_param', -90, 90, -89)
         else:
             self.client = p.connect(p.DIRECT)
 
-        p.setTimeStep(1. / 24., self.client)
         self.bicycle_vel_param = p.addUserDebugParameter('bicycle_vel_param', 0.0, 3.0, 1.0)
         self.handlebar_angle_param = p.addUserDebugParameter('handlebar_angle_param', -1.57, 1.57, 0)
         self.flywheel_param = p.addUserDebugParameter('flywheel_param', -40, 40, 0)
 
+        p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, 0)
+        p.configureDebugVisualizer(p.COV_ENABLE_SHADOWS, 0)  # 关闭阴影效果
+
         self.bicycle = Bicycle(client=self.client, max_flywheel_vel=self.max_flywheel_vel)
-        p.setGravity(0, 0, -10, physicsClientId=self.client)
         p.setAdditionalSearchPath(pybullet_data.getDataPath())
         p.loadURDF("plane.urdf", physicsClientId=self.client)
-        # p.loadURDF("D:\\data\\1-L\\9-bicycle\\bicycle-rl\\BicycleDengh\\bicycle_dengh\\resources\\maze\\maze_corner.xml")
         my_tools.build_maze()
+
+        p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, 1)
+
+        p.setGravity(0, 0, -10, physicsClientId=self.client)
+        p.setTimeStep(1. / 24., self.client)
 
     def step(self, action):
         self.bicycle.apply_action(action)
