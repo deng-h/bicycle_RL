@@ -12,6 +12,7 @@ from utils import my_tools
 from stable_baselines3.common.env_checker import check_env
 from utils.normalize_action import NormalizeActionWrapper
 from stable_baselines3 import PPO
+from bicycle_dengh.resources.bicycle_camera import BicycleCamera
 
 
 class BicycleCameraEnv(gym.Env):
@@ -71,7 +72,7 @@ class BicycleCameraEnv(gym.Env):
         self.handlebar_angle_param = p.addUserDebugParameter('handlebar_angle_param', -1.57, 1.57, 0)
         self.flywheel_param = p.addUserDebugParameter('flywheel_param', -40, 40, 0)
 
-        self.bicycle = Bicycle(client=self.client, max_flywheel_vel=self.max_flywheel_vel)
+        self.bicycle = BicycleCamera(client=self.client, max_flywheel_vel=self.max_flywheel_vel)
         p.setGravity(0, 0, -10, physicsClientId=self.client)
         p.setAdditionalSearchPath(pybullet_data.getDataPath())
         p.loadURDF("plane.urdf", physicsClientId=self.client)
@@ -185,7 +186,7 @@ if __name__ == '__main__':
     # It will check your custom environment and output additional warnings if needed
     # check_env(env, warn=True)
 
-    models_dir = "D:\\data\\1-L\\9-bicycle\\bicycle-rl\\BicycleDengh\\output\\ppo_model_omni_0607_1820"
+    models_dir = "D:\\data\\1-L\\9-bicycle\\bicycle-rl\\BicycleDengh\\output\\models\\ppo_model_omni_0607_1820"
     model = PPO.load(models_dir)
     obs, _ = env.reset()
 

@@ -31,7 +31,7 @@ class CombinedExtractor(BaseFeaturesExtractor):
                     # height_in = 120, width_in = 160, CHW
                     # width_out = (width_in - kernel_size + 2 * padding) / stride + 1 （向下取整）
                     # height_out = (height_in - kernel_size + 2 * padding) / stride + 1 （向下取整）
-                    nn.Conv2d(1, 16, kernel_size=3, stride=2, padding=1),  # 16x60x80
+                    nn.Conv2d(3, 16, kernel_size=3, stride=2, padding=1),  # 16x60x80
                     nn.ReLU(),
                     nn.MaxPool2d(kernel_size=2),  # 16x30x40
                     nn.Conv2d(16, 32, kernel_size=3, stride=2, padding=1),  # 32x15x20
@@ -115,8 +115,8 @@ if __name__ == '__main__':
         start_time = time.time()
         model = PPO(policy="MultiInputPolicy",
                     env=env,
-                    policy_kwargs=policy_kwargs,
                     verbose=1,
+                    policy_kwargs=policy_kwargs,
                     tensorboard_log=logger_output_dir,
                     )
 

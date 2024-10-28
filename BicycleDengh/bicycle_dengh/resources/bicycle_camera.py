@@ -33,6 +33,10 @@ class BicycleCamera:
         self.local_camera_direction = [1, 0, 0]  # 相机前方向向量（局部坐标系中）[1, 0, 0] 表示相机的前方
         # 在局部坐标系中通过俯仰角度调整相机前方向的y、z分量
         self.local_pitched_direction = [np.cos(self.pitch_angle_rad), 0, np.sin(self.pitch_angle_rad)]
+        self.image_stack = []  # 图像列表
+        self.number_of_frames = 3
+        self.image_width = 160
+        self.image_height = 120
 
         # projectionMatrix定义了如何将三维场景投影到二维图像上，包括视野、长宽比和远近裁剪平面。可以理解为“拍摄效果的配置”
         self.projectionMatrix = p.computeProjectionMatrixFOV(
@@ -150,16 +154,28 @@ class BicycleCamera:
         # DIRECT mode does allow rendering of images using the built-in software renderer
         # through the 'getCameraImage' API. 也就是说开DIRECT模式也能获取图像
         # getCameraImage 将返回一幅 RGB 图像、一个深度缓冲区和一个分割掩码缓冲区，其中每个像素都有可见物体的唯一 ID
-        _, _, _, depth_img, _ = p.getCameraImage(
-            width=160,
-            height=120,
-            viewMatrix=viewMatrix,
-            projectionMatrix=self.projectionMatrix,
-            physicsClientId=self.client,
-        )
+        for _ in range(self.number_of_frames):  # 根据需要的帧数循环
+            _, _, _, depth_img, _ = p.getCameraImage(
+                width=self.image_width,
+                height=self.image_height,
+                viewMatrix=viewMatrix,
+                projectionMatrix=self.projectionMatrix,
+                physicsClientId=self.client,
+            )
 
-        # 增加通道维度，使形状变为 (1, 120, 160)
-        depth_img = np.expand_dims(depth_img, axis=0)
+            depth_img = np.expand_dims(depth_img, axis=0)  # 增加通道维度，使形状变为 (1, H, W)
+            self.image_stack.append(depth_img)  # 将当前图像添加到列表中
+            # 如果图像数量超过移除最旧的一张
+            if len(self.image_stack) > self.number_of_frames:
+                self.image_stack.pop(0)
+
+        # 将图像堆叠为 (self.number_of_frames, H, W)
+        if len(self.image_stack) == self.number_of_frames:
+            depth_images = np.concatenate(self.image_stack, axis=0)
+        else:
+            # 如果图像数量不足可以用零填充
+            depth_images = np.zeros((self.number_of_frames, self.image_height, self.image_width))
+            depth_images[:len(self.image_stack)] = np.concatenate(self.image_stack, axis=0)
 
         # depth_map = np.array(depth_img)
         # plt.imshow(depth_map)
@@ -169,7 +185,7 @@ class BicycleCamera:
                        roll_angle, roll_angular_vel,
                        handlebar_joint_ang, handlebar_joint_vel,
                        back_wheel_joint_vel, fly_wheel_joint_vel,
-                       depth_img
+                       depth_images
                        ]
 
         return observation
