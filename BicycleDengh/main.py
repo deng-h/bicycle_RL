@@ -6,7 +6,7 @@ from stable_baselines3.common.logger import configure
 from stable_baselines3.common.callbacks import CheckpointCallback
 from stable_baselines3.common.evaluation import evaluate_policy
 import time
-from utils.normalize_action import NormalizeAction
+from utils.normalize_action import NormalizeActionWrapper
 from gymnasium.wrappers.time_limit import TimeLimit
 import os
 from datetime import datetime
@@ -19,12 +19,12 @@ def ppo(train=False):
     # env = gym.make('BicycleDengh-v0', gui=not train)
     env = gym.make('BicycleCamera-v0', gui=not train)
     # env = gym.make('BalanceBicycleDengh-v0', gui=not train)
-    normalized_env = NormalizeAction(env)
+    normalized_env = NormalizeActionWrapper(env)
     normalized_env = TimeLimit(normalized_env, max_episode_steps=1000)
 
     if train:
         train_model_name = "ppo_model_omni_" + formatted_time
-        models_output_dir = os.path.join(current_dir, "output", train_model_name)
+        models_output_dir = os.path.join(current_dir, "output", "models", train_model_name)
         logger_output_dir = os.path.join(current_dir, "output", "logs")
         start_time = time.time()
         new_logger = configure(logger_output_dir, ["stdout", "csv", "tensorboard"])
@@ -49,7 +49,7 @@ def ppo(train=False):
             name_prefix=formatted_time,
         )
 
-        model_path = "/home/chen/denghang/bicycle-rl/BicycleDengh/output/ppo_model_omni_0607_1413.zip"
+        model_path = "/home/chen/denghang/bicycle-rl/BicycleDengh/output/models/ppo_model_omni_0607_1413.zip"
         model = PPO.load(path=model_path, env=normalized_env)
         model.set_logger(new_logger)
         model.learn(total_timesteps=500000,
@@ -81,7 +81,7 @@ def ppo_train():
     now = datetime.now()  # 获取当前时间
     formatted_time = now.strftime("%m%d_%H%M")  # 格式化时间为 mmdd_hhmm
     env = gym.make('BicycleDengh-v0', gui=False)
-    normalized_env = NormalizeAction(env)
+    normalized_env = NormalizeActionWrapper(env)
     normalized_env = TimeLimit(normalized_env, max_episode_steps=1000)
 
 

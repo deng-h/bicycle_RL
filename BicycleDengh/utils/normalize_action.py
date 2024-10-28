@@ -2,7 +2,7 @@ import numpy as np
 import gymnasium as gym
 
 
-class NormalizeAction(gym.Wrapper):
+class NormalizeActionWrapper(gym.core.Wrapper):
     """
     :param env: (gym.Env) Gym environment that will be wrapped
     """
@@ -23,7 +23,7 @@ class NormalizeAction(gym.Wrapper):
         )
 
         # Call the parent constructor, so we can access self.env later
-        super(NormalizeAction, self).__init__(env)
+        super(NormalizeActionWrapper, self).__init__(env)
 
     def rescale_action(self, scaled_action):
         """

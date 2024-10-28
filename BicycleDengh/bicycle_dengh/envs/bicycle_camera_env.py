@@ -10,7 +10,7 @@ from bicycle_dengh.resources.goal import Goal
 import math
 from utils import my_tools
 from stable_baselines3.common.env_checker import check_env
-from utils.normalize_action import NormalizeAction
+from utils.normalize_action import NormalizeActionWrapper
 from stable_baselines3 import PPO
 
 
@@ -180,7 +180,7 @@ class BicycleCameraEnv(gym.Env):
 
 if __name__ == '__main__':
     env = BicycleCameraEnv(gui=True)
-    env = NormalizeAction(env)
+    env = NormalizeActionWrapper(env)
 
     # It will check your custom environment and output additional warnings if needed
     # check_env(env, warn=True)

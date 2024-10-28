@@ -5,9 +5,11 @@ import pybullet_data
 from bicycle_dengh.resources.bicycle import Bicycle
 from bicycle_dengh.resources.goal import Goal
 import math
+import time
 from utils import my_tools
 from stable_baselines3.common.env_checker import check_env
-from utils.normalize_action import NormalizeAction
+from stable_baselines3 import PPO
+from utils.normalize_action import NormalizeActionWrapper
 
 
 class BicycleDenghEnv(gym.Env):
@@ -163,7 +165,19 @@ class BicycleDenghEnv(gym.Env):
 
 
 if __name__ == '__main__':
-    env = BicycleDenghEnv(gui=False)
-    env = NormalizeAction(env)
-    # It will check your custom environment and output additional warnings if needed
+    env = BicycleDenghEnv(gui=True)
+    # env = NormalizeAction(env)
+
+    # # It will check your custom environment and output additional warnings if needed
     check_env(env, warn=True)
+
+    # models_dir = "D:\\data\\1-L\\9-bicycle\\bicycle-rl\\BicycleDengh\\output\\models\\ppo_model_omni_0607_1820"
+    # model = PPO.load(models_dir)
+    # obs, _ = env.reset()
+    #
+    # while True:
+    #     action, _ = model.predict(obs, deterministic=True)
+    #     obs, _, terminated, truncated, _ = env.step(action)
+    #     if terminated or truncated:
+    #         obs, _ = env.reset()
+    #     time.sleep(1. / 24.)

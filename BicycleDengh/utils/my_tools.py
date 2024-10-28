@@ -15,7 +15,7 @@ maze_config = os.path.join(os.path.dirname(__file__), "../bicycle_dengh/resource
 wall_length = 2.0
 wall_height = 1.5
 maze_size = 25
-
+obstacle_coords = set()  # 存储障碍物的坐标
 
 def degrees_to_radians(degrees):
     """
@@ -92,6 +92,19 @@ def generate_goal_point():
     return (x, y)
 
 
+def generate_goal():
+    """
+    随机生成目标点的坐标，不与障碍物坐标重合
+    """
+    while True:
+        x = random.randint(-25, 25)
+        y = random.randint(-3, 47)
+
+        # 检查生成的坐标是否不在障碍物集合中
+        if (x, y) not in obstacle_coords:
+            return x - 0.5, y - 0.5
+
+
 def build_maze():
     # Load maze boundary
     p.loadURDF(boundary_urdf,
@@ -118,3 +131,4 @@ def build_maze():
                                   # 这里-25，-3是因为maze向Y轴负方向移动了3个单位，向X轴负方向移动了25个单位
                                   # +0.5是因为要让BOX刚好落在网格内，“不压线”
                                   basePosition=[x - 24.5, flipped_y - 2.5, 1.0])
+                obstacle_coords.add((x, flipped_y))  # 将障碍物的坐标添加到集合中

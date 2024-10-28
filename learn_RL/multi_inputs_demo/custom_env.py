@@ -3,7 +3,7 @@ import numpy as np
 from gymnasium.spaces import Box
 from stable_baselines3.common.env_checker import check_env
 import math
-from utils.normalize_action import NormalizeAction
+from utils.normalize_action import NormalizeActionWrapper
 from stable_baselines3 import PPO
 from combined_extractor import CombinedExtractor
 from stable_baselines3.common.evaluation import evaluate_policy
@@ -58,7 +58,7 @@ class CustomEnv(gym.Env):
 
 if __name__ == '__main__':
     env = CustomEnv()
-    env = NormalizeAction(env)
+    env = NormalizeActionWrapper(env)
     # It will check your custom environment and output additional warnings if needed
     # check_env(env, warn=True)
 
