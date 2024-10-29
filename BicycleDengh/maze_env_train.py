@@ -165,20 +165,56 @@ def vec_env_train():
     print(f"训练时间：{execution_time // 60:.0f}分{execution_time % 60:.0f}秒")
 
 
+def single_env_train():
+    current_dir = os.getcwd()  # linux下训练前先 cd ~/denghang/bicycle-rl/BicycleDengh
+    env = gym.make("BicycleMaze-v0", gui=True)
+
+    policy_kwargs = dict(
+        features_extractor_class=MyFeatureExtractor,
+        net_arch=dict(pi=[128, 128], vf=[128, 128]),
+    )
+    formatted_time = datetime.now().strftime("%m%d_%H%M")  # 格式化时间为 mmdd_hhmm
+    model_name = "ppo_multiprocess_maze_" + formatted_time
+    models_output_dir = os.path.join(current_dir, "output", "models", model_name)
+    logger_output_dir = os.path.join(current_dir, "output", "logs", model_name)
+
+    start_time = time.time()
+    model = PPO(policy="MultiInputPolicy",
+                env=env,
+                verbose=1,
+                policy_kwargs=policy_kwargs,
+                tensorboard_log=logger_output_dir,
+                )
+    # print(f"网络的架构:{model.policy}")
+
+    model.learn(total_timesteps=100000)
+
+    mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=10)
+    print(f"Mean reward: {mean_reward} +/- {std_reward:.2f}")
+
+    model.save(models_output_dir)
+    del model
+
+    end_time = time.time()
+    execution_time = end_time - start_time
+    print(f"训练时间：{execution_time // 60:.0f}分{execution_time % 60:.0f}秒")
+
 def play():
     env = gym.make("BicycleMaze-v0", gui=True)
     current_dir = os.getcwd()  # linux下训练前先 cd ~/denghang/bicycle-rl/BicycleDengh
-    model_path = os.path.join(current_dir, "output", "models", "ppo_multiprocess_maze_1028_1404")
-    model = PPO.load(model_path)
+    # model_path = os.path.join(current_dir, "output", "models", "ppo_multiprocess_maze_1028_1404")
+    # model = PPO.load(model_path)
 
     obs, _ = env.reset()
     while True:
-        action, _ = model.predict(obs, deterministic=True)
+        # action, _ = model.predict(obs, deterministic=True)
+        action = np.array([0, 0, 0], np.float32)
         obs, _, terminated, truncated, _ = env.step(action)
         if terminated or truncated:
-            obs, _ = env.reset()
+            # obs, _ = env.reset()
+            pass
         time.sleep(1. / 24.)
 
 
 if __name__ == '__main__':
-    vec_env_train()
+    play()

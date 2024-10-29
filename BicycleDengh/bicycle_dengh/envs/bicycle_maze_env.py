@@ -65,7 +65,7 @@ class BicycleMazeEnv(gymnasium.Env):
         self.flywheel_param = p.addUserDebugParameter('flywheel_param', -40, 40, 0)
 
         p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, 0)
-        p.configureDebugVisualizer(p.COV_ENABLE_SHADOWS, 0)  # 关闭阴影效果
+        p.configureDebugVisualizer(p.COV_ENABLE_SHADOWS, 0)  # 关闭阴影效果，透明的陀螺仪会显示出来，问题不大
 
         self.bicycle = BicycleCamera(client=self.client, max_flywheel_vel=self.max_flywheel_vel)
         p.setAdditionalSearchPath(pybullet_data.getDataPath())

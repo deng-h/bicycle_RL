@@ -132,3 +132,5 @@ def build_maze():
                                   # +0.5是因为要让BOX刚好落在网格内，“不压线”
                                   basePosition=[x - 24.5, flipped_y - 2.5, 1.0])
                 obstacle_coords.add((x, flipped_y))  # 将障碍物的坐标添加到集合中
+            elif cell == 'S':  # 不让障碍物生成的区域
+                obstacle_coords.add((x, flipped_y))  # 将障碍物的坐标添加到集合中

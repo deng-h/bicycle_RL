@@ -41,7 +41,7 @@ class BicycleCamera:
         # projectionMatrix定义了如何将三维场景投影到二维图像上，包括视野、长宽比和远近裁剪平面。可以理解为“拍摄效果的配置”
         self.projectionMatrix = p.computeProjectionMatrixFOV(
             fov=60.0,  # 视野角度，角度越大视野越宽，但失真可能越明显
-            aspect=640./480.,  # 图像的宽高比，例如 640/480 或 1.0，确保图像不被拉伸或压缩
+            aspect=1.0,  # 图像的宽高比，例如 640/480 或 1.0，确保图像不被拉伸或压缩
             nearVal=0.1,  # nearVal 和 farVal 决定了渲染图像的范围 远近裁剪平面通常分别设置为 0.1 和 100，确保在视图中显示足够的景物而不出现异常裁剪
             farVal=100.0)
 
