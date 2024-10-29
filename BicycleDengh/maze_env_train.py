@@ -152,9 +152,9 @@ def vec_env_train():
                 )
     # print(f"网络的架构:{model.policy}")
 
-    model.learn(total_timesteps=100000)
+    model.learn(total_timesteps=300000)
 
-    mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=10)
+    mean_reward, std_reward = evaluate_policy(model, env, n_eval_episodes=100)
     print(f"Mean reward: {mean_reward} +/- {std_reward:.2f}")
 
     model.save(models_output_dir)
@@ -217,4 +217,4 @@ def play():
 
 
 if __name__ == '__main__':
-    play()
+    vec_env_train()
