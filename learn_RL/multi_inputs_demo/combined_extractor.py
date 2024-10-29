@@ -42,3 +42,57 @@ class CombinedExtractor(BaseFeaturesExtractor):
         # Return a (B, self._features_dim) PyTorch tensor, where B is batch dimension.
         # 将所有提取到的特征张量在第1维（特征维度）进行拼接，形成一个统一的特征张量，供后续的强化学习算法使用
         return th.cat(encoded_tensor_list, dim=1)
+
+
+# 这个类的主要功能是接收多种类型的观测数据，针对每种类型设计不同的特征提取方式，并将提取后的特征拼接成一个统一的Tensor，供强化学习模型输入
+# 这种设计适用于复杂的观测空间，例如同时包含图像和向量信息的环境
+# 这个类只是学习练习用
+class CombinedExtractor2(BaseFeaturesExtractor):
+    # 这里传入的 observation_space 是一个 gym.spaces.Dict，代表了不同类型的观测空间。每个键（key）对应一种观测类型，如图像或向量
+    def __init__(self, observation_space: gym.spaces.Dict):
+        # 先初始化父类 BaseFeaturesExtractor，并且暂时设置 features_dim=1，因为我们还不知道最终的特征维度，需要通过遍历观测空间来确定
+        super().__init__(observation_space, features_dim=1)
+        extractors = {}
+        total_concat_size = 0
+        # 我们需要知道该提取器输出的大小，因此，遍历所有空间并计算输出特征大小并构建特征提取器
+        for key, subspace in observation_space.spaces.items():
+            if key == "image":
+                extractors[key] = nn.Sequential(
+                    # height_in=128, width_in=128, CHW
+                    # width_out = (width_in - kernel_size + 2 * padding) / stride + 1 （向下取整）
+                    # height_out = (height_in - kernel_size + 2 * padding) / stride + 1 （向下取整）
+                    nn.Conv2d(3, 16, kernel_size=3, stride=2, padding=1),  # 16x64x64
+                    nn.ReLU(),
+                    nn.MaxPool2d(kernel_size=2, stride=2),  # 16x32x32
+                    nn.Conv2d(16, 32, kernel_size=3, stride=2, padding=1),  # 32x16x16
+                    nn.ReLU(),
+                    nn.MaxPool2d(kernel_size=2, stride=2),  # 32x8x8
+                    nn.Conv2d(32, 64, kernel_size=3, stride=2, padding=1),  # 64x4x4
+                    nn.ReLU(),
+                    nn.Flatten(),  # 展平为64 * 4 * 4维
+                    nn.Linear(64 * 4 * 4, 248)  # 根据卷积后的特征图大小计算输入特征维度
+                )
+                total_concat_size += 248
+            elif key == "vector":
+                # 对于向量类型的观测空间，使用一个全连接层 nn.Linear() 将输入向量映射到8维的特征空间，并更新 total_concat_size
+                extractors[key] = nn.Linear(subspace.shape[0], 8)
+                total_concat_size += 8
+
+        # 特征提取器存储
+        self.extractors = nn.ModuleDict(extractors)
+
+        # 手动更新最终的特征维度，_features_dim是父类的成员变量
+        self._features_dim = total_concat_size
+
+    # 前向传播函数用于将输入的观测数据通过各个特征提取器，生成拼接后的特征向量，给后面的net_arch网络
+    def forward(self, observations) -> th.Tensor:
+        encoded_tensor_list = []
+        # self.extractors contain nn.Modules that do all the processing.
+        for key, extractor in self.extractors.items():
+            encoded_tensor = extractor(observations[key])
+            # 对于每个观测类型，调用对应的提取器对其进行处理，并将结果添加到 encoded_tensor_list 列表中
+            # print(f"Output shape for {key}: {encoded_tensor.shape}")
+            encoded_tensor_list.append(encoded_tensor)
+        # Return a (B, self._features_dim) PyTorch tensor, where B is batch dimension.
+        # 将所有提取到的特征张量在第1维（特征维度）进行拼接，形成一个统一的特征张量，供后续的强化学习算法使用
+        return th.cat(encoded_tensor_list, dim=1)
