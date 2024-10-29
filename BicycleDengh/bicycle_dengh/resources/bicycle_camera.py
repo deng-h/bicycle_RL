@@ -35,8 +35,8 @@ class BicycleCamera:
         self.local_pitched_direction = [np.cos(self.pitch_angle_rad), 0, np.sin(self.pitch_angle_rad)]
         self.image_stack = []  # 图像列表
         self.number_of_frames = 3
-        self.image_width = 160
-        self.image_height = 120
+        self.image_width = 128
+        self.image_height = 128
 
         # projectionMatrix定义了如何将三维场景投影到二维图像上，包括视野、长宽比和远近裁剪平面。可以理解为“拍摄效果的配置”
         self.projectionMatrix = p.computeProjectionMatrixFOV(
@@ -162,6 +162,10 @@ class BicycleCamera:
                 projectionMatrix=self.projectionMatrix,
                 physicsClientId=self.client,
             )
+
+            # depth_map = np.array(depth_img)
+            # plt.imshow(depth_map)
+            # plt.savefig('./depth_map_matplotlib.png')
 
             depth_img = np.expand_dims(depth_img, axis=0)  # 增加通道维度，使形状变为 (1, H, W)
             self.image_stack.append(depth_img)  # 将当前图像添加到列表中
