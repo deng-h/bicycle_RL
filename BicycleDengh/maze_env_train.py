@@ -199,22 +199,22 @@ def single_env_train():
     execution_time = end_time - start_time
     print(f"训练时间：{execution_time // 60:.0f}分{execution_time % 60:.0f}秒")
 
+
 def play():
     env = gym.make("BicycleMaze-v0", gui=True)
     current_dir = os.getcwd()  # linux下训练前先 cd ~/denghang/bicycle-rl/BicycleDengh
-    # model_path = os.path.join(current_dir, "output", "models", "ppo_multiprocess_maze_1028_1404")
-    # model = PPO.load(model_path)
+    model_path = os.path.join(current_dir, "output", "models", "ppo_multiprocess_maze_1029_1456")
+    model = PPO.load(model_path)
 
     obs, _ = env.reset()
     while True:
-        # action, _ = model.predict(obs, deterministic=True)
-        action = np.array([0, 0, 0], np.float32)
+        action, _ = model.predict(obs, deterministic=True)
         obs, _, terminated, truncated, _ = env.step(action)
         if terminated or truncated:
-            # obs, _ = env.reset()
+            obs, _ = env.reset()
             pass
         time.sleep(1. / 24.)
 
 
 if __name__ == '__main__':
-    vec_env_train()
+    play()
