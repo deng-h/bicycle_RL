@@ -11,7 +11,7 @@ from utils.my_feature_extractor import MyFeatureExtractor
 import os
 import time
 
-n_envs = 6  # 六个核(桃)
+n_envs = 12
 
 # 一个模型第一次训练，之后用另一个方法训练
 def vec_env_train_in_linux_first():
@@ -68,7 +68,7 @@ def vec_env_train_in_linux_first():
     print(f"Mean reward: {mean_reward} +/- {std_reward:.2f}")
 
     model_save_path = os.path.join(models_path, f"ppo_maze_{formatted_time}")
-    stats_save_path = os.path.join(models_path, f"ppo_maze_{formatted_time}_vec_normalize_stats.pkl")
+    stats_save_path = os.path.join(models_path, f"ppo_maze_{formatted_time}_stats.pkl")
     model.save(model_save_path)
     env.save(stats_save_path)  # Don't forget to save the VecNormalize statistics when saving the agent
 
@@ -86,9 +86,9 @@ def vec_env_train_in_linux_continue():
     logger_path = os.path.join(current_dir, "output", "logs")
     checkpoints_path = os.path.join(current_dir, "output", "checkpoints")
 
-    model_time = "10301626"  # 需要随时修改
+    model_time = "10301927"  # 需要随时修改
     model_path = os.path.join(models_path, f"ppo_maze_{model_time}")
-    stats_path = os.path.join(models_path, f"ppo_maze_{model_time}_vec_normalize_stats.pkl")
+    stats_path = os.path.join(models_path, f"ppo_maze_{model_time}_stats.pkl")
 
     formatted_time = datetime.now().strftime("%m%d%H%M")  # 格式化时间为 mmddhhmm
     start_time = time.time()
@@ -119,7 +119,7 @@ def vec_env_train_in_linux_continue():
 
     model = PPO.load(path=model_path, env=env, print_system_info=True)
 
-    model.learn(total_timesteps=200000,
+    model.learn(total_timesteps=500000,
                 callback=callbacks,
                 progress_bar=True,
                 tb_log_name="PPO_" + formatted_time,
@@ -129,7 +129,7 @@ def vec_env_train_in_linux_continue():
     print(f"Mean reward: {mean_reward} +/- {std_reward:.2f}")
 
     model_save_path = os.path.join(models_path, f"ppo_maze_{formatted_time}")
-    stats_save_path = os.path.join(models_path, f"ppo_maze_vec_normalize_stats_{formatted_time}.pkl")
+    stats_save_path = os.path.join(models_path, f"ppo_maze_{formatted_time}_stats.pkl")
     model.save(model_save_path)
     env.save(stats_save_path)  # Don't forget to save the VecNormalize statistics when saving the agent
 
