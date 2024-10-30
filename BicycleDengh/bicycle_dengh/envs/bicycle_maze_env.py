@@ -52,17 +52,16 @@ class BicycleMazeEnv(gymnasium.Env):
             ),
         })
 
-        if gui:
+        if self.gui:
             self.client = p.connect(p.GUI)
             self.camera_distance_param = p.addUserDebugParameter('camera_distance_param', 2, 60, 40)
             self.camera_yaw_param = p.addUserDebugParameter('camera_yaw_param', -180, 180, 0)
             self.camera_pitch_param = p.addUserDebugParameter('camera_pitch_param', -90, 90, -89)
+            self.bicycle_vel_param = p.addUserDebugParameter('bicycle_vel_param', 0.0, 3.0, 1.0)
+            self.handlebar_angle_param = p.addUserDebugParameter('handlebar_angle_param', -1.57, 1.57, 0)
+            self.flywheel_param = p.addUserDebugParameter('flywheel_param', -40, 40, 0)
         else:
             self.client = p.connect(p.DIRECT)
-
-        self.bicycle_vel_param = p.addUserDebugParameter('bicycle_vel_param', 0.0, 3.0, 1.0)
-        self.handlebar_angle_param = p.addUserDebugParameter('handlebar_angle_param', -1.57, 1.57, 0)
-        self.flywheel_param = p.addUserDebugParameter('flywheel_param', -40, 40, 0)
 
         p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, 0)
         p.configureDebugVisualizer(p.COV_ENABLE_SHADOWS, 0)  # 关闭阴影效果，透明的陀螺仪会显示出来，问题不大
@@ -133,14 +132,14 @@ class BicycleMazeEnv(gymnasium.Env):
         # action [车把角度，前后轮速度, 飞轮速度]
         # obs [机器人与目标点距离, 机器人与目标点的角度, 翻滚角, 翻滚角角速度, 车把角度, 车把角速度, 后轮速度, 飞轮速度]
         roll_angle = obs[2]
-        roll_angle_vel = obs[3]
-        handlebar_angle_vel = obs[5]
+        # roll_angle_vel = obs[3]
+        # handlebar_angle_vel = obs[5]
         bicycle_vel = obs[6]
-        flywheel_vel = obs[7]
+        # flywheel_vel = obs[7]
 
-        roll_angle_rwd = 0.4 * (0.3 - min(10.0 * (roll_angle ** 2), 0.3)) / 0.3
-        roll_angle_vel_rwd = 0.3 * (225.0 - min((roll_angle_vel ** 2), 225.0)) / 225.0
-        flywheel_rwd = 0.3 * (40.0 - min(0.001 * (flywheel_vel ** 2), 40.0)) / 40.0
+        # roll_angle_rwd = 0.4 * (0.3 - min(10.0 * (roll_angle ** 2), 0.3)) / 0.3
+        # roll_angle_vel_rwd = 0.3 * (225.0 - min((roll_angle_vel ** 2), 225.0)) / 225.0
+        # flywheel_rwd = 0.3 * (40.0 - min(0.001 * (flywheel_vel ** 2), 40.0)) / 40.0
 
         balance_rwd = 0.0
         if math.fabs(roll_angle) >= 0.17:

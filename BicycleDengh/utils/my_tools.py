@@ -7,7 +7,9 @@ import random
 import numpy as np
 import pybullet as p
 import json
-import yaml
+from stable_baselines3.common.utils import set_random_seed
+from typing import Callable
+import gymnasium as gym
 
 
 boundary_urdf = os.path.join(os.path.dirname(__file__), "../bicycle_dengh/resources/maze/maze_boundary.xml")
@@ -134,3 +136,26 @@ def build_maze():
                 obstacle_coords.add((x, flipped_y))  # 将障碍物的坐标添加到集合中
             elif cell == 'S':  # 不让障碍物生成的区域
                 obstacle_coords.add((x, flipped_y))  # 将障碍物的坐标添加到集合中
+
+
+def make_env(env_id: str, rank: int, seed: int = 0) -> Callable:
+    """
+    Utility function for multiprocessed env.
+
+    :param env_id: (str) the environment ID 环境的ID，也就是环境的名称，如CartPole-v1
+    :param seed: (int) the initial seed for RNG
+    :param rank: (int) index of the subprocess
+    :return: (Callable)
+    """
+
+    def _init() -> gym.Env:
+        env = gym.make(env_id, gui=False)
+        # 环境内部对action_space做了归一化，所以这里不需要再做归一化了
+        # min_action = np.array([-1.0, -1.0, -1.0], dtype=np.float32)
+        # max_action = np.array([1.0, 1.0, 1.0], dtype=np.float32)
+        # env = RescaleAction(env, min_action=min_action, max_action=max_action)
+        env.reset(seed=seed + rank)
+        return env
+
+    set_random_seed(seed)
+    return _init
