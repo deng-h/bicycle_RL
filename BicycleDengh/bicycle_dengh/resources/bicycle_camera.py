@@ -154,7 +154,7 @@ class BicycleCamera:
         # DIRECT mode does allow rendering of images using the built-in software renderer
         # through the 'getCameraImage' API. 也就是说开DIRECT模式也能获取图像
         # getCameraImage 将返回一幅 RGB 图像、一个深度缓冲区和一个分割掩码缓冲区，其中每个像素都有可见物体的唯一 ID
-        for _ in range(self.number_of_frames):  # 根据需要的帧数循环
+        while len(self.image_stack) < self.number_of_frames:
             _, _, _, depth_img, _ = p.getCameraImage(
                 width=self.image_width,
                 height=self.image_height,
@@ -162,16 +162,24 @@ class BicycleCamera:
                 projectionMatrix=self.projectionMatrix,
                 physicsClientId=self.client,
             )
-
-            # depth_map = np.array(depth_img)
-            # plt.imshow(depth_map)
-            # plt.savefig('./depth_map_matplotlib.png')
-
             depth_img = np.expand_dims(depth_img, axis=0)  # 增加通道维度，使形状变为 (1, H, W)
             self.image_stack.append(depth_img)  # 将当前图像添加到列表中
-            # 如果图像数量超过移除最旧的一张
-            if len(self.image_stack) > self.number_of_frames:
-                self.image_stack.pop(0)
+
+        # 如果图像数量达到三张，移除最旧的一张
+        if len(self.image_stack) == self.number_of_frames:
+            self.image_stack.pop(0)
+
+        # 再次获取新图像并添加到栈中
+        _, _, _, depth_img, _ = p.getCameraImage(
+            width=self.image_width,
+            height=self.image_height,
+            viewMatrix=viewMatrix,
+            projectionMatrix=self.projectionMatrix,
+            physicsClientId=self.client,
+        )
+
+        depth_img = np.expand_dims(depth_img, axis=0)  # 增加通道维度，使形状变为 (1, H, W)
+        self.image_stack.append(depth_img)  # 添加新图像
 
         # 将图像堆叠为 (self.number_of_frames, H, W)
         if len(self.image_stack) == self.number_of_frames:
@@ -200,4 +208,5 @@ class BicycleCamera:
         p.resetJointState(self.bicycleId, self.fly_wheel_joint, targetValue=0, targetVelocity=0)
         p.resetJointState(self.bicycleId, self.front_wheel_joint, targetValue=0, targetVelocity=0)
         p.resetJointState(self.bicycleId, self.back_wheel_joint, targetValue=0, targetVelocity=0)
+        self.image_stack = []  # 图像清空
         return self.get_observation()

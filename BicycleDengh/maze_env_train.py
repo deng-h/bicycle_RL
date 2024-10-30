@@ -10,7 +10,7 @@ from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env import VecNormalize, SubprocVecEnv, DummyVecEnv
 from stable_baselines3.common.utils import set_random_seed
 from stable_baselines3.common.evaluation import evaluate_policy
-from stable_baselines3.common.callbacks import EvalCallback
+from stable_baselines3.common.callbacks import EvalCallback, CheckpointCallback, CallbackList
 from typing import Callable, List
 import os
 import time
@@ -81,8 +81,10 @@ def vec_env_train():
     formatted_time = datetime.now().strftime("%m%d_%H%M")  # 格式化时间为 mmdd_hhmm
     start_time = time.time()
     model_name = "ppo_multiprocess_maze_" + formatted_time
+
     models_path = os.path.join(current_dir, "output", "models")
     logger_path = os.path.join(current_dir, "output", "logs")
+    checkpoints_path = os.path.join(current_dir, "output", "checkpoints")
 
     env = make_vec_env("BicycleMaze-v0", n_envs=4, vec_env_cls=SubprocVecEnv)
     env = VecNormalize(env, norm_obs=True, norm_reward=True)
@@ -96,21 +98,35 @@ def vec_env_train():
                                  deterministic=True,
                                  render=False)
 
+    checkpoint_callback = CheckpointCallback(
+                                save_freq=max(100000 // 4, 1),
+                                save_path=checkpoints_path,
+                                name_prefix=formatted_time,
+                                save_vecnormalize=True,
+                                verbose=1,
+                                )
+
+    callback = CallbackList([checkpoint_callback, eval_callback])
+
     policy_kwargs = dict(
         features_extractor_class=MyFeatureExtractor,
         net_arch=dict(pi=[128, 128], vf=[128, 128]),
     )
 
-    model = PPO(policy="MultiInputPolicy",
-                env=env,
-                learning_rate=0.0001,
-                verbose=1,
-                policy_kwargs=policy_kwargs,
-                tensorboard_log=logger_path,
-                )
+    # model = PPO(policy="MultiInputPolicy",
+    #             env=env,
+    #             learning_rate=0.0001,
+    #             verbose=1,
+    #             policy_kwargs=policy_kwargs,
+    #             tensorboard_log=logger_path,
+    #             )
+
+    model_path = "/home/chen/denghang/bicycle-rl/BicycleDengh/output/models/ppo_multiprocess_maze_1030_1054.zip"
+    model = PPO.load(path=model_path, env=env)
     # print(f"网络的架构:{model.policy}")
-    model.learn(total_timesteps=300000,
-                callback=eval_callback,
+
+    model.learn(total_timesteps=10000,
+                callback=callback,
                 progress_bar=True,
                 tb_log_name="PPO_" + formatted_time,
                 )
