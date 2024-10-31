@@ -11,7 +11,7 @@ from utils.my_feature_extractor import MyFeatureExtractor
 import os
 import time
 
-n_envs = 1
+n_envs = 12
 
 # 一个模型第一次训练，之后用另一个方法训练
 def vec_env_train_in_linux_first():
@@ -24,19 +24,19 @@ def vec_env_train_in_linux_first():
     start_time = time.time()
 
     env = make_vec_env("BicycleMaze-v0", n_envs, vec_env_cls=SubprocVecEnv)
-    env = VecNormalize(env, norm_obs=True, norm_reward=False)
+    env = VecNormalize(env, norm_obs=True, norm_reward=True)
 
     eval_env = DummyVecEnv([lambda: gym.make("BicycleMaze-v0", gui=False)])
     eval_env = VecNormalize(eval_env, norm_obs=True, norm_reward=False)
     eval_callback = EvalCallback(eval_env=eval_env,
-                                 eval_freq=max(10000 // n_envs, 1),  # 每10000步评估一下
+                                 eval_freq=max(50000 // n_envs, 1),  # 每50000步评估一下
                                  best_model_save_path=models_path,
                                  log_path=logger_path,
                                  deterministic=True,
                                  render=False)
 
     checkpoint_callback = CheckpointCallback(
-                                save_freq=max(100000 // n_envs, 1),  # 每100000步保存一下
+                                save_freq=max(50000 // n_envs, 1),  # 每50000步保存一下
                                 save_path=checkpoints_path,
                                 name_prefix=formatted_time,
                                 save_vecnormalize=True,
@@ -101,14 +101,14 @@ def vec_env_train_in_linux_continue():
     eval_env.training = False  #  do not update them at test time
     eval_env.norm_reward = False  # reward normalization is not needed at test time
     eval_callback = EvalCallback(eval_env=eval_env,
-                                 eval_freq=max(10000 // n_envs, 1),  # 每10000步评估一下
+                                 eval_freq=max(50000 // n_envs, 1),  # 每50000步评估一下
                                  best_model_save_path=models_path,
                                  log_path=logger_path,
                                  deterministic=True,
                                  render=False)
 
     checkpoint_callback = CheckpointCallback(
-                                save_freq=max(100000 // n_envs, 1),  # 每100000步保存一下
+                                save_freq=max(50000 // n_envs, 1),  # 每50000步保存一下
                                 save_path=checkpoints_path,
                                 name_prefix=formatted_time,
                                 save_vecnormalize=True,
