@@ -122,6 +122,29 @@ class BicycleCamera:
         # fly_wheel_joint_ang = fly_wheel_joint_state[0] % (2 * math.pi)
         fly_wheel_joint_vel = fly_wheel_joint_state[1]
 
+        depth_images = self._get_image()
+        if depth_images.shape != (3, 128, 128):
+            print(depth_images.shape)
+
+        observation = [pos[0], pos[1], yaw_angle,
+                       roll_angle, roll_angular_vel,
+                       handlebar_joint_ang, handlebar_joint_vel,
+                       back_wheel_joint_vel, fly_wheel_joint_vel,
+                       depth_images
+                       ]
+
+        return observation
+
+    def reset(self):
+        p.resetBasePositionAndOrientation(self.bicycleId, self.initial_position, self.initial_orientation)
+        p.resetJointState(self.bicycleId, self.handlebar_joint, targetValue=0, targetVelocity=0)
+        p.resetJointState(self.bicycleId, self.fly_wheel_joint, targetValue=0, targetVelocity=0)
+        p.resetJointState(self.bicycleId, self.front_wheel_joint, targetValue=0, targetVelocity=0)
+        p.resetJointState(self.bicycleId, self.back_wheel_joint, targetValue=0, targetVelocity=0)
+        self.image_stack = []  # 图像清空
+        return self.get_observation()
+
+    def _get_image(self):
         camera_state = p.getLinkState(self.bicycleId, self.camera_joint, physicsClientId=self.client)
         camera_position = camera_state[0]  # 相机的位置
         camera_orientation = camera_state[1]  # 包含四元数（x, y, z, w）
@@ -150,6 +173,9 @@ class BicycleCamera:
             cameraTargetPosition=target_position,  # 相机所看的目标点位置，例如设置在相机前方的一点，通常与相机的前进方向一致
             cameraUpVector=[0, 0, 1])  # 决定相机的“上”方向，例如 [0, 0, 1] 表示 z 轴为上。若要倾斜相机可以更改该向量
 
+        if len(self.image_stack) == self.number_of_frames:
+            self.image_stack.pop(0)
+
         # 获取并渲染相机画面
         # DIRECT mode does allow rendering of images using the built-in software renderer
         # through the 'getCameraImage' API. 也就是说开DIRECT模式也能获取图像
@@ -165,48 +191,10 @@ class BicycleCamera:
             depth_img = np.expand_dims(depth_img, axis=0)  # 增加通道维度，使形状变为 (1, H, W)
             self.image_stack.append(depth_img)  # 将当前图像添加到列表中
 
-        # 如果图像数量达到三张，移除最旧的一张
-        if len(self.image_stack) == self.number_of_frames:
-            self.image_stack.pop(0)
-
-        # 再次获取新图像并添加到栈中
-        _, _, _, depth_img, _ = p.getCameraImage(
-            width=self.image_width,
-            height=self.image_height,
-            viewMatrix=viewMatrix,
-            projectionMatrix=self.projectionMatrix,
-            physicsClientId=self.client,
-        )
-
-        depth_img = np.expand_dims(depth_img, axis=0)  # 增加通道维度，使形状变为 (1, H, W)
-        self.image_stack.append(depth_img)  # 添加新图像
-
-        # 将图像堆叠为 (self.number_of_frames, H, W)
-        if len(self.image_stack) == self.number_of_frames:
-            depth_images = np.concatenate(self.image_stack, axis=0)
-        else:
-            # 如果图像数量不足可以用零填充
-            depth_images = np.zeros((self.number_of_frames, self.image_height, self.image_width))
-            depth_images[:len(self.image_stack)] = np.concatenate(self.image_stack, axis=0)
+        depth_images = np.concatenate(self.image_stack, axis=0)
 
         # depth_map = np.array(depth_img)
         # plt.imshow(depth_map)
         # plt.savefig('./depth_map_matplotlib.png')
 
-        observation = [pos[0], pos[1], yaw_angle,
-                       roll_angle, roll_angular_vel,
-                       handlebar_joint_ang, handlebar_joint_vel,
-                       back_wheel_joint_vel, fly_wheel_joint_vel,
-                       depth_images
-                       ]
-
-        return observation
-
-    def reset(self):
-        p.resetBasePositionAndOrientation(self.bicycleId, self.initial_position, self.initial_orientation)
-        p.resetJointState(self.bicycleId, self.handlebar_joint, targetValue=0, targetVelocity=0)
-        p.resetJointState(self.bicycleId, self.fly_wheel_joint, targetValue=0, targetVelocity=0)
-        p.resetJointState(self.bicycleId, self.front_wheel_joint, targetValue=0, targetVelocity=0)
-        p.resetJointState(self.bicycleId, self.back_wheel_joint, targetValue=0, targetVelocity=0)
-        self.image_stack = []  # 图像清空
-        return self.get_observation()
+        return depth_images

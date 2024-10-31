@@ -186,7 +186,7 @@ if __name__ == '__main__':
     # It will check your custom environment and output additional warnings if needed
     # check_env(env, warn=True)
 
-    models_dir = "D:\\data\\1-L\\9-bicycle\\bicycle-rl\\BicycleDengh\\output\\models\\ppo_model_omni_0607_1820"
+    models_dir = "D:\\data\\1-L\\9-bicycle\\bicycle-rl\\BicycleDengh\\output\\models\\backup\\ppo_model_omni_0607_1820"
     model = PPO.load(models_dir)
     obs, _ = env.reset()
 
@@ -195,5 +195,5 @@ if __name__ == '__main__':
         obs, _, terminated, truncated, _ = env.step(action)
         if terminated or truncated:
             obs, _ = env.reset()
-        # time.sleep(1. / 24.)
+        time.sleep(1. / 100.)
 
