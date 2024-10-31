@@ -11,7 +11,7 @@ from utils.my_feature_extractor import MyFeatureExtractor
 import os
 import time
 
-n_envs = 12
+n_envs = 1
 
 # 一个模型第一次训练，之后用另一个方法训练
 def vec_env_train_in_linux_first():
@@ -24,10 +24,10 @@ def vec_env_train_in_linux_first():
     start_time = time.time()
 
     env = make_vec_env("BicycleMaze-v0", n_envs, vec_env_cls=SubprocVecEnv)
-    env = VecNormalize(env, norm_obs=True, norm_reward=True)
+    env = VecNormalize(env, norm_obs=True, norm_reward=False)
 
     eval_env = DummyVecEnv([lambda: gym.make("BicycleMaze-v0", gui=False)])
-    eval_env = VecNormalize(eval_env, norm_obs=True, norm_reward=True)
+    eval_env = VecNormalize(eval_env, norm_obs=True, norm_reward=False)
     eval_callback = EvalCallback(eval_env=eval_env,
                                  eval_freq=max(10000 // n_envs, 1),  # 每10000步评估一下
                                  best_model_save_path=models_path,
@@ -156,4 +156,4 @@ def play():
 
 
 if __name__ == '__main__':
-    vec_env_train_in_linux_continue()
+    vec_env_train_in_linux_first()
