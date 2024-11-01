@@ -1,4 +1,0 @@
-gymnasium
-pybullet
-numpy
-matplotlib
