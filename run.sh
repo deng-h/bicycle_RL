@@ -1,1 +1,8 @@
-cd D:\data\1-L\9-bicycle\bicycle-rl
+#!/bin/bash
+
+cd ~/denghang/bicycle-rl
+echo "开始执行"
+python train.py \
+--algo ppo \
+--env BicycleMaze-v0 \
+--conf-file ./hyperparams/bicycle.yml

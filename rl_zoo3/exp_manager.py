@@ -306,7 +306,7 @@ class ExperimentManager:
             # Load hyperparameters from python package
             hyperparams_dict = importlib.import_module(self.config).hyperparams
             # raise ValueError(f"Unsupported config file format: {self.config}")
-
+            
         if self.env_name.gym_id in list(hyperparams_dict.keys()):
             hyperparams = hyperparams_dict[self.env_name.gym_id]
         elif self._is_atari:
