@@ -11,7 +11,7 @@ from utils.my_feature_extractor import MyFeatureExtractor
 import os
 import time
 
-n_envs = 12
+n_envs = 10
 
 # 一个模型第一次训练，之后用另一个方法训练
 def vec_env_train_in_linux_first():
