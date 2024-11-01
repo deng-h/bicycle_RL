@@ -45,6 +45,10 @@ try:
 except ImportError:
     pass
 
+try:
+    from bicycle_dengh.envs.bicycle_maze_env import BicycleMazeEnv
+except ImportError:
+    pass
 
 # Register no vel envs
 def create_no_vel_env(env_id: str) -> Callable[[Optional[str]], gym.Env]:
