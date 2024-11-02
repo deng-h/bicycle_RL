@@ -1,6 +1,0 @@
-BicycleMaze-v0:
-  learning_rate: lin_2.5e-4
-  normalize: "{'norm_obs': True, 'norm_reward': True}"
-  n_timesteps: !!float 1e5
-  policy: 'MultiInputPolicy'
-  

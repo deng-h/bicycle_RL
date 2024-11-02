@@ -18,7 +18,8 @@ class BicycleCamera:
             f_name = os.path.join(os.path.dirname(__file__), 'bicycle_urdf/bike.xml')
 
         startOrientation = p.getQuaternionFromEuler([0, 0, 1.57])
-        self.bicycleId = p.loadURDF(fileName=f_name, basePosition=[0, 0, 1], baseOrientation=startOrientation)
+        self.bicycleId = p.loadURDF(fileName=f_name, basePosition=[0, 0, 1], baseOrientation=startOrientation,
+                                    physicsClientId=self.client)
         self.handlebar_joint = 0
         self.camera_joint = 1
         self.front_wheel_joint = 2
@@ -47,7 +48,7 @@ class BicycleCamera:
 
         self.initial_joint_positions = None
         self.initial_joint_velocities = None
-        self.initial_position, self.initial_orientation = p.getBasePositionAndOrientation(self.bicycleId)
+        self.initial_position, self.initial_orientation = p.getBasePositionAndOrientation(self.bicycleId, self.client)
 
         # 设置飞轮速度上限
         p.changeDynamics(self.bicycleId,
@@ -98,12 +99,13 @@ class BicycleCamera:
 
     def get_observation(self):
         # Get the position位置 and orientation方向(姿态) of the bicycle in the simulation
-        pos, _ = p.getBasePositionAndOrientation(self.bicycleId, self.client)
+        pos, _ = p.getBasePositionAndOrientation(bodyUniqueId=self.bicycleId, physicsClientId=self.client)
         # The rotation order is first roll around X, then pitch around Y and finally yaw around Z
         # p.getBaseVelocity()返回的格式 (线速度(x, y, z), 角速度(wx, wy, wz))
         # _, angular_velocity = p.getBaseVelocity(self.bicycleId, self.client)
 
-        gyros_link_state = p.getLinkState(self.bicycleId, self.gyros_link, computeLinkVelocity=1)
+        gyros_link_state = p.getLinkState(self.bicycleId, self.gyros_link, computeLinkVelocity=1,
+                                          physicsClientId=self.client)
         gyros_link_orientation = gyros_link_state[1]
         link_ang = p.getEulerFromQuaternion(gyros_link_orientation)
         roll_angle = link_ang[0]
@@ -136,11 +138,12 @@ class BicycleCamera:
         return observation
 
     def reset(self):
-        p.resetBasePositionAndOrientation(self.bicycleId, self.initial_position, self.initial_orientation)
-        p.resetJointState(self.bicycleId, self.handlebar_joint, targetValue=0, targetVelocity=0)
-        p.resetJointState(self.bicycleId, self.fly_wheel_joint, targetValue=0, targetVelocity=0)
-        p.resetJointState(self.bicycleId, self.front_wheel_joint, targetValue=0, targetVelocity=0)
-        p.resetJointState(self.bicycleId, self.back_wheel_joint, targetValue=0, targetVelocity=0)
+        p.resetBasePositionAndOrientation(self.bicycleId, self.initial_position,
+                                          self.initial_orientation, self.client)
+        p.resetJointState(self.bicycleId, self.handlebar_joint, 0, 0, self.client)
+        p.resetJointState(self.bicycleId, self.fly_wheel_joint, 0, 0, self.client)
+        p.resetJointState(self.bicycleId, self.front_wheel_joint, 0, 0, self.client)
+        p.resetJointState(self.bicycleId, self.back_wheel_joint, 0, 0, self.client)
         self.image_stack = []  # 图像清空
         return self.get_observation()
 
