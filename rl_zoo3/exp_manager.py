@@ -328,11 +328,10 @@ class ExperimentManager:
 
         # Always print used hyperparameters
         # print("Default hyperparameters for environment (ones being tuned will be overridden):")
-        print("↓↓↓以下是调整过的超参数↓↓↓")
-        for key, val in saved_hyperparams.items():
-            # print(f"{key}: {val}")
-            print(f"{key}: {val}")
-        print("↑↑↑以上是调整过的超参数↑↑↑")
+        # print("↓↓↓以下是调整过的超参数↓↓↓")
+        # for key, val in saved_hyperparams.items():
+        #     print(f"{key}: {val}")
+        # print("↑↑↑以上是调整过的超参数↑↑↑")
         # pprint(saved_hyperparams)  # pprint 数据美化输出
 
         return hyperparams, saved_hyperparams
@@ -411,7 +410,7 @@ class ExperimentManager:
             #     f"Doing {self.n_evaluations} intermediate evaluations for pruning based on the number of timesteps."
             #     " (1 evaluation every 100k timesteps)"
             # )
-            print("基于timesteps，每100k步进行一次评估以进行剪枝(这里的剪枝是Optuna里的概念，自行查看)")
+            print("基于timesteps,每100k步进行一次评估以进行剪枝(这里的剪枝是Optuna里的概念,自行查看)")
 
         # Pre-process normalize config
         hyperparams = self._preprocess_normalization(hyperparams)
@@ -595,7 +594,8 @@ class ExperimentManager:
 
             if self.verbose > 0:
                 if len(local_normalize_kwargs) > 0:
-                    print(f"Normalization activated: {local_normalize_kwargs}")
+                    # print(f"Normalization activated: {local_normalize_kwargs}")
+                    print(f"归一化已激活: {local_normalize_kwargs}")
                 else:
                     print("Normalizing input and reward")
             env = VecNormalize(env, **local_normalize_kwargs)
