@@ -195,9 +195,11 @@ class ExperimentManager:
         self.create_callbacks()
 
         # Create env to have access to action space for action noise
+        # 如果是优化超参数，那么环境个数只有一个
         n_envs = 1 if self.algo == "ars" or self.optimize_hyperparameters else self.n_envs
         env = self.create_envs(n_envs, no_log=False)
 
+        # 只有off-policy算法才会有action noise
         self._hyperparams = self._preprocess_action_noise(hyperparams, saved_hyperparams, env)
 
         if self.continue_training:
@@ -259,11 +261,13 @@ class ExperimentManager:
 
         :param model:
         """
-        print(f"Saving to {self.save_path}")
+        # print(f"Saving to {self.save_path}")
+        print(f"正在保存模型到{self.save_path}中...")
         model.save(f"{self.save_path}/{self.env_name}")
 
         if hasattr(model, "save_replay_buffer") and self.save_replay_buffer:
-            print("Saving replay buffer")
+            # print("Saving replay buffer")
+            print("正在保存replay buffer...")
             model.save_replay_buffer(os.path.join(self.save_path, "replay_buffer.pkl"))
 
         if self.normalize:
@@ -288,10 +292,12 @@ class ExperimentManager:
             ordered_args = OrderedDict([(key, vars(self.args)[key]) for key in sorted(vars(self.args).keys())])
             yaml.dump(ordered_args, f)
 
-        print(f"Log path: {self.save_path}")
+        # print(f"Log path: {self.save_path}")
+        print(f"日志路径: {self.save_path}")
 
     def read_hyperparameters(self) -> Tuple[Dict[str, Any], Dict[str, Any]]:
-        print(f"Loading hyperparameters from: {self.config}")
+        # print(f"Loading hyperparameters from: {self.config}")
+        print(f"从{self.config}文件中加载超参数")
 
         if self.config.endswith(".yml") or self.config.endswith(".yaml"):
             # Load hyperparameters from yaml file
@@ -306,7 +312,7 @@ class ExperimentManager:
             # Load hyperparameters from python package
             hyperparams_dict = importlib.import_module(self.config).hyperparams
             # raise ValueError(f"Unsupported config file format: {self.config}")
-            
+
         if self.env_name.gym_id in list(hyperparams_dict.keys()):
             hyperparams = hyperparams_dict[self.env_name.gym_id]
         elif self._is_atari:
@@ -321,8 +327,13 @@ class ExperimentManager:
         saved_hyperparams = OrderedDict([(key, hyperparams[key]) for key in sorted(hyperparams.keys())])
 
         # Always print used hyperparameters
-        print("Default hyperparameters for environment (ones being tuned will be overridden):")
-        pprint(saved_hyperparams)
+        # print("Default hyperparameters for environment (ones being tuned will be overridden):")
+        print("↓↓↓以下是调整过的超参数↓↓↓")
+        for key, val in saved_hyperparams.items():
+            # print(f"{key}: {val}")
+            print(f"{key}: {val}")
+        print("↑↑↑以上是调整过的超参数↑↑↑")
+        # pprint(saved_hyperparams)  # pprint 数据美化输出
 
         return hyperparams, saved_hyperparams
 
@@ -372,12 +383,13 @@ class ExperimentManager:
     def _preprocess_hyperparams(  # noqa: C901
         self, hyperparams: Dict[str, Any]
     ) -> Tuple[Dict[str, Any], Optional[Callable], List[BaseCallback], Optional[Callable]]:
-        self.n_envs = hyperparams.get("n_envs", 1)
+        self.n_envs = hyperparams.get("n_envs", 1)  # 参数1是默认值
 
         if self.verbose > 0:
-            print(f"Using {self.n_envs} environments")
+            # print(f"Using {self.n_envs} environments")
+            print(f"使用{self.n_envs}个环境")
 
-        # Convert schedule strings to objects
+        # Convert schedule strings to objects  需要理解
         hyperparams = self._preprocess_schedules(hyperparams)
 
         # Pre-process train_freq
@@ -387,17 +399,19 @@ class ExperimentManager:
         # Should we overwrite the number of timesteps?
         if self.n_timesteps > 0:
             if self.verbose:
-                print(f"Overwriting n_timesteps with n={self.n_timesteps}")
+                # print(f"Overwriting n_timesteps with n={self.n_timesteps}")
+                print(f"n_timesteps重写为{self.n_timesteps}")
         else:
             self.n_timesteps = int(hyperparams["n_timesteps"])
 
         # Derive n_evaluations from number of timesteps if needed
         if self.n_evaluations is None and self.optimize_hyperparameters:
             self.n_evaluations = max(1, self.n_timesteps // int(1e5))
-            print(
-                f"Doing {self.n_evaluations} intermediate evaluations for pruning based on the number of timesteps."
-                " (1 evaluation every 100k timesteps)"
-            )
+            # print(
+            #     f"Doing {self.n_evaluations} intermediate evaluations for pruning based on the number of timesteps."
+            #     " (1 evaluation every 100k timesteps)"
+            # )
+            print("基于timesteps，每100k步进行一次评估以进行剪枝(这里的剪枝是Optuna里的概念，自行查看)")
 
         # Pre-process normalize config
         hyperparams = self._preprocess_normalization(hyperparams)
@@ -417,6 +431,7 @@ class ExperimentManager:
             del hyperparams["monitor_kwargs"]
 
         # Delete keys so the dict can be pass to the model constructor
+        # 该类的成员变量已经保存了这些信息，所以可以删除
         if "n_envs" in hyperparams.keys():
             del hyperparams["n_envs"]
         del hyperparams["n_timesteps"]
@@ -429,8 +444,7 @@ class ExperimentManager:
         if "policy" in hyperparams and "." in hyperparams["policy"]:
             hyperparams["policy"] = get_class_by_name(hyperparams["policy"])
 
-        # obtain a class object from a wrapper name string in hyperparams
-        # and delete the entry
+        # obtain a class object from a wrapper name string in hyperparams and delete the entry
         env_wrapper = get_wrapper_class(hyperparams)
         if "env_wrapper" in hyperparams.keys():
             del hyperparams["env_wrapper"]
@@ -507,7 +521,8 @@ class ExperimentManager:
             self.eval_freq = max(self.eval_freq // self.n_envs, 1)
 
             if self.verbose > 0:
-                print("Creating test environment")
+                # print("Creating test environment")
+                print("创建测试环境...")
 
             save_vec_normalize = SaveVecNormalizeCallback(save_freq=1, save_path=self.params_path)
             eval_callback = EvalCallback(
@@ -562,7 +577,8 @@ class ExperimentManager:
         path_ = os.path.join(path_, "vecnormalize.pkl")
 
         if os.path.exists(path_):
-            print("Loading saved VecNormalize stats")
+            # print("Loading saved VecNormalize stats")
+            print("正在加载已保存的VecNormalize数据...")
             env = VecNormalize.load(path_, env)
             # Deactivate training and reward normalization
             if eval_env:
@@ -669,7 +685,8 @@ class ExperimentManager:
 
     def _load_pretrained_agent(self, hyperparams: Dict[str, Any], env: VecEnv) -> BaseAlgorithm:
         # Continue training
-        print("Loading pretrained agent")
+        # print("Loading pretrained agent")
+        print("正在加载预训练模型...")
         # Policy should not be changed
         del hyperparams["policy"]
 
@@ -689,7 +706,8 @@ class ExperimentManager:
         replay_buffer_path = os.path.join(os.path.dirname(self.trained_agent), "replay_buffer.pkl")
 
         if os.path.exists(replay_buffer_path):
-            print("Loading replay buffer")
+            # print("Loading replay buffer")
+            print("正在加载replay buffer...")
             # `truncate_last_traj` will be taken into account only if we use HER replay buffer
             assert hasattr(
                 model, "load_replay_buffer"
@@ -819,7 +837,8 @@ class ExperimentManager:
 
     def hyperparameters_optimization(self) -> None:
         if self.verbose > 0:
-            print("Optimizing hyperparameters")
+            # print("Optimizing hyperparameters")
+            print("正在优化超参数...")
 
         if self.storage is not None and self.study_name is None:
             warnings.warn(

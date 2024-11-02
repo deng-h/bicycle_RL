@@ -5,7 +5,7 @@ import stable_baselines3
 hyperparams = {
     "BicycleMaze-v0": dict(
         policy="MultiInputPolicy",
-        normalize="{'norm_obs': True, 'norm_reward': True}",
+        normalize=dict(norm_obs=True, norm_reward=True),
         env_wrapper=[{"rl_zoo3.wrappers.ActionSmoothingWrapper": {"smoothing_coef": 0.5}}],
         n_envs=10,
         n_timesteps=100,

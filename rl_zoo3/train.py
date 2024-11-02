@@ -272,6 +272,7 @@ def train() -> None:
             exp_manager.learn(model)
             exp_manager.save_trained_model(model)
     else:
+        # 执行超参数优化
         exp_manager.hyperparameters_optimization()
 
 
