@@ -110,7 +110,7 @@ class BicycleMazeEnv(gymnasium.Env):
         goal = Goal(self.client, self.goal)
         # 因为没有重置环境，每次reset后要清除先前的Goal
         if self.prev_goal_id is not None:
-            p.removeBody(self.prev_goal_id)
+            p.removeBody(self.prev_goal_id, self.client)
         self.prev_goal_id = goal.id
 
         # 机器人位置与目标位置差x, 机器人位置与目标位置差y, 偏航角, 翻滚角, 翻滚角角速度, 车把角度, 车把角速度, 后轮速度, 飞轮速度, 深度图
