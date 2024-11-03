@@ -1,5 +1,4 @@
 from utils.my_feature_extractor import MyFeatureExtractor
-import stable_baselines3
 
 
 hyperparams = {
@@ -14,5 +13,6 @@ hyperparams = {
             features_extractor_class=MyFeatureExtractor,
             net_arch=dict(pi=[128, 128], vf=[128, 128])
         ),
+        monitor_kwargs=dict(info_keywords=('rescaled_action',))
     )
 }

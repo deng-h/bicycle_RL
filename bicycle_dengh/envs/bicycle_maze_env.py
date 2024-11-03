@@ -24,12 +24,9 @@ class BicycleMazeEnv(gymnasium.Env):
         self.gui = gui
         self.max_flywheel_vel = 120.0
         self.prev_goal_id = None
+        self.last_action = None
 
-        self.action_space = gymnasium.spaces.box.Box(
-            low=np.array([-1.0, -1.0, -1.0]),
-            high=np.array([1.0, 1.0, 1.0]),
-            shape=(3,),
-            dtype=np.float32)
+        self.action_space = gymnasium.spaces.box.Box(low=-1.0, high=1.0, shape=(3,), dtype=np.float32)
 
         # action_space[车把角度，前后轮速度, 飞轮速度]
         self.actual_action_space = gymnasium.spaces.box.Box(
@@ -44,12 +41,13 @@ class BicycleMazeEnv(gymnasium.Env):
         # 机器人与目标点距离, 机器人与目标点的角度, 翻滚角, 翻滚角角速度, 车把角度, 车把角速度, 后轮速度, 飞轮速度
         self.observation_space = gymnasium.spaces.Dict({
             "image": gymnasium.spaces.box.Box(low=0, high=255, shape=(3, 128, 128), dtype=np.float32),
-            "vector": gymnasium.spaces.box.Box(
+            "obs": gymnasium.spaces.box.Box(
                 low=np.array([0.0, -math.pi, -math.pi, -15.0, -1.57, -15.0, 0.0, -self.max_flywheel_vel]),
                 high=np.array([100.0, math.pi, math.pi, 15.0, 1.57, 15.0, 10.0, self.max_flywheel_vel]),
                 shape=(8,),
                 dtype=np.float32
             ),
+            "last_action": gymnasium.spaces.box.Box(low=-1.0, high=1.0, shape=(3,), dtype=np.float32)
         })
 
         if self.gui:
@@ -78,6 +76,7 @@ class BicycleMazeEnv(gymnasium.Env):
         # Rescale action from [-1, 1] to original [low, high] interval
         rescaled_action = self._rescale_action(action)
         self.bicycle.apply_action(rescaled_action)
+        self.last_action = np.array(action, np.float32)
         p.stepSimulation(physicsClientId=self.client)
         obs = self.bicycle.get_observation()
 
@@ -100,7 +99,8 @@ class BicycleMazeEnv(gymnasium.Env):
         # 计算奖励值
         reward = self._reward_fun(obs, action)
 
-        return {"image": image_obs, "vector": vector_obs}, reward, self.terminated, self.truncated, {}
+        return ({"image": image_obs, "obs": vector_obs, "last_action": self.last_action},
+                reward, self.terminated, self.truncated, {"rescaled_action": rescaled_action})
 
     def reset(self, seed=None, options=None):
         self.terminated = False
@@ -122,8 +122,9 @@ class BicycleMazeEnv(gymnasium.Env):
         image_obs = obs[9]
         vector_obs = np.array([distance_to_goal, angle_to_target, obs[3], obs[4], obs[5], obs[6], obs[7], obs[8]],
                               np.float32)
+        last_action = np.zeros(3, np.float32)
 
-        return {"image": image_obs, "vector": vector_obs}, {}
+        return {"image": image_obs, "obs": vector_obs, "last_action": last_action}, {}
 
     def _reward_fun(self, obs, action):
         self.terminated = False
