@@ -11,6 +11,7 @@ from bicycle_dengh.resources.goal import Goal
 import math
 from utils import my_tools
 from stable_baselines3.common.env_checker import check_env
+from stable_baselines3.common.monitor import Monitor
 
 
 class BicycleMazeEnv(gymnasium.Env):
@@ -100,7 +101,7 @@ class BicycleMazeEnv(gymnasium.Env):
         reward = self._reward_fun(obs, action)
 
         return ({"image": image_obs, "obs": vector_obs, "last_action": self.last_action},
-                reward, self.terminated, self.truncated, {"rescaled_action": rescaled_action})
+                reward, self.terminated, self.truncated, {"flywheel_vel": rescaled_action[2]})
 
     def reset(self, seed=None, options=None):
         self.terminated = False
@@ -132,11 +133,8 @@ class BicycleMazeEnv(gymnasium.Env):
 
         # action [车把角度，前后轮速度, 飞轮速度]
         # obs [机器人与目标点距离, 机器人与目标点的角度, 翻滚角, 翻滚角角速度, 车把角度, 车把角速度, 后轮速度, 飞轮速度]
-        roll_angle = obs[2]
-        # roll_angle_vel = obs[3]
-        # handlebar_angle_vel = obs[5]
-        bicycle_vel = obs[6]
-        # flywheel_vel = obs[7]
+        roll_angle = obs[3]
+        bicycle_vel = obs[7]
 
         # roll_angle_rwd = 0.4 * (0.3 - min(10.0 * (roll_angle ** 2), 0.3)) / 0.3
         # roll_angle_vel_rwd = 0.3 * (225.0 - min((roll_angle_vel ** 2), 225.0)) / 225.0
