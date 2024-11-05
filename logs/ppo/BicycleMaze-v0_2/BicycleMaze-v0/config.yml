@@ -1,0 +1,28 @@
+!!python/object/apply:collections.OrderedDict
+- - - env_wrapper
+    - - gymnasium.wrappers.TimeLimit:
+          max_episode_steps: 2500
+  - - learning_rate
+    - 0.0001
+  - - n_envs
+    - 8
+  - - n_timesteps
+    - 300000
+  - - normalize
+    - norm_obs: true
+      norm_obs_keys:
+      - obs
+      norm_reward: true
+  - - policy
+    - MultiInputPolicy
+  - - policy_kwargs
+    - features_extractor_class: !!python/name:utils.my_feature_extractor.MyFeatureExtractor ''
+      net_arch:
+        pi:
+        - 512
+        - 512
+        - 512
+        vf:
+        - 512
+        - 512
+        - 512

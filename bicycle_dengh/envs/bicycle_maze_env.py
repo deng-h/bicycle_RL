@@ -14,6 +14,20 @@ from stable_baselines3.common.env_checker import check_env
 from stable_baselines3.common.monitor import Monitor
 
 
+def calculate_roll_angle_rwd(roll_angle):
+    if math.fabs(roll_angle) >= 0.26:
+        return True, -5.0
+
+    # 计算奖励值，倾角越小，奖励越大
+    # 奖励值范围从0.5到-0.5，倾角越小奖励值越接近0.5
+    reward = 0.5 - (math.fabs(roll_angle) / 0.26) * 1.0  # 将15度映射到奖励范围[0.5, -0.5]
+
+    # 限制奖励值在范围[-0.5, 0.5]之间
+    reward = max(-0.5, min(0.5, reward))
+
+    return False, reward
+
+
 class BicycleMazeEnv(gymnasium.Env):
     metadata = {'render_modes': ['rgb_array']}
 
@@ -135,14 +149,7 @@ class BicycleMazeEnv(gymnasium.Env):
         roll_angle = obs[2]
         bicycle_vel = obs[6]
 
-        balance_rwd = 0.0
-        if math.fabs(roll_angle) >= 0.17:
-            self.terminated = True
-            balance_rwd = -8.0
-        elif 0.08 <= math.fabs(roll_angle) < 0.17:
-            balance_rwd = -0.4
-        elif math.fabs(roll_angle) <= 0.02:
-            balance_rwd = 0.2
+        self.truncated, balance_rwd = calculate_roll_angle_rwd(roll_angle)
 
         #  到达目标点奖励
         goal_rwd = 0.0
@@ -157,11 +164,7 @@ class BicycleMazeEnv(gymnasium.Env):
 
         # 距离目标点奖励
         diff_dist_to_goal = self.prev_dist_to_goal - obs[0]
-        distance_rwd = diff_dist_to_goal / (5.0 / 24.0)
-        if diff_dist_to_goal > 0.0:
-            distance_rwd = (1.0 / 10.0) * distance_rwd
-        else:
-            distance_rwd = (1.2 / 10.0) * distance_rwd
+        distance_rwd = diff_dist_to_goal * 5.0
 
         total_reward = goal_rwd + distance_rwd + balance_rwd + still_penalty
 
