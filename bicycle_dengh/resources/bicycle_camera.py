@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 
 
 class BicycleCamera:
-    def __init__(self, client, max_flywheel_vel):
+    def __init__(self, client, max_flywheel_vel, obstacle_ids=None):
         self.client = client
 
         system = platform.system()
@@ -20,6 +20,14 @@ class BicycleCamera:
         startOrientation = p.getQuaternionFromEuler([0, 0, 1.57])
         self.bicycleId = p.loadURDF(fileName=f_name, basePosition=[0, 0, 1], baseOrientation=startOrientation,
                                     physicsClientId=self.client)
+        # Number of joints: 7
+        # jointIndex: 0 jointName: 'frame_to_handlebar'
+        # jointIndex: 1 jointName: 'camera_joint'
+        # jointIndex: 2 jointName: 'handlebar_to_frontwheel'
+        # jointIndex: 3 jointName: 'frame_to_backwheel'
+        # jointIndex: 4 jointName: 'frame_to_flyWheelLink'
+        # jointIndex: 5 jointName: 'flyWheelLink_to_flyWheel'
+        # jointIndex: 6 jointName: 'frame_to_gyros'
         self.handlebar_joint = 0
         self.camera_joint = 1
         self.front_wheel_joint = 2
@@ -27,6 +35,7 @@ class BicycleCamera:
         self.fly_wheel_joint = 5
         self.gyros_link = 6
         self.MAX_FORCE = 2000
+        self.bicycle_body_ids = [0, 2, 3, 4, 5]
 
         self.pitch_angle_rad = np.radians(-20.0)  # 定义相机的俯仰角（正值为向上俯仰，负值为向下俯仰）
         self.camera_offset_distance = 0.05  # 定义需要将相机视角位置移出的距离，使相机移到长方体外部
@@ -55,6 +64,15 @@ class BicycleCamera:
                          self.fly_wheel_joint,
                          maxJointVelocity=max_flywheel_vel,
                          physicsClientId=self.client)
+
+        # 获取自行车的刚体数量
+        num_joints = p.getNumJoints(self.bicycleId)
+        print("Number of joints: ", num_joints)
+        for i in range(num_joints):
+            # 获取自行车每个部分的ID
+            joint_info = p.getJointInfo(self.bicycleId, i, self.client)
+            print("jointIndex: ", joint_info[0], "jointName: ", joint_info[1])
+        self.obstacle_ids = obstacle_ids
 
     def apply_action(self, action):
         """
@@ -128,11 +146,13 @@ class BicycleCamera:
         if depth_images.shape != (3, 128, 128):
             print(depth_images.shape)
 
+        is_collided = self._is_collided()
+
         observation = [pos[0], pos[1], yaw_angle,
                        roll_angle, roll_angular_vel,
                        handlebar_joint_ang, handlebar_joint_vel,
                        back_wheel_joint_vel, fly_wheel_joint_vel,
-                       depth_images
+                       depth_images, is_collided
                        ]
 
         return observation
@@ -201,3 +221,10 @@ class BicycleCamera:
         # plt.savefig('./depth_map_matplotlib.png')
 
         return depth_images
+
+    def _is_collided(self):
+        for obstacle_id in self.obstacle_ids:
+            contact_points = p.getClosestPoints(self.bicycleId, obstacle_id, distance=0.0, physicsClientId=self.client)
+            if len(contact_points) > 0:
+                return True
+        return False

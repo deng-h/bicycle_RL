@@ -79,10 +79,10 @@ class BicycleMazeEnv(gymnasium.Env):
         p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, 0)
         p.configureDebugVisualizer(p.COV_ENABLE_SHADOWS, 0)  # 关闭阴影效果，透明的陀螺仪会显示出来，问题不大
 
-        self.bicycle = BicycleCamera(client=self.client, max_flywheel_vel=self.max_flywheel_vel)
+        obstacle_ids = my_tools.build_maze(self.client)
+        self.bicycle = BicycleCamera(self.client, self.max_flywheel_vel, obstacle_ids)
         p.setAdditionalSearchPath(pybullet_data.getDataPath())
         p.loadURDF("plane.urdf", physicsClientId=self.client)
-        my_tools.build_maze()
         p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, 1)
         p.setGravity(0, 0, -10, physicsClientId=self.client)
         p.setTimeStep(1. / 24., self.client)
@@ -110,7 +110,7 @@ class BicycleMazeEnv(gymnasium.Env):
             p.resetDebugVisualizerCamera(camera_distance, camera_yaw, camera_pitch, bike_pos)
 
         # 计算奖励值
-        reward = self._reward_fun(vector_obs)
+        reward = self._reward_fun(vector_obs, is_collision=obs[10])
         self.prev_dist_to_goal = distance_to_goal
 
         return ({"image": image_obs, "obs": vector_obs, "last_action": self.last_action},
@@ -140,7 +140,7 @@ class BicycleMazeEnv(gymnasium.Env):
 
         return {"image": image_obs, "obs": vector_obs, "last_action": last_action}, {}
 
-    def _reward_fun(self, obs):
+    def _reward_fun(self, obs, is_collision):
         self.terminated = False
         self.truncated = False
 
@@ -166,7 +166,13 @@ class BicycleMazeEnv(gymnasium.Env):
         diff_dist_to_goal = self.prev_dist_to_goal - obs[0]
         distance_rwd = diff_dist_to_goal * 5.0
 
-        total_reward = goal_rwd + distance_rwd + balance_rwd + still_penalty
+        collision_penalty = 0.0
+        if is_collision:
+            collision_penalty = -1.0
+        else:
+            collision_penalty = 0.2
+
+        total_reward = goal_rwd + distance_rwd + balance_rwd + still_penalty + collision_penalty
 
         return total_reward
 

@@ -11,13 +11,13 @@ from stable_baselines3.common.utils import set_random_seed
 from typing import Callable
 import gymnasium as gym
 
-
 boundary_urdf = os.path.join(os.path.dirname(__file__), "../bicycle_dengh/resources/maze/maze_boundary.xml")
 maze_config = os.path.join(os.path.dirname(__file__), "../bicycle_dengh/resources/maze/maze_config.json")
 wall_length = 2.0
 wall_height = 1.5
 maze_size = 25
 obstacle_coords = set()  # 存储障碍物的坐标
+
 
 def degrees_to_radians(degrees):
     """
@@ -107,12 +107,13 @@ def generate_goal():
             return x - 0.5, y - 0.5
 
 
-def build_maze():
+def build_maze(client):
     # Load maze boundary
-    p.loadURDF(boundary_urdf,
-               basePosition=[0.0, -3.0, 1.0],
-               baseOrientation=p.getQuaternionFromEuler([0, 0, 0]),
-               useFixedBase=True)
+    wall_id = p.loadURDF(boundary_urdf,
+                         basePosition=[0.0, -3.0, 1.0],
+                         baseOrientation=p.getQuaternionFromEuler([0, 0, 0]),
+                         useFixedBase=True,
+                         physicsClientId=client)
 
     with open(maze_config, 'r') as file:
         data = json.load(file)
@@ -123,19 +124,23 @@ def build_maze():
     visual_shape = p.createVisualShape(p.GEOM_BOX, halfExtents=[0.5, 0.5, 1.0],
                                        rgbaColor=[0.92, 0.94, 0.94, 1])
 
+    obstacle_ids = [wall_id]
     # 遍历迷宫布局
     for y, row in enumerate(maze_layout):
         flipped_y = len(maze_layout) - y - 1  # 翻转y坐标
         for x, cell in enumerate(row):
             if cell == 'X':  # 如果该位置为障碍物
-                p.createMultiBody(baseCollisionShapeIndex=collision_shape,
-                                  baseVisualShapeIndex=visual_shape,
-                                  # 这里-25，-3是因为maze向Y轴负方向移动了3个单位，向X轴负方向移动了25个单位
-                                  # +0.5是因为要让BOX刚好落在网格内，“不压线”
-                                  basePosition=[x - 24.5, flipped_y - 2.5, 1.0])
+                obstacle_id = p.createMultiBody(baseCollisionShapeIndex=collision_shape,
+                                                baseVisualShapeIndex=visual_shape,
+                                                # 这里-25，-3是因为maze向Y轴负方向移动了3个单位，向X轴负方向移动了25个单位
+                                                # +0.5是因为要让BOX刚好落在网格内，“不压线”
+                                                basePosition=[x - 24.5, flipped_y - 2.5, 1.0],
+                                                physicsClientId=client)
                 obstacle_coords.add((x, flipped_y))  # 将障碍物的坐标添加到集合中
+                obstacle_ids.append(obstacle_id)
             elif cell == 'S':  # 不让障碍物生成的区域
                 obstacle_coords.add((x, flipped_y))  # 将障碍物的坐标添加到集合中
+    return obstacle_ids
 
 
 def make_env(env_id: str, rank: int, seed: int = 0) -> Callable:
