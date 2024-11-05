@@ -1,11 +1,22 @@
-import gymnasium
+import time
 import numpy as np
-action_space = gymnasium.spaces.box.Box(low=-1.0, high=1.0, shape=(3,), dtype=np.float32)
-action_space2 = gymnasium.spaces.box.Box(
-            low=np.array([-1.0, -2.0, -1.0]),
-            high=np.array([1.0, 2.0, 1.0]),
-            shape=(3,),
-            dtype=np.float32)
+import gymnasium as gym
+import bicycle_dengh
 
-print(action_space)
-print(action_space2)
+
+roll_angles = []
+steps = []
+step = 0
+
+env = gym.make('BicycleMaze-v0', gui=True)
+obs, infos = env.reset()
+for i in range(4000):
+    action = np.array([0.0, -1.0, 1.0], np.float32)
+    _, _, terminated, truncated, infos = env.step(action)
+
+    # if terminated or truncated:
+    #     obs, _ = env.reset()
+    time.sleep(1. / 24.)
+
+
+env.close()

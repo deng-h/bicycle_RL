@@ -22,9 +22,9 @@ def plot_csv_column(csv_path, column_name):
 
     # 绘制指定列的数据图
     plt.plot(df[column_name])
-    plt.xlabel('timesteps')
+    plt.xlabel('epochs')
     plt.ylabel(column_name)
-    plt.title(f'{column_name} Data from {csv_path}')
+    plt.title(f'{column_name} Data')
     system = platform.system()
     if system == "Windows":
         plt.show()
@@ -34,4 +34,4 @@ def plot_csv_column(csv_path, column_name):
 
 
 if __name__ == '__main__':
-    plot_csv_column("../logs/ppo/BicycleMaze-v0_1/0.monitor.csv", "flywheel_vel")
+    plot_csv_column("./bicycle-rl/logs/ppo/BicycleMaze-v0_1/0.monitor.csv", "l")

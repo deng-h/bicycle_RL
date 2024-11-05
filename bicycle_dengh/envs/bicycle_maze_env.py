@@ -81,12 +81,10 @@ class BicycleMazeEnv(gymnasium.Env):
         p.stepSimulation(physicsClientId=self.client)
         obs = self.bicycle.get_observation()
 
-        # 机器人位置与目标位置差x, 机器人位置与目标位置差y, 偏航角, 翻滚角, 翻滚角角速度, 车把角度, 车把角速度, 后轮速度, 飞轮速度, 深度图
         distance_to_goal = math.sqrt((self.goal[0] - obs[0]) ** 2 + (self.goal[1] - obs[1]) ** 2)
-        self.prev_dist_to_goal = distance_to_goal
         angle_to_target = my_tools.calculate_angle_to_target(obs[0], obs[1], obs[2], self.goal[0], self.goal[1])
-
         image_obs = obs[9]
+        # 机器人位置与目标位置距离, 机器人位置与目标位置夹角, 翻滚角, 翻滚角角速度, 车把角度, 车把角速度, 后轮速度, 飞轮速度
         vector_obs = np.array([distance_to_goal, angle_to_target, obs[3], obs[4], obs[5], obs[6], obs[7], obs[8]],
                               np.float32)
 
@@ -98,10 +96,11 @@ class BicycleMazeEnv(gymnasium.Env):
             p.resetDebugVisualizerCamera(camera_distance, camera_yaw, camera_pitch, bike_pos)
 
         # 计算奖励值
-        reward = self._reward_fun(obs, action)
+        reward = self._reward_fun(vector_obs)
+        self.prev_dist_to_goal = distance_to_goal
 
         return ({"image": image_obs, "obs": vector_obs, "last_action": self.last_action},
-                reward, self.terminated, self.truncated, {"flywheel_vel": rescaled_action[2]})
+                reward, self.terminated, self.truncated, {})
 
     def reset(self, seed=None, options=None):
         self.terminated = False
@@ -127,18 +126,14 @@ class BicycleMazeEnv(gymnasium.Env):
 
         return {"image": image_obs, "obs": vector_obs, "last_action": last_action}, {}
 
-    def _reward_fun(self, obs, action):
+    def _reward_fun(self, obs):
         self.terminated = False
         self.truncated = False
 
         # action [车把角度，前后轮速度, 飞轮速度]
         # obs [机器人与目标点距离, 机器人与目标点的角度, 翻滚角, 翻滚角角速度, 车把角度, 车把角速度, 后轮速度, 飞轮速度]
-        roll_angle = obs[3]
-        bicycle_vel = obs[7]
-
-        # roll_angle_rwd = 0.4 * (0.3 - min(10.0 * (roll_angle ** 2), 0.3)) / 0.3
-        # roll_angle_vel_rwd = 0.3 * (225.0 - min((roll_angle_vel ** 2), 225.0)) / 225.0
-        # flywheel_rwd = 0.3 * (40.0 - min(0.001 * (flywheel_vel ** 2), 40.0)) / 40.0
+        roll_angle = obs[2]
+        bicycle_vel = obs[6]
 
         balance_rwd = 0.0
         if math.fabs(roll_angle) >= 0.17:
