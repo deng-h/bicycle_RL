@@ -66,12 +66,12 @@ class BicycleCamera:
                          physicsClientId=self.client)
 
         # 获取自行车的刚体数量
-        num_joints = p.getNumJoints(self.bicycleId)
-        print("Number of joints: ", num_joints)
-        for i in range(num_joints):
-            # 获取自行车每个部分的ID
-            joint_info = p.getJointInfo(self.bicycleId, i, self.client)
-            print("jointIndex: ", joint_info[0], "jointName: ", joint_info[1])
+        # num_joints = p.getNumJoints(self.bicycleId)
+        # print("Number of joints: ", num_joints)
+        # for i in range(num_joints):
+        #     # 获取自行车每个部分的ID
+        #     joint_info = p.getJointInfo(self.bicycleId, i, self.client)
+        #     print("jointIndex: ", joint_info[0], "jointName: ", joint_info[1])
         self.obstacle_ids = obstacle_ids
 
     def apply_action(self, action):
