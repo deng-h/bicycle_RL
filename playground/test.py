@@ -11,7 +11,7 @@ step = 0
 env = gym.make('BicycleMaze-v0', gui=True)
 obs, infos = env.reset()
 for i in range(4000):
-    action = np.array([0.0, -1.0, 1.0], np.float32)
+    action = np.array([0.0, -1.0, 0.0], np.float32)
     _, _, terminated, truncated, infos = env.step(action)
 
     # if terminated or truncated:

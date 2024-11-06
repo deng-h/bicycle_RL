@@ -168,9 +168,9 @@ class BicycleMazeEnv(gymnasium.Env):
 
         collision_penalty = 0.0
         if is_collision:
-            collision_penalty = -1.0
+            collision_penalty = -0.5
         else:
-            collision_penalty = 0.2
+            collision_penalty = 0.3
 
         total_reward = goal_rwd + distance_rwd + balance_rwd + still_penalty + collision_penalty
 
