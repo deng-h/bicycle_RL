@@ -164,13 +164,11 @@ class BicycleMazeEnv(gymnasium.Env):
 
         # 距离目标点奖励
         diff_dist_to_goal = self.prev_dist_to_goal - obs[0]
-        distance_rwd = diff_dist_to_goal * 5.0
+        distance_rwd = diff_dist_to_goal * 10.0
 
         collision_penalty = 0.0
         if is_collision:
-            collision_penalty = -0.5
-        else:
-            collision_penalty = 0.3
+            collision_penalty = -2.0
 
         total_reward = goal_rwd + distance_rwd + balance_rwd + still_penalty + collision_penalty
 
