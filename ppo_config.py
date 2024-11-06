@@ -4,7 +4,7 @@ hyperparams = {
     "BicycleMaze-v0": dict(
         policy="MultiInputPolicy",
         normalize=dict(norm_obs=True, norm_reward=True, norm_obs_keys=['obs']),
-        n_envs=8,
+        n_envs=10,
         n_timesteps=300000,
         learning_rate=1e-04,
         policy_kwargs=dict(

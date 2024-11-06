@@ -67,9 +67,9 @@ class BicycleMazeEnv(gymnasium.Env):
 
         if self.gui:
             self.client = p.connect(p.GUI)
-            self.camera_distance_param = p.addUserDebugParameter('camera_distance_param', 2, 60, 40)
+            self.camera_distance_param = p.addUserDebugParameter('camera_distance_param', 2, 60, 5)
             self.camera_yaw_param = p.addUserDebugParameter('camera_yaw_param', -180, 180, 0)
-            self.camera_pitch_param = p.addUserDebugParameter('camera_pitch_param', -90, 90, -89)
+            self.camera_pitch_param = p.addUserDebugParameter('camera_pitch_param', -90, 90, -30)
             self.bicycle_vel_param = p.addUserDebugParameter('bicycle_vel_param', 0.0, 3.0, 1.0)
             self.handlebar_angle_param = p.addUserDebugParameter('handlebar_angle_param', -1.57, 1.57, 0)
             self.flywheel_param = p.addUserDebugParameter('flywheel_param', -40, 40, 0)
@@ -91,7 +91,7 @@ class BicycleMazeEnv(gymnasium.Env):
         # Rescale action from [-1, 1] to original [low, high] interval
         rescaled_action = self._rescale_action(action)
         self.bicycle.apply_action(rescaled_action)
-        self.last_action = np.array(action, np.float32)
+        self.last_action = action
         p.stepSimulation(physicsClientId=self.client)
         obs = self.bicycle.get_observation()
 
@@ -164,11 +164,11 @@ class BicycleMazeEnv(gymnasium.Env):
 
         # 距离目标点奖励
         diff_dist_to_goal = self.prev_dist_to_goal - obs[0]
-        distance_rwd = diff_dist_to_goal * 10.0
+        distance_rwd = diff_dist_to_goal * 15.0
 
         collision_penalty = 0.0
         if is_collision:
-            collision_penalty = -2.0
+            collision_penalty = -10.0
 
         total_reward = goal_rwd + distance_rwd + balance_rwd + still_penalty + collision_penalty
 
