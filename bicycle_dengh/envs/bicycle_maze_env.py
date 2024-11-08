@@ -40,12 +40,13 @@ class BicycleMazeEnv(gymnasium.Env):
         self.max_flywheel_vel = 120.0
         self.prev_goal_id = None
         self.last_action = None
+        self.collision_times = 0
 
         self.action_space = gymnasium.spaces.box.Box(low=-1.0, high=1.0, shape=(3,), dtype=np.float32)
 
         # action_space[车把角度，前后轮速度, 飞轮速度]
         self.actual_action_space = gymnasium.spaces.box.Box(
-            low=np.array([-1.57, 0.0, -self.max_flywheel_vel]),
+            low=np.array([-1.57, -5.0, -self.max_flywheel_vel]),
             high=np.array([1.57, 5.0, self.max_flywheel_vel]),
             shape=(3,),
             dtype=np.float32)
@@ -57,7 +58,7 @@ class BicycleMazeEnv(gymnasium.Env):
         self.observation_space = gymnasium.spaces.Dict({
             "image": gymnasium.spaces.box.Box(low=0, high=255, shape=(3, 128, 128), dtype=np.float32),
             "obs": gymnasium.spaces.box.Box(
-                low=np.array([0.0, -math.pi, -math.pi, -15.0, -1.57, -15.0, 0.0, -self.max_flywheel_vel]),
+                low=np.array([0.0, -math.pi, -math.pi, -15.0, -1.57, -15.0, -10.0, -self.max_flywheel_vel]),
                 high=np.array([100.0, math.pi, math.pi, 15.0, 1.57, 15.0, 10.0, self.max_flywheel_vel]),
                 shape=(8,),
                 dtype=np.float32
@@ -119,6 +120,7 @@ class BicycleMazeEnv(gymnasium.Env):
     def reset(self, seed=None, options=None):
         self.terminated = False
         self.truncated = False
+        self.collision_times = 0
 
         self.goal = my_tools.generate_goal()
         goal = Goal(self.client, self.goal)
@@ -149,12 +151,12 @@ class BicycleMazeEnv(gymnasium.Env):
         roll_angle = obs[2]
         bicycle_vel = obs[6]
 
-        self.truncated, balance_rwd = calculate_roll_angle_rwd(roll_angle)
+        self.terminated, balance_rwd = calculate_roll_angle_rwd(roll_angle)
 
         #  到达目标点奖励
         goal_rwd = 0.0
         if math.fabs(obs[0]) <= 1.2:
-            self.truncated = True
+            self.terminated = True
             goal_rwd = 10.0
 
         # 静止惩罚
@@ -168,7 +170,10 @@ class BicycleMazeEnv(gymnasium.Env):
 
         collision_penalty = 0.0
         if is_collision:
-            collision_penalty = -10.0
+            self.collision_times += 1
+            if self.collision_times > 100:
+                self.terminated = True
+            collision_penalty = -1.0 * self.collision_times
 
         total_reward = goal_rwd + distance_rwd + balance_rwd + still_penalty + collision_penalty
 
