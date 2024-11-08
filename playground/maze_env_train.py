@@ -7,7 +7,7 @@ from stable_baselines3 import PPO
 from stable_baselines3.common.vec_env import VecNormalize, SubprocVecEnv, DummyVecEnv
 from stable_baselines3.common.evaluation import evaluate_policy
 from stable_baselines3.common.callbacks import EvalCallback, CheckpointCallback, CallbackList
-from utils.my_feature_extractor import MyFeatureExtractor
+from utils.my_feature_extractor import MyFeatureExtractor1
 import os
 import time
 
@@ -46,7 +46,7 @@ def vec_env_train_in_linux_first():
     callbacks = CallbackList([checkpoint_callback, eval_callback])
 
     policy_kwargs = dict(
-        features_extractor_class=MyFeatureExtractor,
+        features_extractor_class=MyFeatureExtractor1,
         net_arch=dict(pi=[128, 128], vf=[128, 128]),
     )
     

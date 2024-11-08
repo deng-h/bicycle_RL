@@ -8,7 +8,7 @@ python enjoy.py \
 --algo ppo \
 --env BicycleMaze-v0 \
 --folder logs/ \
---exp-id 7 \
+--exp-id 2 \
 --env-kwargs gui:True \
 --load-best \
 --no-render \
