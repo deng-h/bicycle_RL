@@ -161,6 +161,7 @@ class BicycleMazeEnv(gymnasium.Env):
 
         # 静止惩罚
         still_penalty = 0.0
+        print(bicycle_vel)
         if math.fabs(bicycle_vel) <= 0.2:
             still_penalty = -1.0
 
@@ -173,7 +174,7 @@ class BicycleMazeEnv(gymnasium.Env):
             self.collision_times += 1
             if self.collision_times > 100:
                 self.terminated = True
-            collision_penalty = -1.0 * self.collision_times
+            collision_penalty = -2.0
 
         total_reward = goal_rwd + distance_rwd + balance_rwd + still_penalty + collision_penalty
 
