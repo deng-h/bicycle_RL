@@ -161,7 +161,6 @@ class BicycleMazeEnv(gymnasium.Env):
 
         # 静止惩罚
         still_penalty = 0.0
-        print(bicycle_vel)
         if math.fabs(bicycle_vel) <= 0.2:
             still_penalty = -1.0
 

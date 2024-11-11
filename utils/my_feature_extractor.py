@@ -57,7 +57,6 @@ class MyFeatureExtractor2(BaseFeaturesExtractor):
         # 定义状态特征提取器
         self.state_model = nn.Sequential(
             nn.Linear(8, 64),
-            nn.ReLU()
         )
 
         # Attention mechanism: Learnable weights for image and state features
