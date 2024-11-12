@@ -1,6 +1,5 @@
 #!/bin/bash
 
-cd ~/denghang/bicycle-rl
 clear
 echo "开始执行"
 

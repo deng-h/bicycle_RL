@@ -8,10 +8,10 @@ hyperparams = {
         n_timesteps=400000,
         learning_rate=1e-04,
         policy_kwargs=dict(
-            features_extractor_class=MyFeatureExtractor2,
+            features_extractor_class=MyFeatureExtractor1,
             net_arch=dict(pi=[512, 512, 512], vf=[512, 512, 512])
         ),
         # monitor_kwargs=dict(info_keywords=('flywheel_vel',))
-        env_wrapper=[{"gymnasium.wrappers.TimeLimit": {"max_episode_steps": 2500}}],
+        env_wrapper=[{"gymnasium.wrappers.TimeLimit": {"max_episode_steps": 1500}}],
     )
 }

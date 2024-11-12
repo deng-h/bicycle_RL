@@ -35,18 +35,16 @@ class BicycleMazeEnv(gymnasium.Env):
         self.goal = (0, 0)
         self.terminated = False
         self.truncated = False
-        self.prev_dist_to_goal = 0.0
         self.gui = gui
         self.max_flywheel_vel = 120.0
         self.prev_goal_id = None
-        self.last_action = None
         self.collision_times = 0
-
+        self.prev_dist_to_goal = 0.0
         self.action_space = gymnasium.spaces.box.Box(low=-1.0, high=1.0, shape=(3,), dtype=np.float32)
 
         # action_space[车把角度，前后轮速度, 飞轮速度]
         self.actual_action_space = gymnasium.spaces.box.Box(
-            low=np.array([-1.57, -5.0, -self.max_flywheel_vel]),
+            low=np.array([-1.57, 0.0, -self.max_flywheel_vel]),
             high=np.array([1.57, 5.0, self.max_flywheel_vel]),
             shape=(3,),
             dtype=np.float32)
@@ -92,11 +90,10 @@ class BicycleMazeEnv(gymnasium.Env):
         # Rescale action from [-1, 1] to original [low, high] interval
         rescaled_action = self._rescale_action(action)
         self.bicycle.apply_action(rescaled_action)
-        self.last_action = action
         p.stepSimulation(physicsClientId=self.client)
         obs = self.bicycle.get_observation()
 
-        distance_to_goal = math.sqrt((self.goal[0] - obs[0]) ** 2 + (self.goal[1] - obs[1]) ** 2)
+        distance_to_goal = np.linalg.norm(np.array([obs[0], obs[1]]) - np.array(self.goal))
         angle_to_target = my_tools.calculate_angle_to_target(obs[0], obs[1], obs[2], self.goal[0], self.goal[1])
         image_obs = obs[9]
         # 机器人位置与目标位置距离, 机器人位置与目标位置夹角, 翻滚角, 翻滚角角速度, 车把角度, 车把角速度, 后轮速度, 飞轮速度
@@ -114,7 +111,7 @@ class BicycleMazeEnv(gymnasium.Env):
         reward = self._reward_fun(vector_obs, is_collision=obs[10])
         self.prev_dist_to_goal = distance_to_goal
 
-        return ({"image": image_obs, "obs": vector_obs, "last_action": self.last_action},
+        return ({"image": image_obs, "obs": vector_obs, "last_action": action},
                 reward, self.terminated, self.truncated, {})
 
     def reset(self, seed=None, options=None):
@@ -131,7 +128,7 @@ class BicycleMazeEnv(gymnasium.Env):
 
         # 机器人位置与目标位置差x, 机器人位置与目标位置差y, 偏航角, 翻滚角, 翻滚角角速度, 车把角度, 车把角速度, 后轮速度, 飞轮速度, 深度图
         obs = self.bicycle.reset()
-        distance_to_goal = math.sqrt((self.goal[0] - obs[0]) ** 2 + (self.goal[1] - obs[1]) ** 2)
+        distance_to_goal = np.linalg.norm(np.array([obs[0], obs[1]]) - np.array(self.goal))
         self.prev_dist_to_goal = distance_to_goal
         angle_to_target = my_tools.calculate_angle_to_target(obs[0], obs[1], obs[2], self.goal[0], self.goal[1])
 
@@ -155,9 +152,9 @@ class BicycleMazeEnv(gymnasium.Env):
 
         #  到达目标点奖励
         goal_rwd = 0.0
-        if math.fabs(obs[0]) <= 1.2:
+        if math.fabs(obs[0]) <= 0.5:
             self.terminated = True
-            goal_rwd = 10.0
+            goal_rwd = 100.0
 
         # 静止惩罚
         still_penalty = 0.0
@@ -165,15 +162,22 @@ class BicycleMazeEnv(gymnasium.Env):
             still_penalty = -1.0
 
         # 距离目标点奖励
+        distance_rwd = 0.0
         diff_dist_to_goal = self.prev_dist_to_goal - obs[0]
-        distance_rwd = diff_dist_to_goal * 15.0
+        if math.fabs(obs[0]) > 0.5:
+            if math.fabs(diff_dist_to_goal) < 0.0005:
+                # 没到达终点，但又不再靠近终点时
+                distance_rwd = -5.0
+            else:
+                distance_rwd = diff_dist_to_goal
 
         collision_penalty = 0.0
         if is_collision:
             self.collision_times += 1
+            collision_penalty = -2.0
             if self.collision_times > 100:
                 self.terminated = True
-            collision_penalty = -2.0
+                collision_penalty = -100.0
 
         total_reward = goal_rwd + distance_rwd + balance_rwd + still_penalty + collision_penalty
 
