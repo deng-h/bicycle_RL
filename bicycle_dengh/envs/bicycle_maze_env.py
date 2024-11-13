@@ -169,13 +169,13 @@ class BicycleMazeEnv(gymnasium.Env):
                 # 没到达终点，但又不再靠近终点时
                 distance_rwd = -5.0
             else:
-                distance_rwd = diff_dist_to_goal
+                distance_rwd = diff_dist_to_goal * 1.2
 
         collision_penalty = 0.0
         if is_collision:
             self.collision_times += 1
             collision_penalty = -2.0
-            if self.collision_times > 100:
+            if self.collision_times > 60:
                 self.terminated = True
                 collision_penalty = -100.0
 
