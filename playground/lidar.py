@@ -93,6 +93,9 @@ while True:
     # 使用 rayTestBatch 进行批量检测
     # results格式：线数x元组，元组格式(碰撞物体的id, 碰撞物体的link索引, 沿射线的命中率范围 [0,1], 碰撞点的世界坐标, 碰撞点归一化的世界坐标)
     results = p.rayTestBatch(rayFromPositions=rayFrom, rayToPositions=rayTo)
+
+    # for result in results:
+    #     print(result[3])
     # 解析检测结果，提取距离信息
     # distances = []
     # for i, result in enumerate(results):

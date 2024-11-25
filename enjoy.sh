@@ -5,9 +5,9 @@ echo "开始执行"
 
 python enjoy.py \
 --algo ppo \
---env BicycleMaze-v0 \
+--env BicycleMazeLidar-v0 \
 --folder logs/ \
---exp-id 6 \
+--exp-id 3 \
 --env-kwargs gui:True \
 --load-best \
 --no-render \

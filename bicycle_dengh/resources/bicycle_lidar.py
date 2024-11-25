@@ -1,10 +1,8 @@
 import pybullet as p
-import random
 import math
 import os
 import numpy as np
 import platform
-import matplotlib.pyplot as plt
 
 
 def _map_to_image(ray_results, img_size=128, x_range=(-25, 25), y_range=(-3, 47)):
@@ -65,7 +63,6 @@ class BicycleLidar:
         # jointIndex: 5 jointName: 'flyWheelLink_to_flyWheel'
         # jointIndex: 6 jointName: 'frame_to_gyros'
         self.handlebar_joint = 0
-        self.camera_joint = 1
         self.front_wheel_joint = 2
         self.back_wheel_joint = 3
         self.fly_wheel_joint = 5
@@ -77,9 +74,6 @@ class BicycleLidar:
         self.num_rays = 1024
         self.ray_len = 100
         self.lidar_origin_offset = [0, 0, 2.0]  # 激光雷达相对于小车的位置偏移量
-        self.obstacle_id2 = p.loadURDF("D:\\data\\1-L\\9-bicycle\\bicycle-rl\\bicycle_dengh\\resources\\simplegoal.xml",
-                                       basePosition=[0, 0, 0.5])
-
         self.initial_joint_positions = None
         self.initial_joint_velocities = None
         self.initial_position, self.initial_orientation = p.getBasePositionAndOrientation(self.bicycleId, self.client)
@@ -146,7 +140,6 @@ class BicycleLidar:
         # The rotation order is first roll around X, then pitch around Y and finally yaw around Z
         # p.getBaseVelocity()返回的格式 (线速度(x, y, z), 角速度(wx, wy, wz))
         # _, angular_velocity = p.getBaseVelocity(self.bicycleId, self.client)
-        p.resetBasePositionAndOrientation(self.obstacle_id2, [pos[0], pos[1], 0.0], [0, 0, 0, 1])
 
         gyros_link_state = p.getLinkState(self.bicycleId, self.gyros_link, computeLinkVelocity=1,
                                           physicsClientId=self.client)
@@ -155,7 +148,7 @@ class BicycleLidar:
         roll_angle = link_ang[0]
         yaw_angle = link_ang[2]
         gyros_link_angular_vel = gyros_link_state[7]
-        roll_angular_vel = gyros_link_angular_vel[0]
+        roll_angle_vel = gyros_link_angular_vel[0]
 
         handlebar_joint_state = p.getJointState(self.bicycleId, self.handlebar_joint, self.client)
         handlebar_joint_ang = handlebar_joint_state[0]
@@ -168,17 +161,15 @@ class BicycleLidar:
         # fly_wheel_joint_ang = fly_wheel_joint_state[0] % (2 * math.pi)
         fly_wheel_joint_vel = fly_wheel_joint_state[1]
 
-        depth_images = self._get_lidar_image(pos)
-        if depth_images.shape != (3, 128, 128):
-            print(depth_images.shape)
-
+        distances = self._get_lidar_info2(pos)
         is_collided = self._is_collided()
 
-        observation = [pos[0], pos[1], yaw_angle,
-                       roll_angle, roll_angular_vel,
+        observation = [pos[0], pos[1],
+                       yaw_angle,
+                       roll_angle, roll_angle_vel,
                        handlebar_joint_ang, handlebar_joint_vel,
                        back_wheel_joint_vel, fly_wheel_joint_vel,
-                       depth_images, is_collided
+                       distances, is_collided
                        ]
 
         return observation
@@ -193,7 +184,7 @@ class BicycleLidar:
         self.image_stack = []  # 图像清空
         return self.get_observation()
 
-    def _get_lidar_image(self, bicycle_pos):
+    def _get_lidar_info(self, bicycle_pos):
         if len(self.image_stack) == self.number_of_frames:
             self.image_stack.pop(0)
 
@@ -226,3 +217,25 @@ class BicycleLidar:
             if len(contact_points) > 0:
                 return True
         return False
+
+    def _get_lidar_info2(self, bicycle_pos):
+        rayFrom, rayTo = [], []
+
+        for i in range(self.num_rays):
+            rayFrom.append(
+                [bicycle_pos[0] + self.lidar_origin_offset[0],
+                 bicycle_pos[1] + self.lidar_origin_offset[1],
+                 bicycle_pos[2] + self.lidar_origin_offset[2]])
+            rayTo.append([
+                rayFrom[i][0] + self.ray_len * math.sin(2. * math.pi * float(i) / self.num_rays),
+                rayFrom[i][1] + self.ray_len * math.cos(2. * math.pi * float(i) / self.num_rays),
+                rayFrom[i][2]])
+
+        results = p.rayTestBatch(rayFromPositions=rayFrom, rayToPositions=rayTo)
+        distance = [
+            np.linalg.norm(np.array([result[3][0], result[3][1]]) - np.array([bicycle_pos[0], bicycle_pos[1]]))
+            for result in results
+        ]
+
+        return np.array(distance, dtype=np.float32)
+

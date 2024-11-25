@@ -5,7 +5,7 @@ echo "开始执行"
 
 python train.py \
 --algo ppo \
---env BicycleMaze-v0 \
+--env BicycleMazeLidar-v0 \
 --conf-file ppo_config \
 --tensorboard-log ./logs/tensorboard/ \
 --vec-env subproc \
@@ -14,9 +14,9 @@ python train.py \
 
 #python train.py \
 #--algo ppo \
-#--env BicycleMaze-v0 \
+#--env BicycleMazeLidar-v0 \
 #--conf-file ppo_config \
 #--tensorboard-log ./logs/tensorboard/ \
 #--vec-env subproc \
 #--progress \
-#--trained-agent ./logs/ppo/BicycleMaze-v0_5/best_model.zip
+#--trained-agent ./logs/ppo/BicycleMazeLidar-v0_2/best_model.zip
