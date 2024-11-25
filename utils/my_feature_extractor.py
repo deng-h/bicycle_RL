@@ -11,7 +11,7 @@ class MyFeatureExtractor1(BaseFeaturesExtractor):
         super().__init__(observation_space, features_dim=256+8+3)
         self.image_model = nn.Sequential(
             # height_in=128, width_in=128, CHW, 在线卷积池化公式计算器 http://www.sqflash.com/cal.html
-            nn.Conv2d(3, 16, kernel_size=3, stride=2, padding=1),  # 16x64x64
+            nn.Conv2d(5, 16, kernel_size=3, stride=2, padding=1),  # 16x64x64
             nn.ReLU(),
             nn.MaxPool2d(kernel_size=2, stride=2),  # 16x32x32
             nn.Conv2d(16, 32, kernel_size=3, stride=2, padding=1),  # 32x16x16
@@ -45,7 +45,7 @@ class MyFeatureExtractor2(BaseFeaturesExtractor):
         super().__init__(observation_space, features_dim=256+64)
         self.image_model = nn.Sequential(
             # height_in=128, width_in=128, CHW, 在线卷积池化公式计算器 http://www.sqflash.com/cal.html
-            nn.Conv2d(3, 16, kernel_size=3, stride=2, padding=1),  # 16x64x64
+            nn.Conv2d(5, 16, kernel_size=3, stride=2, padding=1),  # 16x64x64
             nn.ReLU(),
             nn.MaxPool2d(kernel_size=2, stride=2),  # 16x32x32
             nn.Conv2d(16, 32, kernel_size=3, stride=2, padding=1),  # 32x16x16

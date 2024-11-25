@@ -43,7 +43,9 @@ class BicycleCamera:
         self.local_camera_direction = [1, 0, 0]  # 相机前方向向量（局部坐标系中）[1, 0, 0] 表示相机的前方
         # 在局部坐标系中通过俯仰角度调整相机前方向的y、z分量
         self.local_pitched_direction = [np.cos(self.pitch_angle_rad), 0, np.sin(self.pitch_angle_rad)]
-        self.image_stack = []  # 图像列表
+        self.image_buffer = []  # 图像列表
+        self.max_buffer_size = 20  # 存储最近的 20 张深度图
+        self.num_frames_to_sample = 5  # 需要抽取的深度图数量
         self.number_of_frames = 3
         self.image_width = 128
         self.image_height = 128
@@ -142,9 +144,7 @@ class BicycleCamera:
         # fly_wheel_joint_ang = fly_wheel_joint_state[0] % (2 * math.pi)
         fly_wheel_joint_vel = fly_wheel_joint_state[1]
 
-        depth_images = self._get_image()
-        if depth_images.shape != (3, 128, 128):
-            print(depth_images.shape)
+        depth_images = self._get_image2()
 
         is_collided = self._is_collided()
 
@@ -164,7 +164,7 @@ class BicycleCamera:
         p.resetJointState(self.bicycleId, self.fly_wheel_joint, 0, 0, self.client)
         p.resetJointState(self.bicycleId, self.front_wheel_joint, 0, 0, self.client)
         p.resetJointState(self.bicycleId, self.back_wheel_joint, 0, 0, self.client)
-        self.image_stack = []  # 图像清空
+        self.image_buffer = []  # 图像清空
         return self.get_observation()
 
     def _get_image(self):
@@ -196,14 +196,14 @@ class BicycleCamera:
             cameraTargetPosition=target_position,  # 相机所看的目标点位置，例如设置在相机前方的一点，通常与相机的前进方向一致
             cameraUpVector=[0, 0, 1])  # 决定相机的“上”方向，例如 [0, 0, 1] 表示 z 轴为上。若要倾斜相机可以更改该向量
 
-        if len(self.image_stack) == self.number_of_frames:
-            self.image_stack.pop(0)
+        if len(self.image_buffer) == self.number_of_frames:
+            self.image_buffer.pop(0)
 
         # 获取并渲染相机画面
         # DIRECT mode does allow rendering of images using the built-in software renderer
         # through the 'getCameraImage' API. 也就是说开DIRECT模式也能获取图像
         # getCameraImage 将返回一幅 RGB 图像、一个深度缓冲区和一个分割掩码缓冲区，其中每个像素都有可见物体的唯一 ID
-        while len(self.image_stack) < self.number_of_frames:
+        while len(self.image_buffer) < self.number_of_frames:
             _, _, _, depth_img, _ = p.getCameraImage(
                 width=self.image_width,
                 height=self.image_height,
@@ -212,9 +212,9 @@ class BicycleCamera:
                 physicsClientId=self.client,
             )
             depth_img = np.expand_dims(depth_img, axis=0)  # 增加通道维度，使形状变为 (1, H, W)
-            self.image_stack.append(depth_img)  # 将当前图像添加到列表中
+            self.image_buffer.append(depth_img)  # 将当前图像添加到列表中
 
-        depth_images = np.concatenate(self.image_stack, axis=0)
+        depth_images = np.concatenate(self.image_buffer, axis=0)
 
         # depth_map = np.array(depth_img)
         # plt.imshow(depth_map)
@@ -228,3 +228,62 @@ class BicycleCamera:
             if len(contact_points) > 0:
                 return True
         return False
+
+    def _get_image2(self):
+        camera_state = p.getLinkState(self.bicycleId, self.camera_joint, physicsClientId=self.client)
+        camera_position = camera_state[0]  # 相机的位置
+        camera_orientation = camera_state[1]  # 包含四元数（x, y, z, w）
+        # 使用四元数将局部方向转换到世界坐标系中 将方向向量转换为世界坐标系
+        world_camera_direction = p.rotateVector(camera_orientation, self.local_camera_direction)
+        # 将俯仰调整后的前方向量转换为世界坐标系，用于计算 target_position，从而让相机在俯仰角度调整的视线方向上拍摄
+        world_pitched_direction = p.rotateVector(camera_orientation, self.local_pitched_direction)
+
+        # 计算相机在世界坐标系中的目标位置
+        target_position = [
+            camera_position[0] + self.camera_target_distance * world_pitched_direction[0],
+            camera_position[1] + self.camera_target_distance * world_pitched_direction[1],
+            camera_position[2] + self.camera_target_distance * world_pitched_direction[2]
+        ]
+
+        # 计算新的相机位置，使相机在长方体前方
+        cameraEyePosition = [
+            camera_position[0] + self.camera_offset_distance * world_camera_direction[0],
+            camera_position[1] + self.camera_offset_distance * world_camera_direction[1],
+            camera_position[2] + self.camera_offset_distance * world_camera_direction[2]
+        ]
+
+        # 获取视图矩阵
+        viewMatrix = p.computeViewMatrix(
+            cameraEyePosition=cameraEyePosition,  # 相机的实际位置，例如 [x, y, z] 坐标
+            cameraTargetPosition=target_position,  # 相机所看的目标点位置，例如设置在相机前方的一点，通常与相机的前进方向一致
+            cameraUpVector=[0, 0, 1])  # 决定相机的“上”方向，例如 [0, 0, 1] 表示 z 轴为上。若要倾斜相机可以更改该向量
+
+        # 获取新的深度图
+        _, _, _, depth_img, _ = p.getCameraImage(
+            width=self.image_width,
+            height=self.image_height,
+            viewMatrix=viewMatrix,
+            projectionMatrix=self.projectionMatrix,
+            physicsClientId=self.client,
+        )
+        depth_img = np.expand_dims(depth_img, axis=0)  # 添加一个维度，使形状变为 (1, H, W)
+
+        if len(self.image_buffer) >= self.max_buffer_size:
+            self.image_buffer.pop(0)  # 移除最旧的图像
+        self.image_buffer.append(depth_img)  # 将当前图像添加到列表中
+
+        # 如果缓冲区中图像不足5张，用最新图像填充
+        while len(self.image_buffer) < self.num_frames_to_sample:
+            self.image_buffer.append(depth_img)
+
+        # 从缓冲区中按间隔采样5张图像
+        step = max(1, len(self.image_buffer) // self.num_frames_to_sample)
+        sampled_images = [self.image_buffer[i] for i in
+                          range(0, len(self.image_buffer), step)[:self.num_frames_to_sample]]
+
+        # 如果采样的图像不足5张，用最后一张图像补足
+        while len(sampled_images) < self.num_frames_to_sample:
+            sampled_images.append(self.image_buffer[-1])
+
+        # 返回采样后的深度图像
+        return np.concatenate(sampled_images, axis=0)

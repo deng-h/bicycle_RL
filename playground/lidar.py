@@ -1,5 +1,4 @@
 import math
-
 import pybullet as p
 import time
 import pybullet_data
@@ -9,7 +8,7 @@ import keyboard
 from utils import my_tools
 
 
-def map_to_image(ray_results, img_size=128, x_range=(-25, 25), y_range=(-3, 47)):
+def map_to_image(ray_results, img_size=300, x_range=(-25, 25), y_range=(-4, 46)):
     """
     将 rayTestBatch 的 hit position 映射到二维图像上，并反转y轴方向。
 
@@ -44,77 +43,72 @@ def map_to_image(ray_results, img_size=128, x_range=(-25, 25), y_range=(-3, 47))
 
     return radar_image
 
+
 physicsClient = p.connect(p.GUI)  # or p.DIRECT for non-graphical version
 p.setAdditionalSearchPath(pybullet_data.getDataPath())  # optionally
-p.setGravity(0,0, -10)
-
+p.setGravity(0, 0, -10)
+p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, 0)
+p.configureDebugVisualizer(p.COV_ENABLE_SHADOWS, 0)  # 关闭阴影效果，透明的陀螺仪会显示出来，问题不大
 planeId = p.loadURDF("plane.urdf")
-obstacle_id2 = p.loadURDF("cube.urdf", [-6, 35, 0], globalScaling=0.5)
-cubeStartPos = [2, 2, 1]
-cubeStartOrientation = p.getQuaternionFromEuler([0, 0, 0])
+# obstacle_id2 = p.loadURDF("cube.urdf", [-6, 35, 0.5], globalScaling=0.5)
+obstacle_id2 = p.loadURDF("D:\\data\\1-L\\9-bicycle\\bicycle-rl\\bicycle_dengh\\resources\\simplegoal.xml",
+                          basePosition=[0, 0, 0.5])
 obstacle_ids = my_tools.build_maze(physicsClient)
+p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, 1)
 
-# 设置激光雷达参数
-lidar_range = 30.0            # 激光雷达最大探测距离
-num_rays = 1024               # 激光雷达的扫描线数量
-fov = 360                    # 视野范围 (360度)
-angle_step = np.deg2rad(fov / num_rays)  # 每条射线的角度增量
-
-# 计算每条射线的方向
-ray_angles = np.linspace(-np.pi, np.pi, num_rays)
-ray_directions = [[np.cos(angle), np.sin(angle), 0] for angle in ray_angles]
 lidar_origin_offset = [0, 0, 1.0]  # 激光雷达相对于小车的位置偏移量
-ray_to_positions = [[lidar_origin_offset[0] + lidar_range * dir[0],
-                     lidar_origin_offset[1] + lidar_range * dir[1],
-                     lidar_origin_offset[2]] for dir in ray_directions]
+numRays = 1080
+rayLen = 100
 
 x = p.addUserDebugParameter("x", -25, 25, -6)
 y = p.addUserDebugParameter("y", -3, 47, 35)
-
-
-numRays = 1024
-rayLen = 100
+camera_distance_param = p.addUserDebugParameter('camera_distance_param', 2, 60, 30)
+camera_yaw_param = p.addUserDebugParameter('camera_yaw_param', -180, 180, 0)
+camera_pitch_param = p.addUserDebugParameter('camera_pitch_param', -90, 90, -89)
 
 while True:
     p.resetBasePositionAndOrientation(obstacle_id2, [p.readUserDebugParameter(x),
-                                                     p.readUserDebugParameter(y), 0], [0, 0, 0, 1])
+                                                     p.readUserDebugParameter(y), 0.5], [0, 0, 0, 1])
     obstacle_pos = p.getBasePositionAndOrientation(obstacle_id2)[0]
+
+    camera_distance = p.readUserDebugParameter(camera_distance_param)
+    camera_yaw = p.readUserDebugParameter(camera_yaw_param)
+    camera_pitch = p.readUserDebugParameter(camera_pitch_param)
+    p.resetDebugVisualizerCamera(camera_distance, camera_yaw, camera_pitch, [0, 18, 0])
 
     rayFrom = []
     rayTo = []
 
     for i in range(numRays):
-        # rayFrom变成自定义，同时rayTo也要变成自定义
-        rayFrom.append([0, 0, 1])
+        rayFrom.append([obstacle_pos[0] + lidar_origin_offset[0], obstacle_pos[1] + lidar_origin_offset[1],
+                        obstacle_pos[2] + lidar_origin_offset[2]])
         rayTo.append([
-            rayLen * math.sin(2. * math.pi * float(i) / numRays),
-            rayLen * math.cos(2. * math.pi * float(i) / numRays), 1
+            rayFrom[i][0] + rayLen * math.sin(2. * math.pi * float(i) / numRays),
+            rayFrom[i][1] + rayLen * math.cos(2. * math.pi * float(i) / numRays),
+            rayFrom[i][2]
         ])
 
-    lidar_origin = [obstacle_pos[0] + lidar_origin_offset[0], obstacle_pos[1] + lidar_origin_offset[1],
-                    obstacle_pos[2] + lidar_origin_offset[2]]
-
+    # lidar_origin = [obstacle_pos[0] + lidar_origin_offset[0], obstacle_pos[1] + lidar_origin_offset[1],
+    #                 obstacle_pos[2] + lidar_origin_offset[2]]
     # 使用 rayTestBatch 进行批量检测
     # results格式：线数x元组，元组格式(碰撞物体的id, 碰撞物体的link索引, 沿射线的命中率范围 [0,1], 碰撞点的世界坐标, 碰撞点归一化的世界坐标)
     results = p.rayTestBatch(rayFromPositions=rayFrom, rayToPositions=rayTo)
     # 解析检测结果，提取距离信息
-    distances = []
-    for i, result in enumerate(results):
-        if result[0] < 0:
-            # 未检测到碰撞，设为最大探测距离
-            distance = lidar_range
-            # 没有碰撞，绘制最大距离的射线
-            end_position = [lidar_origin[0] + lidar_range * ray_directions[i][0],
-                            lidar_origin[1] + lidar_range * ray_directions[i][1],
-                            lidar_origin[2]]
-            # p.addUserDebugLine(rayFrom[i], rayTo[i], lineColorRGB=[0, 1, 0], lineWidth=1.0)
-        else:
-            # 获取到碰撞点，计算激光雷达到碰撞点的距离
-            hit_position = result[3]
-            distance = np.linalg.norm(np.array(hit_position) - np.array(lidar_origin))
-            # 从 lidar_origin 到碰撞点画线
-            # p.addUserDebugLine(rayFrom[i], hit_position, lineColorRGB=[1, 0, 0], lineWidth=1.0)
-        distances.append(distance)
+    # distances = []
+    # for i, result in enumerate(results):
+    #     if result[0] < 0:
+    #         # 未检测到碰撞，设为最大探测距离
+    #         distance = lidar_range
+    #         # end_position = [lidar_origin[0] + lidar_range * ray_directions[i][0],
+    #         #                 lidar_origin[1] + lidar_range * ray_directions[i][1],
+    #         #                 lidar_origin[2]]
+    #         # p.addUserDebugLine(rayFrom[i], rayTo[i], lineColorRGB=[0, 1, 0], lineWidth=1.0)
+    #     else:
+    #         # 获取到碰撞点，计算激光雷达到碰撞点的距离
+    #         hit_position = result[3]
+    #         distance = np.linalg.norm(np.array(hit_position) - np.array(lidar_origin))
+    #         # p.addUserDebugLine(rayFrom[i], hit_position, lineColorRGB=[1, 0, 0], lineWidth=1.0)
+    #     distances.append(distance)
 
     if keyboard.is_pressed('q'):
         # 创建雷达图像
@@ -126,4 +120,3 @@ while True:
 
     p.stepSimulation()
     time.sleep(1. / 24.)
-

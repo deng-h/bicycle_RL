@@ -7,6 +7,7 @@ import pybullet_data
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 from stable_baselines3.common.env_util import make_vec_env
 from bicycle_dengh.resources.bicycle_camera import BicycleCamera
+from bicycle_dengh.resources.bicycle_lidar import BicycleLidar
 from bicycle_dengh.resources.goal import Goal
 import math
 from utils import my_tools
@@ -54,7 +55,7 @@ class BicycleMazeEnv(gymnasium.Env):
 
         # 机器人与目标点距离, 机器人与目标点的角度, 翻滚角, 翻滚角角速度, 车把角度, 车把角速度, 后轮速度, 飞轮速度
         self.observation_space = gymnasium.spaces.Dict({
-            "image": gymnasium.spaces.box.Box(low=0, high=255, shape=(3, 128, 128), dtype=np.float32),
+            "image": gymnasium.spaces.box.Box(low=0, high=255, shape=(5, 128, 128), dtype=np.float32),
             "obs": gymnasium.spaces.box.Box(
                 low=np.array([0.0, -math.pi, -math.pi, -15.0, -1.57, -15.0, -10.0, -self.max_flywheel_vel]),
                 high=np.array([100.0, math.pi, math.pi, 15.0, 1.57, 15.0, 10.0, self.max_flywheel_vel]),
