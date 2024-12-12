@@ -68,8 +68,11 @@ camera_pitch_param = p.addUserDebugParameter('camera_pitch_param', -90, 90, -89)
 
 while True:
     p.resetBasePositionAndOrientation(obstacle_id2, [p.readUserDebugParameter(x),
-                                                     p.readUserDebugParameter(y), 0.5], [0, 0, 0, 1])
+                                                     p.readUserDebugParameter(y), 0.5], p.getQuaternionFromEuler([0, 0, 0]))
     obstacle_pos = p.getBasePositionAndOrientation(obstacle_id2)[0]
+    obstacle_ori = p.getBasePositionAndOrientation(obstacle_id2)[1]
+    ang = p.getEulerFromQuaternion(obstacle_ori)  # Assuming this method exists
+    yaw = ang[2]
 
     camera_distance = p.readUserDebugParameter(camera_distance_param)
     camera_yaw = p.readUserDebugParameter(camera_yaw_param)
@@ -80,11 +83,19 @@ while True:
     rayTo = []
 
     for i in range(numRays):
+        # 计算每个射线的角度，射线从yaw-90°开始到yaw+90°结束
+        angle = yaw - math.pi / 2 + (math.pi * float(i) / (numRays - 1))  # 角度范围从yaw-90°到yaw+90°
         rayFrom.append([obstacle_pos[0] + lidar_origin_offset[0], obstacle_pos[1] + lidar_origin_offset[1],
                         obstacle_pos[2] + lidar_origin_offset[2]])
+        # rayTo.append([
+        #     rayFrom[i][0] + rayLen * math.sin(2. * math.pi * float(i) / numRays),
+        #     rayFrom[i][1] + rayLen * math.cos(2. * math.pi * float(i) / numRays),
+        #     rayFrom[i][2]
+        # ])
+
         rayTo.append([
-            rayFrom[i][0] + rayLen * math.sin(2. * math.pi * float(i) / numRays),
-            rayFrom[i][1] + rayLen * math.cos(2. * math.pi * float(i) / numRays),
+            rayFrom[i][0] + rayLen * math.cos(angle),
+            rayFrom[i][1] + rayLen * math.sin(angle),
             rayFrom[i][2]
         ])
 

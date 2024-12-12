@@ -12,20 +12,6 @@ from utils import my_tools
 from stable_baselines3.common.env_checker import check_env
 
 
-def calculate_roll_angle_rwd(roll_angle):
-    if math.fabs(roll_angle) >= 0.26:
-        return True, -5.0
-
-    # 计算奖励值，倾角越小，奖励越大
-    # 奖励值范围从0.5到-0.5，倾角越小奖励值越接近0.5
-    reward = 0.5 - (math.fabs(roll_angle) / 0.26) * 1.0  # 将15度映射到奖励范围[0.5, -0.5]
-
-    # 限制奖励值在范围[-0.5, 0.5]之间
-    reward = max(-0.5, min(0.5, reward))
-
-    return False, reward
-
-
 class BicycleMazeLidarEnv(gymnasium.Env):
     metadata = {'render_modes': ['rgb_array']}
 
@@ -34,32 +20,32 @@ class BicycleMazeLidarEnv(gymnasium.Env):
         self.terminated = False
         self.truncated = False
         self.gui = gui
-        self.max_flywheel_vel = 120.0
+        self.max_flywheel_vel = 120.
         self.prev_goal_id = None
         self.collision_times = 0
-        self.prev_dist_to_goal = 0.0
-        self.action_space = gymnasium.spaces.box.Box(low=-1.0, high=1.0, shape=(3,), dtype=np.float32)
+        self.prev_dist_to_goal = 0.
+        self.last_flywheel_vel = 0.
+        self.action_space = gymnasium.spaces.box.Box(low=-1., high=1., shape=(3,), dtype=np.float32)
 
         # action_space[车把角度，前后轮速度, 飞轮速度]
         self.actual_action_space = gymnasium.spaces.box.Box(
-            low=np.array([-1.57, 0.0, -self.max_flywheel_vel]),
-            high=np.array([1.57, 5.0, self.max_flywheel_vel]),
+            low=np.array([-1.57, 0., -self.max_flywheel_vel]),
+            high=np.array([1.57, 5., self.max_flywheel_vel]),
             shape=(3,),
             dtype=np.float32)
 
         # Retrieve the max/min values，环境内部对action_space做了归一化
         self.action_low, self.action_high = self.actual_action_space.low, self.actual_action_space.high
 
-        # x坐标, y坐标, 偏航角, 翻滚角, 翻滚角角速度, 车把角度, 车把角速度, 后轮速度, 飞轮速度, 车与目标点距离, 车与目标点角度
+        # 翻滚角, 车把角度, 后轮速度, 飞轮转速, 车与目标点距离, 车与目标点角度
         self.observation_space = gymnasium.spaces.Dict({
-            "lidar": gymnasium.spaces.box.Box(low=0, high=200, shape=(1024,), dtype=np.float32),
+            "lidar": gymnasium.spaces.box.Box(low=0., high=200., shape=(800,), dtype=np.float32),
             "obs": gymnasium.spaces.box.Box(
-                low=np.array([-30, -5, -math.pi, -math.pi, -15.0, -1.57, -15.0, -10.0, -self.max_flywheel_vel, 0.0, -math.pi]),
-                high=np.array([30, 50, math.pi, math.pi, 15.0, 1.57, 15.0, 10.0, self.max_flywheel_vel, 100.0, math.pi]),
-                shape=(11,),
+                low=np.array([-math.pi, -1.57, 0., -self.max_flywheel_vel, 0., -math.pi]),
+                high=np.array([math.pi, 1.57, 10., self.max_flywheel_vel, 100., math.pi]),
+                shape=(6,),
                 dtype=np.float32
             ),
-            "last_action": gymnasium.spaces.box.Box(low=-1.0, high=1.0, shape=(3,), dtype=np.float32)
         })
 
         if self.gui:
@@ -82,19 +68,18 @@ class BicycleMazeLidarEnv(gymnasium.Env):
         p.loadURDF("plane.urdf", physicsClientId=self.client)
         p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, 1)
         p.setGravity(0, 0, -10, physicsClientId=self.client)
-        # p.setTimeStep(1. / 24., self.client)
-        p.setRealTimeSimulation(1)
+        p.setTimeStep(0.01, self.client)  # 1. / 24.
 
     def step(self, action):
         # Rescale action from [-1, 1] to original [low, high] interval
         rescaled_action = self._rescale_action(action)
         self.bicycle.apply_action(rescaled_action)
-        # p.stepSimulation(physicsClientId=self.client)
+        p.stepSimulation(physicsClientId=self.client)
         obs = self.bicycle.get_observation()
 
         distance_to_goal = np.linalg.norm(np.array([obs[0], obs[1]]) - np.array(self.goal))
         angle_to_target = my_tools.calculate_angle_to_target(obs[0], obs[1], obs[2], self.goal[0], self.goal[1])
-        obs_ = np.array(obs[:9] + [distance_to_goal, angle_to_target], dtype=np.float32)
+        obs_ = np.array([obs[3], obs[4], obs[5], obs[6], distance_to_goal, angle_to_target], dtype=np.float32)
 
         if self.gui:
             bike_pos, _ = p.getBasePositionAndOrientation(self.bicycle.bicycleId, physicsClientId=self.client)
@@ -104,10 +89,10 @@ class BicycleMazeLidarEnv(gymnasium.Env):
             p.resetDebugVisualizerCamera(camera_distance, camera_yaw, camera_pitch, bike_pos)
 
         # 计算奖励值
-        reward = self._reward_fun(obs_, is_collision=obs[10])
+        reward = self._reward_fun(obs_, obs[7], is_collision=obs[8])
         self.prev_dist_to_goal = distance_to_goal
 
-        return {"lidar": obs[9], "obs": obs_, "last_action": action}, reward, self.terminated, self.truncated, {}
+        return {"lidar": obs[7], "obs": obs_}, reward, self.terminated, self.truncated, {}
 
     def reset(self, seed=None, options=None):
         self.terminated = False
@@ -121,39 +106,56 @@ class BicycleMazeLidarEnv(gymnasium.Env):
             p.removeBody(self.prev_goal_id, self.client)
         self.prev_goal_id = goal.id
 
-        # 机器人位置与目标位置差x, 机器人位置与目标位置差y, 偏航角, 翻滚角, 翻滚角角速度, 车把角度, 车把角速度, 后轮速度, 飞轮速度, 深度图
         obs = self.bicycle.reset()
         distance_to_goal = np.linalg.norm(np.array([obs[0], obs[1]]) - np.array(self.goal))
         self.prev_dist_to_goal = distance_to_goal
         angle_to_target = my_tools.calculate_angle_to_target(obs[0], obs[1], obs[2], self.goal[0], self.goal[1])
 
-        obs_ = np.array(obs[:9] + [distance_to_goal, angle_to_target], dtype=np.float32)
-        last_action = np.zeros(3, np.float32)
+        obs_ = np.array([obs[3], obs[4], obs[5], obs[6], distance_to_goal, angle_to_target], dtype=np.float32)
 
-        return {"lidar": obs[9], "obs": obs_, "last_action": last_action}, {}
+        return {"lidar": obs[7], "obs": obs_}, {}
 
-    def _reward_fun(self, obs, is_collision):
+    def _reward_fun(self, obs, lidar_info, is_collision):
         self.terminated = False
         self.truncated = False
-
         # action [车把角度，前后轮速度, 飞轮速度]
-        # obs x坐标, y坐标, 偏航角, 翻滚角, 翻滚角角速度, 车把角度, 车把角速度, 后轮速度, 飞轮速度, 车与目标点距离, 车与目标点角度
-        roll_angle = obs[3]
-        bicycle_vel = obs[7]
-        distance_to_goal = obs[9]
+        # obs [翻滚角, 车把角度, 后轮速度, 飞轮速度, 车与目标点距离, 车与目标点角度]
+        roll_angle = obs[0]
+        bicycle_vel = obs[2]
+        distance_to_goal = obs[4]
 
-        self.terminated, balance_rwd = calculate_roll_angle_rwd(roll_angle)
+        """平衡奖励"""
+        balance_rwd = 0.0
+        if math.fabs(roll_angle) >= 0.26:
+            balance_rwd = -5.0
+            self.terminated = True
+            return balance_rwd
 
-        #  到达目标点奖励
+        # 计算奖励值，倾角越小，奖励越大，奖励值范围从0.5到-0.5，倾角越小奖励值越接近0.5
+        balance_rwd = 0.5 - (math.fabs(roll_angle) / 0.26) * 1.0  # 将15度映射到奖励范围[0.5, -0.5]
+        # 限制奖励值在范围[-0.5, 0.5]之间
+        balance_rwd = max(-0.5, min(0.5, balance_rwd))
+
+        """目标点奖励"""
         goal_rwd = 0.0
         if math.fabs(distance_to_goal) <= 0.5:
             self.terminated = True
             goal_rwd = 100.0
 
-        # 静止惩罚
+        """静止惩罚"""
         still_penalty = 0.0
         if math.fabs(bicycle_vel) <= 0.2:
             still_penalty = -1.0
+
+        """避障奖励"""
+        avoid_obstacle_rwd = 0.0
+        if is_collision:
+            avoid_obstacle_rwd = -3.0
+        else:
+            if min(lidar_info) < 0.5:
+                avoid_obstacle_rwd = -0.5
+            else:
+                avoid_obstacle_rwd = 0.5
 
         # 距离目标点奖励
         distance_rwd = 0.0
@@ -163,17 +165,9 @@ class BicycleMazeLidarEnv(gymnasium.Env):
                 # 没到达终点，但又不再靠近终点时
                 distance_rwd = -5.0
             else:
-                distance_rwd = diff_dist_to_goal * 1.2
+                distance_rwd = diff_dist_to_goal * 1.5
 
-        collision_penalty = 0.0
-        if is_collision:
-            self.collision_times += 1
-            collision_penalty = -2.0
-            if self.collision_times > 60:
-                self.terminated = True
-                collision_penalty = -100.0
-
-        total_reward = goal_rwd + distance_rwd + balance_rwd + still_penalty + collision_penalty
+        total_reward = balance_rwd + goal_rwd + still_penalty + distance_rwd
 
         return total_reward
 
@@ -213,10 +207,10 @@ if __name__ == '__main__':
     obs, infos = env.reset()
     for i in range(4000):
         action = np.array([0.0, -1.0, 0.0], np.float32)
-        _, _, terminated, truncated, infos = env.step(action)
+        obs, _, terminated, truncated, infos = env.step(action)
 
         # if terminated or truncated:
         #     obs, _ = env.reset()
-        time.sleep(1. / 24.)
+        time.sleep(10000)
 
     env.close()

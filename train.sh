@@ -7,16 +7,16 @@ python train.py \
 --algo ppo \
 --env BicycleMazeLidar-v0 \
 --conf-file ppo_config \
---tensorboard-log ./logs/tensorboard/ \
 --vec-env subproc \
 --progress
+#--tensorboard-log ./logs/tensorboard/
 
 
 #python train.py \
 #--algo ppo \
 #--env BicycleMazeLidar-v0 \
 #--conf-file ppo_config \
-#--tensorboard-log ./logs/tensorboard/ \
 #--vec-env subproc \
 #--progress \
-#--trained-agent ./logs/ppo/BicycleMazeLidar-v0_2/best_model.zip
+#--trained-agent ./logs/ppo/BicycleMazeLidar-v0_1/best_model.zip
+#--tensorboard-log ./logs/tensorboard/

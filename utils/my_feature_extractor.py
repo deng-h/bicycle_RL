@@ -103,7 +103,14 @@ class MyFeatureExtractorLidar(BaseFeaturesExtractor):
         super().__init__(observation_space, features_dim=256+64)
 
         self.lidar_model = nn.Sequential(
-            nn.Linear(1024, 256),
+            nn.Conv1d(in_channels=1, out_channels=16, kernel_size=5, stride=1, padding=2),
+            nn.ReLU(),
+            nn.Conv1d(in_channels=16, out_channels=32, kernel_size=5, stride=2, padding=2),  # 下采样
+            nn.ReLU(),
+            nn.Conv1d(in_channels=32, out_channels=64, kernel_size=3, stride=2, padding=1),  # 进一步下采样
+            nn.ReLU(),
+            nn.Flatten(),
+            nn.Linear(64 * 200, 256),  # 假设经过卷积后特征图宽度为200
             nn.ReLU(),
             nn.Linear(256, 256),
             nn.ReLU(),
@@ -111,11 +118,17 @@ class MyFeatureExtractorLidar(BaseFeaturesExtractor):
 
         # 定义状态特征提取器
         self.state_model = nn.Sequential(
-            nn.Linear(11, 64),
+            nn.Linear(6, 64),
         )
 
     def forward(self, observations) -> th.Tensor:
         lidar_obs = observations["lidar"]
+        # lidar_obs: (batch_size, 800)
+        if isinstance(lidar_obs, th.Tensor):
+            lidar_obs = lidar_obs.clone().detach().float()
+        else:
+            lidar_obs = th.tensor(lidar_obs, dtype=th.float32)  # 输入非张量时转换
+        lidar_obs = lidar_obs.unsqueeze(1)  # 添加通道维度，变为 (batch_size, 1, 800)
         obs = observations["obs"]
         # last_action = observations["last_action"]
 

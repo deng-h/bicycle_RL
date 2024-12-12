@@ -109,11 +109,13 @@ def generate_goal():
 
 def build_maze(client):
     # Load maze boundary
-    wall_id = p.loadURDF(boundary_urdf,
-                         basePosition=[0.0, -3.0, 1.0],
-                         baseOrientation=p.getQuaternionFromEuler([0, 0, 0]),
-                         useFixedBase=True,
-                         physicsClientId=client)
+    # wall_id = p.loadURDF(boundary_urdf,
+    #                      basePosition=[0.0, -3.0, 1.0],
+    #                      baseOrientation=p.getQuaternionFromEuler([0, 0, 0]),
+    #                      useFixedBase=True,
+    #                      physicsClientId=client)
+
+    obstacle_ids = []
 
     with open(maze_config, 'r') as file:
         data = json.load(file)
@@ -124,7 +126,6 @@ def build_maze(client):
     visual_shape = p.createVisualShape(p.GEOM_BOX, halfExtents=[0.5, 0.5, 1.0],
                                        rgbaColor=[0.92, 0.94, 0.94, 1])
 
-    obstacle_ids = [wall_id]
     # 遍历迷宫布局
     for y, row in enumerate(maze_layout):
         flipped_y = len(maze_layout) - y - 1  # 翻转y坐标
