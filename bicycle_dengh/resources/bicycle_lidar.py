@@ -69,10 +69,9 @@ class BicycleLidar:
         self.gyros_link = 6
         self.MAX_FORCE = 2000
 
-        self.distance_array_buffer = []
         self.max_buffer_size = 20
         self.number_of_frames = 3
-        self.num_rays = 800
+        self.num_rays = 360
         self.ray_len = 100
         self.lidar_origin_offset = [0., 0., .7]  # 激光雷达相对于小车的位置偏移量
         self.initial_joint_positions = None
@@ -93,6 +92,8 @@ class BicycleLidar:
         #     joint_info = p.getJointInfo(self.bicycleId, i, self.client)
         #     print("jointIndex: ", joint_info[0], "jointName: ", joint_info[1])
         self.obstacle_ids = obstacle_ids
+        self.sin_array = [self.ray_len * math.sin(2. * math.pi * float(i) / self.num_rays) for i in range(self.num_rays)]
+        self.cos_array = [self.ray_len * math.cos(2. * math.pi * float(i) / self.num_rays) for i in range(self.num_rays)]
 
     def apply_action(self, action):
         """
@@ -149,11 +150,11 @@ class BicycleLidar:
         roll_angle = link_ang[0]
         yaw_angle = link_ang[2]
         gyros_link_angular_vel = gyros_link_state[7]
-        # roll_angle_vel = gyros_link_angular_vel[0]
+        roll_angle_vel = gyros_link_angular_vel[0]
 
         handlebar_joint_state = p.getJointState(self.bicycleId, self.handlebar_joint, self.client)
         handlebar_joint_ang = handlebar_joint_state[0]
-        # handlebar_joint_vel = handlebar_joint_state[1]
+        handlebar_joint_vel = handlebar_joint_state[1]
 
         back_wheel_joint_state = p.getJointState(self.bicycleId, self.back_wheel_joint, self.client)
         back_wheel_joint_vel = back_wheel_joint_state[1]
@@ -162,27 +163,32 @@ class BicycleLidar:
         # fly_wheel_joint_ang = fly_wheel_joint_state[0] % (2 * math.pi)
         fly_wheel_joint_vel = fly_wheel_joint_state[1]
 
-        lidar_info = self._get_lidar_info2(pos)
+        lidar_info = self._get_lidar_info3(pos)
         is_collided = self._is_collided()
-
-        # observation = [pos[0], pos[1],
-        #                yaw_angle,
-        #                roll_angle, roll_angle_vel,
-        #                handlebar_joint_ang, handlebar_joint_vel,
-        #                back_wheel_joint_vel, fly_wheel_joint_vel,
-        #                lidar_info, is_collided
-        #                ]
 
         observation = [pos[0],
                        pos[1],
                        yaw_angle,
                        roll_angle,
+                       roll_angle_vel,
                        handlebar_joint_ang,
+                       handlebar_joint_vel,
                        back_wheel_joint_vel,
                        fly_wheel_joint_vel,
                        lidar_info,
                        is_collided
                        ]
+
+        # observation = [pos[0],
+        #                pos[1],
+        #                yaw_angle,
+        #                roll_angle,
+        #                handlebar_joint_ang,
+        #                back_wheel_joint_vel,
+        #                fly_wheel_joint_vel,
+        #                lidar_info,
+        #                is_collided
+        #                ]
 
         return observation
 
@@ -242,8 +248,8 @@ class BicycleLidar:
         for i in range(self.num_rays):
             rayFrom.append([ray_start_x, ray_start_y, ray_start_z])
             rayTo.append([
-                rayFrom[i][0] + self.ray_len * math.sin(2. * math.pi * float(i) / self.num_rays),
-                rayFrom[i][1] + self.ray_len * math.cos(2. * math.pi * float(i) / self.num_rays),
+                rayFrom[i][0] + self.sin_array[i],
+                rayFrom[i][1] + self.cos_array[i],
                 rayFrom[i][2]])
 
         results = p.rayTestBatch(rayFromPositions=rayFrom, rayToPositions=rayTo)
@@ -271,36 +277,36 @@ class BicycleLidar:
 
         return np.array(distance, dtype=np.float32)
 
-    def _get_lidar_info3(self, bicycle_pos, bicycle_ori):
-        # Convert quaternion orientation to Euler angles (yaw, pitch, roll)
-        ang = p.getEulerFromQuaternion(bicycle_ori)
-        yaw = ang[2]
+    def _get_lidar_info3(self, bicycle_pos):
+        # 计算射线起点的坐标
+        ray_start = np.array(bicycle_pos) + np.array(self.lidar_origin_offset)
 
-        # Only scan the front 180 degrees (from -90° to +90° of yaw)
-        rayFrom, rayTo = [], []
-        for i in range(self.num_rays):
-            # 计算每个射线的角度，射线从yaw-90°开始到yaw+90°结束
-            angle = yaw - math.pi / 2 + (math.pi * float(i) / (self.num_rays - 1))  # 角度范围从yaw-90°到yaw+90°
+        # 创建射线起点和终点的数组
+        rayFrom = np.tile(ray_start, (self.num_rays, 1))
+        rayTo = rayFrom + np.column_stack((self.sin_array, self.cos_array, np.zeros(self.num_rays)))
 
-            # Calculate the starting position of the ray (lidar origin offset)
-            rayFrom.append([
-                bicycle_pos[0] + self.lidar_origin_offset[0],
-                bicycle_pos[1] + self.lidar_origin_offset[1],
-                bicycle_pos[2] + self.lidar_origin_offset[2]
-            ])
+        results = p.rayTestBatch(rayFromPositions=rayFrom.tolist(), rayToPositions=rayTo.tolist())
 
-            # Calculate the direction of the ray (180° sweep)
-            rayTo.append([
-                rayFrom[i][0] + self.ray_len * math.cos(angle),
-                rayFrom[i][1] + self.ray_len * math.sin(angle),
-                rayFrom[i][2]
-            ])
+        # for i, result in enumerate(results):
+        #     if result[0] < 0:
+        #         p.addUserDebugLine(rayFrom[i], rayTo[i], lineColorRGB=[0, 1, 0], lineWidth=1.0)
+        #     else:
+        #         hit_position = result[3]
+        #         # 计算击中点到射线起点的距离
+        #         distance = ((hit_position[0] - rayFrom[i][0]) ** 2 +
+        #                     (hit_position[1] - rayFrom[i][1]) ** 2 +
+        #                     (hit_position[2] - rayFrom[i][2]) ** 2) ** 0.5
+        #         # 在击中点附近显示距离
+        #         text_position = (hit_position[0], hit_position[1], hit_position[2] + 0.1)  # 提高文本显示位置
+        #         p.addUserDebugText(f"{distance:.2f} m", text_position, textColorRGB=[1, 1, 1], textSize=1.0)
+        #         # 显示击中点的射线
+        #         p.addUserDebugLine(rayFrom[i], hit_position, lineColorRGB=[1, 0, 0], lineWidth=1.0)
 
-        results = p.rayTestBatch(rayFromPositions=rayFrom, rayToPositions=rayTo)
+        # 计算距离
+        distance = np.array([
+            self.ray_len if res[0] < 0 else np.linalg.norm(np.array(res[3]) - ray_start)
+            for res in results
+        ], dtype=np.float32)
 
-        distance = [
-            np.linalg.norm(np.array([result[3][0], result[3][1]]) - np.array([bicycle_pos[0], bicycle_pos[1]]))
-            for result in results
-        ]
+        return distance
 
-        return np.array(distance, dtype=np.float32)

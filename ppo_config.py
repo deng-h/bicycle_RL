@@ -28,6 +28,6 @@ hyperparams = {
             net_arch=dict(pi=[512, 512], vf=[512, 512])
         ),
         # monitor_kwargs=dict(info_keywords=('flywheel_vel',))
-        env_wrapper=[{"gymnasium.wrappers.TimeLimit": {"max_episode_steps": 5000}}],
+        env_wrapper=[{"gymnasium.wrappers.TimeLimit": {"max_episode_steps": 10000}}],
     )
 }
