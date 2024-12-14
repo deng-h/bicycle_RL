@@ -5,7 +5,7 @@ echo "开始执行"
 
 python train.py \
 --algo ppo \
---env BicycleMazeLidar-v0 \
+--env BicycleMazeLidar2-v0 \
 --conf-file ppo_config \
 --vec-env subproc \
 --progress

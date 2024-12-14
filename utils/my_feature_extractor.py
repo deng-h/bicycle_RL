@@ -97,29 +97,31 @@ class MyFeatureExtractor2(BaseFeaturesExtractor):
 
         return combined_features
 
+
 class MyFeatureExtractorLidar(BaseFeaturesExtractor):
     def __init__(self, observation_space: gym.spaces.Dict):
         # 输入给net_arch网络的特征维度=图像特征维度+自行车的状态向量维度
-        super().__init__(observation_space, features_dim=248+8)
+        super().__init__(observation_space, features_dim=96+32)
 
         self.lidar_model = nn.Sequential(
-            nn.Conv1d(in_channels=1, out_channels=16, kernel_size=5, stride=2, padding=2),  # 下采样
+            nn.Conv1d(in_channels=1, out_channels=4, kernel_size=5, stride=2, padding=2),  # 下采样
             nn.ReLU(),
-            nn.Conv1d(in_channels=16, out_channels=32, kernel_size=5, stride=2, padding=2),  # 下采样
+            nn.Conv1d(in_channels=4, out_channels=16, kernel_size=5, stride=2, padding=2),  # 下采样
             nn.ReLU(),
-            nn.Conv1d(in_channels=32, out_channels=64, kernel_size=3, stride=2, padding=1),  # 进一步下采样
+            nn.Conv1d(in_channels=16, out_channels=32, kernel_size=3, stride=2, padding=1),  # 进一步下采样
             nn.ReLU(),
             nn.Flatten(),
-            nn.Linear(64 * 45, 248),
+            nn.Linear(32 * 45, 96),
             nn.ReLU(),
-            nn.Linear(248, 248),
+            nn.Linear(96, 96),
             nn.ReLU(),
         )
 
         # 定义状态特征提取器
-        # self.state_model = nn.Sequential(
-        #     nn.Linear(6, 32),
-        # )
+        self.state_model = nn.Sequential(
+            nn.Linear(8, 32),
+            nn.ReLU(),
+        )
 
     def forward(self, observations) -> th.Tensor:
         lidar_obs = observations["lidar"]
@@ -128,6 +130,6 @@ class MyFeatureExtractorLidar(BaseFeaturesExtractor):
         lidar_output = self.lidar_model(lidar_obs)  # 通过图像特征提取器处理图像特征
 
         obs = observations["obs"]
-        # state_output = self.state_model(obs)
-        combined_features = th.cat([lidar_output, obs], dim=1)  # 拼接图像特征和状态特征
+        state_output = self.state_model(obs)
+        combined_features = th.cat([lidar_output, state_output], dim=1)  # 拼接图像特征和状态特征
         return combined_features

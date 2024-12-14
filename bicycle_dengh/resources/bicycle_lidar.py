@@ -136,6 +136,47 @@ class BicycleLidar:
                                 force=self.MAX_FORCE,
                                 physicsClientId=self.client)
 
+    def apply_action2(self, RL_action, PID_action):
+        """
+        Apply the action to the bicycle.控制分为两部分，前后轮速度和车把位置是RL控制，飞轮是PID控制。
+
+        Parameters:
+        RL_action[0]控制车把位置
+        RL_action[1]控制前后轮速度
+        PID_action[0]控制飞轮
+        """
+        # action[0] = frame_to_handlebar 车把位置控制
+        p.setJointMotorControl2(bodyUniqueId=self.bicycleId,
+                                jointIndex=self.handlebar_joint,
+                                controlMode=p.POSITION_CONTROL,
+                                targetPosition=RL_action[0],
+                                force=self.MAX_FORCE,
+                                physicsClientId=self.client)
+
+        # action[1] = handlebar_to_frontwheel 前轮速度控制
+        p.setJointMotorControl2(bodyUniqueId=self.bicycleId,
+                                jointIndex=self.front_wheel_joint,
+                                controlMode=p.VELOCITY_CONTROL,
+                                targetVelocity=RL_action[1],
+                                force=self.MAX_FORCE,
+                                physicsClientId=self.client)
+
+        # action[1] = frame_to_backwheel 后轮速度控制
+        p.setJointMotorControl2(bodyUniqueId=self.bicycleId,
+                                jointIndex=self.back_wheel_joint,
+                                controlMode=p.VELOCITY_CONTROL,
+                                targetVelocity=RL_action[1],
+                                force=self.MAX_FORCE,
+                                physicsClientId=self.client)
+
+        # action[2] = flyWheelLink_to_flyWheel 飞轮控制
+        p.setJointMotorControl2(bodyUniqueId=self.bicycleId,
+                                jointIndex=self.fly_wheel_joint,
+                                controlMode=p.VELOCITY_CONTROL,
+                                targetVelocity=PID_action,
+                                force=self.MAX_FORCE,
+                                physicsClientId=self.client)
+
     def get_observation(self):
         # Get the position位置 and orientation方向(姿态) of the bicycle in the simulation
         pos, ori = p.getBasePositionAndOrientation(bodyUniqueId=self.bicycleId, physicsClientId=self.client)
@@ -179,17 +220,6 @@ class BicycleLidar:
                        is_collided
                        ]
 
-        # observation = [pos[0],
-        #                pos[1],
-        #                yaw_angle,
-        #                roll_angle,
-        #                handlebar_joint_ang,
-        #                back_wheel_joint_vel,
-        #                fly_wheel_joint_vel,
-        #                lidar_info,
-        #                is_collided
-        #                ]
-
         return observation
 
     def reset(self):
@@ -199,7 +229,6 @@ class BicycleLidar:
         p.resetJointState(self.bicycleId, self.fly_wheel_joint, 0, 0, self.client)
         p.resetJointState(self.bicycleId, self.front_wheel_joint, 0, 0, self.client)
         p.resetJointState(self.bicycleId, self.back_wheel_joint, 0, 0, self.client)
-        # self.image_stack = []  # 图像清空
         return self.get_observation()
 
     """
@@ -259,21 +288,6 @@ class BicycleLidar:
                 distance.append(self.ray_len)
             else:
                 distance.append(np.linalg.norm(np.array(res[3]) - np.array([ray_start_x, ray_start_y, ray_start_z])))
-
-        # for i, result in enumerate(results):
-        #     if result[0] < 0:
-        #         p.addUserDebugLine(rayFrom[i], rayTo[i], lineColorRGB=[0, 1, 0], lineWidth=1.0)
-        #     else:
-        #         hit_position = result[3]
-        #         # 计算击中点到射线起点的距离
-        #         distance = ((hit_position[0] - rayFrom[i][0]) ** 2 +
-        #                     (hit_position[1] - rayFrom[i][1]) ** 2 +
-        #                     (hit_position[2] - rayFrom[i][2]) ** 2) ** 0.5
-        #         # 在击中点附近显示距离
-        #         text_position = (hit_position[0], hit_position[1], hit_position[2] + 0.1)  # 提高文本显示位置
-        #         p.addUserDebugText(f"{distance:.2f} m", text_position, textColorRGB=[1, 1, 1], textSize=1.0)
-        #         # 显示击中点的射线
-        #         p.addUserDebugLine(rayFrom[i], hit_position, lineColorRGB=[1, 0, 0], lineWidth=1.0)
 
         return np.array(distance, dtype=np.float32)
 

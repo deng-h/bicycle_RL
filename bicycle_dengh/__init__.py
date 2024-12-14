@@ -27,3 +27,8 @@ register(
     id="BicycleMazeLidar-v0",
     entry_point='bicycle_dengh.envs:BicycleMazeLidarEnv'
 )
+
+register(
+    id="BicycleMazeLidar2-v0",
+    entry_point='bicycle_dengh.envs:BicycleMazeLidarEnv2'
+)

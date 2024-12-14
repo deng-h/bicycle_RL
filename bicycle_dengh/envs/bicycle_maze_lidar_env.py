@@ -39,8 +39,8 @@ class BicycleMazeLidarEnv(gymnasium.Env):
         self.observation_space = gymnasium.spaces.Dict({
             "lidar": gymnasium.spaces.box.Box(low=0., high=150., shape=(360,), dtype=np.float32),
             "obs": gymnasium.spaces.box.Box(
-                low=np.array([-math.pi, -15., -1.57, -15., -10., -self.max_flywheel_vel, -100., -math.pi]),
-                high=np.array([math.pi, 15., 1.57, 15., 10., self.max_flywheel_vel, 100., math.pi]),
+                low=np.array([-math.pi, -50., -1.57, -50., -10., -self.max_flywheel_vel, -100., -math.pi]),
+                high=np.array([math.pi, 50., 1.57, 50., 10., self.max_flywheel_vel, 100., math.pi]),
                 shape=(8,),
                 dtype=np.float32
             ),
@@ -63,7 +63,10 @@ class BicycleMazeLidarEnv(gymnasium.Env):
         obstacle_ids = my_tools.build_maze(self.client)
         self.bicycle = BicycleLidar(self.client, self.max_flywheel_vel, obstacle_ids)
         p.setAdditionalSearchPath(pybullet_data.getDataPath())
-        p.loadURDF("plane.urdf", physicsClientId=self.client)
+        plane_id = p.loadURDF("plane.urdf", physicsClientId=self.client)
+        friction_coefficient = 0.5  # 摩擦系数
+        # 更改地面物体的动力学参数，包括摩擦系数
+        p.changeDynamics(plane_id, -1, lateralFriction=friction_coefficient)  # -1表示所有部件
         p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, 1)
         p.setGravity(0, 0, -10, physicsClientId=self.client)
         # p.setTimeStep(1. / 24., self.client)
@@ -125,15 +128,14 @@ class BicycleMazeLidarEnv(gymnasium.Env):
 
         """平衡奖励"""
         balance_rwd = 0.0
-        if math.fabs(roll_angle) >= 0.26:
-            balance_rwd = -5.0
+        if math.fabs(roll_angle) >= 0.35:
             self.terminated = True
-            return balance_rwd
-
-        # 计算奖励值，倾角越小，奖励越大，奖励值范围从0.5到-0.5，倾角越小奖励值越接近0.5
-        balance_rwd = 0.5 - (math.fabs(roll_angle) / 0.26) * 1.0  # 将15度映射到奖励范围[0.5, -0.5]
-        # 限制奖励值在范围[-0.5, 0.5]之间
-        balance_rwd = max(-0.5, min(0.5, balance_rwd))
+            balance_rwd = -10.0
+        else:
+            # 计算奖励值，倾角越小，奖励越大
+            balance_rwd = 1.0 - (math.fabs(roll_angle) / 0.35) * 2.0
+            # 限制奖励值在范围[-max_reward, max_reward]之间
+            balance_rwd = max(-1.0, min(1.0, balance_rwd))
 
         """目标点奖励"""
         goal_rwd = 0.0
@@ -185,20 +187,37 @@ class BicycleMazeLidarEnv(gymnasium.Env):
         return self.action_low + (0.5 * (scaled_action + 1.0) * (self.action_high - self.action_low))
 
 
-# 非向量化的环境用于验证自定义环境的正确性
-def no_vec_env():
-    env = gymnasium.make('BicycleMaze-v0')
-    # 环境内部对action_space做了归一化，所以这里不需要再做归一化了
-    # min_action = np.array([-1.0, -1.0, -1.0], dtype=np.float32)
-    # max_action = np.array([1.0, 1.0, 1.0], dtype=np.float32)
-    # env = RescaleAction(env, min_action=min_action, max_action=max_action)
-    check_env(env, warn=True)
+def check_observation_space(observation, observation_space):
+    """
+    检查 step() 返回的 observation 是否在 observation_space 范围内。
+    """
+    errors = []
+    for key, space in observation_space.spaces.items():
+        if isinstance(space, gymnasium.spaces.Box):
+            obs = observation[key]
+            # 检查是否超出范围
+            low_violation = obs < space.low
+            high_violation = obs > space.high
 
+            # 如果存在超出范围的值，记录下来
+            if np.any(low_violation) or np.any(high_violation):
+                errors.append({
+                    "key": key,
+                    "out_of_bounds_indices": np.where(low_violation | high_violation)[0],
+                    "actual_values": obs,
+                    "low_bound": space.low,
+                    "high_bound": space.high,
+                })
 
-# 向量化的环境用于训练
-def vec_env():
-    env = make_vec_env("BicycleMaze-v0", n_envs=4)
-    env = VecNormalize(env, norm_obs=True, norm_reward=True)
+    if errors:
+        print("Observation out of bounds:")
+        for error in errors:
+            print(f"Key: {error['key']}")
+            for idx in error['out_of_bounds_indices']:
+                print(f"  Index {idx}: value={error['actual_values'][idx]}, "
+                      f"low={error['low_bound'][idx]}, high={error['high_bound'][idx]}")
+    else:
+        print("All observations are within bounds!")
 
 
 if __name__ == '__main__':
@@ -207,7 +226,8 @@ if __name__ == '__main__':
     for i in range(4000):
         action = np.array([1.0, -1.0, 0.0], np.float32)
         obs, _, terminated, truncated, infos = env.step(action)
-        print("obs: ", obs)
+        # check_observation_space(obs, env.observation_space)
+
         # if terminated or truncated:
         #     obs, _ = env.reset()
         time.sleep(1)

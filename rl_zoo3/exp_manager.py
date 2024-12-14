@@ -385,7 +385,6 @@ class ExperimentManager:
         self.n_envs = hyperparams.get("n_envs", 1)  # 参数1是默认值
 
         if self.verbose > 0:
-            # print(f"Using {self.n_envs} environments")
             print(f"使用{self.n_envs}个环境")
 
         # Convert schedule strings to objects  需要理解
@@ -520,7 +519,6 @@ class ExperimentManager:
             self.eval_freq = max(self.eval_freq // self.n_envs, 1)
 
             if self.verbose > 0:
-                # print("Creating test environment")
                 print("创建测试环境...")
 
             save_vec_normalize = SaveVecNormalizeCallback(save_freq=1, save_path=self.params_path)

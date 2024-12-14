@@ -3,3 +3,4 @@ from bicycle_dengh.envs.balance_bicycle_dengh_env import BalanceBicycleDenghEnv
 from bicycle_dengh.envs.bicycle_camera_env import BicycleCameraEnv
 from bicycle_dengh.envs.bicycle_maze_env import BicycleMazeEnv
 from bicycle_dengh.envs.bicycle_maze_lidar_env import BicycleMazeLidarEnv
+from bicycle_dengh.envs.bicycle_maze_lidar_env2 import BicycleMazeLidarEnv2

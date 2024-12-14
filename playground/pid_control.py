@@ -1,40 +1,27 @@
 import time
+import numpy as np
 from bicycle_dengh.resources import bicycle
 from simple_pid import PID
-import math
 import gymnasium as gym
+import pybullet as p
 
 roll_angles = []
 steps = []
 step = 0
 
-roll_angle_pid = PID(2500, 100, 100, setpoint=0.0)  # 初始翻滚角为0.0°的情况
-# roll_angle_pid = PID(1000, 150, 0, setpoint=0.0)  # 初始翻滚角为3.0°的情况
-# roll_angle_pid = PID(1000, 200, 0, setpoint=0.0)  # 初始翻滚角为5.0°的情况
-# roll_angle_pid = PID(900, 60, 0, setpoint=0.0)  # 初始翻滚角为7.0°的情况
-# env = gym.make('BicycleDengh-v0', gui=True)
-env = gym.make('BalanceBicycleDengh-v0', gui=True)
-obs, infos = env.reset()
-for i in range(4000):
-    origin_obs = infos['origin_obs']
-    roll_angle_control = roll_angle_pid(origin_obs[0])
-    action = [-roll_angle_control]
+roll_angle_pid = PID(10, 0, 0, setpoint=0.0)
+env = gym.make('BicycleMazeLidar-v0', gui=True)
+obs, _ = env.reset()
+
+while True:
+    bicycle_vel = p.readUserDebugParameter(env.bicycle_vel_param, physicsClientId=env.client)
+    handlebar_angle = p.readUserDebugParameter(env.handlebar_angle_param, physicsClientId=env.client)
+
+    roll_angle_control = roll_angle_pid(obs['obs'][0])
+    action = np.array([handlebar_angle, -0.5, -roll_angle_control], np.float32)
     obs, _, terminated, truncated, infos = env.step(action)
-
-    # print(f"roll_angle:{obs[0]:.2f}, flywheel_vel:{obs[3]:.2f}")
-    # Record the roll_angle and step number
-    # roll_angles.append(origin_obs[0])
-    # steps.append(step)
-    # print(f"roll_angle: {origin_obs[0]:.2f}, i={i}")
-    # step += 1
-    # if step % 1000 == 0:
-    #     print(f"roll_angle: {origin_obs[0]:.2f}, i={i}")
-
     if terminated or truncated:
         obs, _ = env.reset()
         roll_angle_pid.reset()
-        # step = 0
-    time.sleep(1. / 24.)
-
 
 env.close()
