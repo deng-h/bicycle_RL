@@ -41,7 +41,7 @@ def train() -> None:
     parser.add_argument("--storage", help="如果使用分布式优化，数据库的存储路径", type=str, default=None)
     parser.add_argument("--study-name", help="分布式优化的Study name", type=str, default=None)
     parser.add_argument("-P", "--progress", action="store_true", default=False, help="进度条显示")
-    parser.add_argument( "--eval-freq", help="每n步评估依次智能体(负数不评估),在超参数优化时,用n-evaluations代替", default=25000, type=int)
+    parser.add_argument( "--eval-freq", help="每n步评估依次智能体(负数不评估),在超参数优化时,用n-evaluations代替", default=50000, type=int)
     parser.add_argument("-uuid", "--uuid", action="store_true", default=False, help="Ensure that the run has a unique ID")
     parser.add_argument("--env-kwargs", type=str, nargs="+", action=StoreDict, help="传递给 env 构造函数的可选关键字参数")
     parser.add_argument("--gym-packages", type=str, nargs="+", default=[], help="要导入的其他外部 Gym 环境软件包模块")

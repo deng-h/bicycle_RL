@@ -39,7 +39,7 @@ def collision_penalty(lidar_distances, alpha=0.1, threshold=5.0):
 """
 想法：把自行车的翻滚角控制交给PID控制器，其他控制交给RL模型
 """
-class BicycleMazeLidarEnv2(gymnasium.Env):
+class BicycleBalanceEnv(gymnasium.Env):
     metadata = {'render_modes': ['rgb_array']}
 
     def __init__(self, gui=False):

@@ -1,0 +1,274 @@
+<?xml version="0.0" ?>
+<robot name="small_bicycle">
+    <material name="orange">
+        <color rgba="0.9 0.4 0.0 1.0"/>
+    </material>
+
+    <material name="white">
+        <color rgba="1.0 1.0 1.0 1.0"/>
+    </material>
+
+    <material name="green">
+        <color rgba="0.0 0.5 0.0 1.0"/>
+    </material>
+
+    <link name="左固定件">
+        <inertial>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+            <mass value="1.0"/>
+            <inertia ixx="0.1" ixy="0" ixz="0" iyy="0.1" iyz="0" izz="0.1"/>
+        </inertial>
+
+        <visual>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+            <geometry>
+                <mesh filename="files/che_ti_gu_din_jian_left.stl" />
+            </geometry>
+            <material name="orange" />
+        </visual>
+
+        <collision>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+            <geometry>
+                <mesh filename="files/che_ti_gu_din_jian_left.stl"/>
+            </geometry>
+        </collision>
+    </link>
+
+    <link name="右固定件">
+        <inertial>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+            <mass value="1.0"/>
+            <inertia ixx="0.1" ixy="0" ixz="0" iyy="0.1" iyz="0" izz="0.1"/>
+        </inertial>
+
+        <visual>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+            <geometry>
+                <mesh filename="files/che_ti_gu_din_jian_right.stl" />
+            </geometry>
+            <material name="orange" />
+        </visual>
+
+        <collision>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+            <geometry>
+                <mesh filename="files/che_ti_gu_din_jian_right.stl"/>
+            </geometry>
+        </collision>
+    </link>
+
+    <link name="电池托件">
+        <inertial>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+            <mass value="1.0"/>
+            <inertia ixx="0.1" ixy="0" ixz="0" iyy="0.1" iyz="0" izz="0.1"/>
+        </inertial>
+
+        <visual>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+            <geometry>
+                <mesh filename="files/li_dian_chi_tuo_jian.stl" />
+            </geometry>
+            <material name="orange" />
+        </visual>
+
+        <collision>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+            <geometry>
+                <mesh filename="files/li_dian_chi_tuo_jian.stl"/>
+            </geometry>
+        </collision>
+    </link>
+
+    <link name="前轮转向">
+        <inertial>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+            <mass value="1.0"/>
+            <inertia ixx="0.1" ixy="0" ixz="0" iyy="0.1" iyz="0" izz="0.1"/>
+        </inertial>
+
+        <visual>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+            <geometry>
+                <mesh filename="files/qian_lun_zhuan_xiang.stl" />
+            </geometry>
+            <material name="orange" />
+        </visual>
+
+        <collision>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+            <geometry>
+                <mesh filename="files/qian_lun_zhuan_xiang.stl"/>
+            </geometry>
+        </collision>
+    </link>
+
+    <link name="前轮">
+        <inertial>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+            <mass value="1.0"/>
+            <inertia ixx="0.1" ixy="0" ixz="0" iyy="0.1" iyz="0" izz="0.1"/>
+        </inertial>
+
+        <visual>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+            <geometry>
+                <mesh filename="files/lun_zi.stl" />
+            </geometry>
+            <material name="orange" />
+        </visual>
+
+        <collision>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+            <geometry>
+                <mesh filename="files/lun_zi.stl"/>
+            </geometry>
+        </collision>
+    </link>
+
+    <link name="后轮">
+        <inertial>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+            <mass value="1.0"/>
+            <inertia ixx="0.1" ixy="0" ixz="0" iyy="0.1" iyz="0" izz="0.1"/>
+        </inertial>
+
+        <visual>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+            <geometry>
+                <mesh filename="files/lun_zi.stl" />
+            </geometry>
+            <material name="orange"/>
+        </visual>
+
+        <collision>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+            <geometry>
+                <mesh filename="files/lun_zi.stl"/>
+            </geometry>
+        </collision>
+    </link>
+
+    <link name="飞轮电机">
+        <inertial>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+            <mass value="1.0"/>
+            <inertia ixx="0.1" ixy="0" ixz="0" iyy="0.1" iyz="0" izz="0.1"/>
+        </inertial>
+
+        <visual>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+            <geometry>
+                <mesh filename="files/fei_lun_dian_ji.stl" />
+            </geometry>
+            <material name="white" />
+        </visual>
+
+        <collision>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+            <geometry>
+                <mesh filename="files/fei_lun_dian_ji.stl"/>
+            </geometry>
+        </collision>
+    </link>
+
+    <!--  飞轮  -->
+    <link name="飞轮">
+        <inertial>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+            <mass value="1.0"/>
+            <inertia ixx="0.1" ixy="0" ixz="0" iyy="0.1" iyz="0" izz="0.1"/>
+        </inertial>
+
+        <visual>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+            <geometry>
+                <mesh filename="files/fei_lun.stl" />
+            </geometry>
+            <material name="green" />
+        </visual>
+
+        <collision>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+            <geometry>
+                <mesh filename="files/fei_lun.stl"/>
+            </geometry>
+        </collision>
+    </link>
+
+    <link name="中间车体">
+        <inertial>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+            <mass value="1.0"/>
+            <inertia ixx="0.1" ixy="0" ixz="0" iyy="0.1" iyz="0" izz="0.1"/>
+        </inertial>
+
+        <visual>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+            <geometry>
+                <mesh filename="files/zhong_jian_che_ti.stl" />
+            </geometry>
+            <material name="orange" />
+        </visual>
+
+        <collision>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+            <geometry>
+                <mesh filename="files/zhong_jian_che_ti.stl"/>
+            </geometry>
+        </collision>
+    </link>
+
+    <joint name="固定件左与电池托件" type="fixed">
+        <parent link="左固定件" />
+        <child link="电池托件" />
+        <origin xyz="45.0 -50.0 18" rpy="0 1.57 0"/>
+    </joint>
+
+    <joint name="固定件右与电池托件" type="fixed">
+        <parent link="电池托件" />
+        <child link="右固定件" />
+        <origin xyz="-13 50 -45" rpy="3.14 -1.57 3.14"/>
+    </joint>
+
+    <joint name="电池托件与前轮转向" type="continuous">
+        <axis xyz="0 1 0"/>
+        <parent link="电池托件" />
+        <child link="前轮转向" />
+        <origin xyz="0 35 -42" rpy="-0.5 0 3.14"/>
+    </joint>
+
+    <joint name="前轮与前轮转向" type="continuous">
+        <axis xyz="0 1 0"/>
+        <parent link="前轮转向" />
+        <child link="前轮" />
+        <origin xyz="0 10 10" rpy="0 0 1.57"/>
+    </joint>
+
+    <joint name="后轮与飞轮电机" type="continuous">
+        <axis xyz="0 1 0"/>
+        <parent link="飞轮电机" />
+        <child link="后轮" />
+        <origin xyz="-27 0 115" rpy="0 0 0"/>
+    </joint>
+
+    <joint name="飞轮电机与电池托件" type="fixed">
+        <parent link="电池托件" />
+        <child link="飞轮电机" />
+        <origin xyz="0 45 15" rpy="0 0 1.57"/>
+    </joint>
+
+    <joint name="飞轮电机与飞轮" type="continuous">
+        <axis xyz="0 0 1"/>
+        <parent link="飞轮电机" />
+        <child link="飞轮" />
+        <origin xyz="0 0 55" rpy="0 0 1.57"/>
+    </joint>
+
+    <joint name="中间车体与电池托件" type="fixed">
+        <parent link="中间车体" />
+        <child link="左固定件" />
+        <origin xyz="0 -8 -30" rpy="1.57 0 0"/>
+    </joint>
+</robot>
