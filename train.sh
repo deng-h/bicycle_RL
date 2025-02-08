@@ -3,20 +3,21 @@
 clear
 echo "开始执行"
 
+python train.py \
+--algo ppo \
+--env BicycleBalance-v0 \
+--conf-file ppo_config \
+--vec-env subproc \
+--progress \
+--device cpu
+#--tensorboard-log ./logs/tensorboard/
+
+
 #python train.py \
 #--algo ppo \
 #--env BicycleMazeLidar2-v0 \
 #--conf-file ppo_config \
 #--vec-env subproc \
-#--progress
-#--tensorboard-log ./logs/tensorboard/
-
-
-python train.py \
---algo ppo \
---env BicycleMazeLidar2-v0 \
---conf-file ppo_config \
---vec-env subproc \
---progress \
---trained-agent ./logs/ppo/BicycleMazeLidar2-v0_1/best_model.zip
+#--progress \
+#--trained-agent ./logs/ppo/BicycleMazeLidar2-v0_1/best_model.zip
 #--tensorboard-log ./logs/tensorboard/

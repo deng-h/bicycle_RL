@@ -5,6 +5,8 @@ import os
 import time
 import platform
 import pybullet_data
+import keyboard
+
 
 class SmallBicycle:
     def __init__(self, client, max_flywheel_vel):
@@ -19,15 +21,44 @@ class SmallBicycle:
         startOrientation = p.getQuaternionFromEuler([0, 0, 1.57])
         self.bicycleId = p.loadURDF(fileName=f_name, basePosition=[0, 0, 1], baseOrientation=startOrientation, globalScaling=0.01)
 
+        self.fly_wheel_joint = 7
+        self.gyros_link = 8
+
         self.initial_joint_positions = None
         self.initial_joint_velocities = None
         self.initial_position, self.initial_orientation = p.getBasePositionAndOrientation(self.bicycleId)
 
         # 设置飞轮速度上限
-        # p.changeDynamics(self.bicycleId,
-        #                  self.fly_wheel_joint,
-        #                  maxJointVelocity=max_flywheel_vel,
-        #                  physicsClientId=self.client)
+        p.changeDynamics(self.bicycleId,
+                         self.fly_wheel_joint,
+                         maxJointVelocity=max_flywheel_vel,
+                         physicsClientId=self.client)
+
+    def apply_action(self, fly_wheel_speed):
+        p.setJointMotorControl2(bodyUniqueId=self.bicycleId,
+                                jointIndex=self.fly_wheel_joint,
+                                controlMode=p.VELOCITY_CONTROL,
+                                targetVelocity=fly_wheel_speed,
+                                force=1000,
+                                physicsClientId=self.client)
+
+    def get_observation(self):
+        gyros_link_state = p.getLinkState(self.bicycleId, self.gyros_link, computeLinkVelocity=1,
+                                          physicsClientId=self.client)
+        gyros_link_orientation = gyros_link_state[1]
+        link_ang = p.getEulerFromQuaternion(gyros_link_orientation)
+        roll_angle = link_ang[0]
+        # print(f"roll_angle: {roll_angle}")
+        return [roll_angle]
+
+    def reset(self):
+        p.resetBasePositionAndOrientation(self.bicycleId, self.initial_position,
+                                          self.initial_orientation, self.client)
+        # p.resetJointState(self.bicycleId, self.handlebar_joint, 0, 0, self.client)
+        p.resetJointState(self.bicycleId, self.fly_wheel_joint, 0, 0, self.client)
+        # p.resetJointState(self.bicycleId, self.front_wheel_joint, 0, 0, self.client)
+        # p.resetJointState(self.bicycleId, self.back_wheel_joint, 0, 0, self.client)
+        return self.get_observation()
 
 
 if __name__ == '__main__':
@@ -37,7 +68,7 @@ if __name__ == '__main__':
     p.loadURDF("plane.urdf", physicsClientId=client)
     p.setGravity(0, 0, -10)
     p.setRealTimeSimulation(1)
-
+    # p.setTimeStep(2e-4)
     # 获取机器人所有关节信息
     num_joints = p.getNumJoints(bicycle.bicycleId)
     joint_info = []
@@ -75,5 +106,25 @@ if __name__ == '__main__':
                 controlMode=p.POSITION_CONTROL,
                 targetPosition=target_position
             )
+        # bicycle.apply_action(0)
+        bicycle.get_observation()
+
+        link_state = p.getLinkState(bicycle.bicycleId, 8, computeForwardKinematics=True)
+        link_world_position = link_state[0]
+        link_world_orientation = link_state[1]
+
+        # 绘制坐标轴
+        p.addUserDebugLine(link_world_position,
+                           [link_world_position[0] + 0.1, link_world_position[1], link_world_position[2]],
+                           [1, 0, 0], 8)  # X轴，红色
+        p.addUserDebugLine(link_world_position,
+                           [link_world_position[0], link_world_position[1] + 0.1, link_world_position[2]],
+                           [0, 1, 0], 8)  # Y轴，绿色
+        p.addUserDebugLine(link_world_position,
+                           [link_world_position[0], link_world_position[1], link_world_position[2] + 0.1],
+                           [0, 0, 1], 8)  # Z轴，蓝色
+
+        if keyboard.is_pressed('c'):
+            p.removeAllUserDebugItems()
         p.stepSimulation()
-        time.sleep(0.01)
+

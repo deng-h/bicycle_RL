@@ -1,3 +1,5 @@
+import random
+
 import pybullet as p
 import math
 import os
@@ -135,6 +137,16 @@ class BicycleLidar:
                                 targetVelocity=action[2],
                                 force=self.MAX_FORCE,
                                 physicsClientId=self.client)
+        # 产生随机扰动
+        random_number = random.random()
+        if random_number < 0.3:
+            force_magnitude = 30
+            p.applyExternalForce(objectUniqueId=self.bicycleId,
+                                 linkIndex=-1,  # link index or -1 for the base
+                                 forceObj=[random.uniform(-force_magnitude, force_magnitude),
+                                           random.uniform(-force_magnitude, force_magnitude), 0],
+                                 posObj=[0, 0, 0],
+                                 flags=p.LINK_FRAME)
 
     def apply_action2(self, RL_action, PID_action):
         """

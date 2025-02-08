@@ -1,0 +1,12 @@
+!!python/object/apply:collections.OrderedDict
+- - - learning_rate
+    - 0.0001
+  - - n_envs
+    - 1
+  - - n_timesteps
+    - 1000000
+  - - normalize
+    - norm_obs: true
+      norm_reward: false
+  - - policy
+    - MlpPolicy

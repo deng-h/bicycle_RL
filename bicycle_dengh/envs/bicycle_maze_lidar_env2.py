@@ -56,7 +56,7 @@ class BicycleMazeLidarEnv2(gymnasium.Env):
         self._elapsed_steps = None
         self.action_space = gymnasium.spaces.box.Box(low=-1., high=1., shape=(2,), dtype=np.float32)
 
-        # action_space[车把角度，前后轮速度, 飞轮速度]
+        # action_space[车把角度，前后轮速度]
         self.actual_action_space = gymnasium.spaces.box.Box(
             low=np.array([-1.57, 0.]),
             high=np.array([1.57, 5.]),

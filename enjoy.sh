@@ -5,10 +5,11 @@ echo "开始执行"
 
 python enjoy.py \
 --algo ppo \
---env BicycleMazeLidar2-v0 \
+--env BicycleBalance-v0 \
 --folder logs/ \
---exp-id 2 \
+--exp-id 4 \
 --env-kwargs gui:True \
 --load-best \
 --no-render \
---n-timesteps 50000
+--n-timesteps 10000 \
+--device cpu

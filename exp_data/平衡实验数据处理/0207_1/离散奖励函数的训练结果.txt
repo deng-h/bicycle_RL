@@ -1,0 +1,12 @@
+网络大小64
+奖励函数
+balance_rwd_dui_bi = 0.0
+if math.fabs(roll_angle) >= 0.35:
+	self.terminated = True
+	balance_rwd_dui_bi = -10.0
+elif math.fabs(roll_angle) >= 0.25:
+	balance_rwd_dui_bi = -1.0
+elif math.fabs(roll_angle) >= 0.15:
+	balance_rwd_dui_bi = -0.5
+else:
+	balance_rwd_dui_bi = 1.0
