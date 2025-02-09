@@ -96,8 +96,8 @@ class BicycleMazeLidarEnv2(gymnasium.Env):
         p.setAdditionalSearchPath(pybullet_data.getDataPath())
         plane_id = p.loadURDF("plane.urdf", physicsClientId=self.client)
         friction_coefficient = 0.5  # 摩擦系数
-        # 更改地面物体的动力学参数，包括摩擦系数
-        # p.changeDynamics(plane_id, -1, lateralFriction=friction_coefficient)  # -1表示所有部件
+        # 更改地面物体的动力学参数，包括摩擦系数，-1表示所有部件
+        # p.changeDynamics(plane_id, -1, lateralFriction=friction_coefficient)
         p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, 1)
         p.setGravity(0, 0, -10, physicsClientId=self.client)
         # p.setTimeStep(1. / 24., self.client)
@@ -181,7 +181,7 @@ class BicycleMazeLidarEnv2(gymnasium.Env):
         diff_dist_to_goal = self.prev_dist_to_goal - distance_to_goal
         distance_rwd = diff_dist_to_goal * 250.0
 
-        total_reward = distance_rwd + goal_rwd + collision_penalty_rwd
+        total_reward = distance_rwd + goal_rwd
 
         return total_reward
 
