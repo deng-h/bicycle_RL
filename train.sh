@@ -20,5 +20,6 @@ python train.py \
 --conf-file ppo_config \
 --vec-env subproc \
 --progress \
---trained-agent ./logs/ppo/BicycleMazeLidar2-v0_1/best_model.zip
+--trained-agent ./logs/ppo/BicycleMazeLidar2-v0_2/best_model.zip \
+--device cpu
 #--tensorboard-log ./logs/tensorboard/

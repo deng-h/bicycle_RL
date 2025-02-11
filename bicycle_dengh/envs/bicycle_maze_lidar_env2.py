@@ -77,6 +77,17 @@ class BicycleMazeLidarEnv2(gymnasium.Env):
             ),
         })
 
+        # 翻滚角, 翻滚角角速度, 车把角度, 车把角速度, 后轮速度, 飞轮转速, 车与目标点距离, 车与目标点角度
+        self.observation_space_deprecated = gymnasium.spaces.Dict({
+            "lidar": gymnasium.spaces.box.Box(low=0., high=150., shape=(360,), dtype=np.float32),
+            "obs": gymnasium.spaces.box.Box(
+                low=np.array([-math.pi, -50., -1.57, -50., -10., -self.max_flywheel_vel, -100., -math.pi]),
+                high=np.array([math.pi, 50., 1.57, 50., 10., self.max_flywheel_vel, 100., math.pi]),
+                shape=(8,),
+                dtype=np.float32
+            ),
+        })
+
         if self.gui:
             self.client = p.connect(p.GUI)
             self.camera_distance_param = p.addUserDebugParameter('camera_distance_param', 2, 60, 5)
@@ -137,6 +148,7 @@ class BicycleMazeLidarEnv2(gymnasium.Env):
     def reset(self, seed=None, options=None):
         self.terminated = False
         self.truncated = False
+        self._elapsed_steps = 0
 
         self.goal = my_tools.generate_goal()
         goal = Goal(self.client, self.goal)
@@ -152,7 +164,6 @@ class BicycleMazeLidarEnv2(gymnasium.Env):
         self.current_roll_angle = obs[3]
         obs_ = np.array([obs[3], obs[4], obs[5], obs[6], obs[7], obs[8], distance_to_goal, angle_to_target],
                         dtype=np.float32)
-        self._elapsed_steps = 0
 
         return {"lidar": obs[9], "obs": obs_}, {}
 
@@ -164,25 +175,32 @@ class BicycleMazeLidarEnv2(gymnasium.Env):
         roll_angle = obs[0]
         distance_to_goal = obs[6]
 
-        """平衡奖励"""
+        # ========== 平衡奖励 ==========
         if math.fabs(roll_angle) >= 0.35:
             self.terminated = True
+        # ========== 平衡奖励 ==========
 
-        """目标点奖励"""
+        # ========== 导航奖励 ==========
+        diff_dist_to_goal = self.prev_dist_to_goal - distance_to_goal
+        distance_rwd = diff_dist_to_goal / (5.0 / 24.0)
+        if diff_dist_to_goal > 0.0:
+            distance_rwd = (1.0 / 10.0) * distance_rwd
+        else:
+            distance_rwd = (1.2 / 10.0) * distance_rwd
+        # ========== 导航奖励 ==========
+
+        # ========== 避障奖励 ==========
+        collision_penalty_rwd = collision_penalty(lidar_info, alpha=0.1, threshold=3.0)
+        # ========== 避障奖励 ==========
+
+        # ========== 到达目标点奖励 ==========
         goal_rwd = 0.0
         if math.fabs(distance_to_goal) <= 0.5:
             self.terminated = True
             goal_rwd = 100.0
-
-        """避障奖励"""
-        collision_penalty_rwd = collision_penalty(lidar_info, alpha=0.1, threshold=3.0)
-
-        """距离目标点奖励"""
-        diff_dist_to_goal = self.prev_dist_to_goal - distance_to_goal
-        distance_rwd = diff_dist_to_goal * 250.0
+        # ========== 到达目标点奖励 ==========
 
         total_reward = distance_rwd + goal_rwd
-
         return total_reward
 
     def render(self):

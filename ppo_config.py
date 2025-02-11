@@ -9,7 +9,7 @@ hyperparams = {
         learning_rate=1e-4,
         policy_kwargs=dict(
             features_extractor_class=MyFeatureExtractorLidar,
-            net_arch=dict(pi=[512, 512], vf=[512, 512])
+            net_arch=dict(pi=[256, 256], vf=[256, 256])
         ),
         # monitor_kwargs=dict(info_keywords=('flywheel_vel',))
     ),

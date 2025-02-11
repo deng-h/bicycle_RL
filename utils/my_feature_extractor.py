@@ -125,11 +125,13 @@ class MyFeatureExtractorLidar(BaseFeaturesExtractor):
 
     def forward(self, observations) -> th.Tensor:
         lidar_obs = observations["lidar"]
+        print(lidar_obs)
         lidar_obs = lidar_obs.clone().detach().float()
         lidar_obs = lidar_obs.unsqueeze(1)  # 添加通道维度，变为 (batch_size, 1, 800)
         lidar_output = self.lidar_model(lidar_obs)  # 通过图像特征提取器处理图像特征
 
         obs = observations["obs"]
         state_output = self.state_model(obs)
+
         combined_features = th.cat([lidar_output, state_output], dim=1)  # 拼接图像特征和状态特征
         return combined_features
