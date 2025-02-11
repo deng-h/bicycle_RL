@@ -119,13 +119,16 @@ class MyFeatureExtractorLidar(BaseFeaturesExtractor):
 
         # 定义状态特征提取器
         self.state_model = nn.Sequential(
-            nn.Linear(8, 32),
+            nn.Linear(6, 64),
+            nn.ReLU(),
+            nn.Linear(64, 32),  # 增加一层 Linear
+            nn.ReLU(),
+            nn.Linear(32, 32),  # 保持输出维度不变
             nn.ReLU(),
         )
 
     def forward(self, observations) -> th.Tensor:
         lidar_obs = observations["lidar"]
-        print(lidar_obs)
         lidar_obs = lidar_obs.clone().detach().float()
         lidar_obs = lidar_obs.unsqueeze(1)  # 添加通道维度，变为 (batch_size, 1, 800)
         lidar_output = self.lidar_model(lidar_obs)  # 通过图像特征提取器处理图像特征

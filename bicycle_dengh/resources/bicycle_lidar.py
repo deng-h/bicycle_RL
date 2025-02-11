@@ -202,12 +202,12 @@ class BicycleLidar:
         link_ang = p.getEulerFromQuaternion(gyros_link_orientation)
         roll_angle = link_ang[0]
         yaw_angle = link_ang[2]
-        gyros_link_angular_vel = gyros_link_state[7]
-        roll_angle_vel = gyros_link_angular_vel[0]
+        # gyros_link_angular_vel = gyros_link_state[7]
+        # roll_angle_vel = gyros_link_angular_vel[0]
 
         handlebar_joint_state = p.getJointState(self.bicycleId, self.handlebar_joint, self.client)
         handlebar_joint_ang = handlebar_joint_state[0]
-        handlebar_joint_vel = handlebar_joint_state[1]
+        # handlebar_joint_vel = handlebar_joint_state[1]
 
         back_wheel_joint_state = p.getJointState(self.bicycleId, self.back_wheel_joint, self.client)
         back_wheel_joint_vel = back_wheel_joint_state[1]
@@ -223,9 +223,7 @@ class BicycleLidar:
                        pos[1],
                        yaw_angle,
                        roll_angle,
-                       roll_angle_vel,
                        handlebar_joint_ang,
-                       handlebar_joint_vel,
                        back_wheel_joint_vel,
                        fly_wheel_joint_vel,
                        lidar_info,
