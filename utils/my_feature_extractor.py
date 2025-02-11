@@ -119,12 +119,20 @@ class MyFeatureExtractorLidar(BaseFeaturesExtractor):
 
         # 定义状态特征提取器
         self.state_model = nn.Sequential(
-            nn.Linear(6, 64),
-            nn.ReLU(),
+            nn.Linear(5, 64),
+            nn.LeakyReLU(0.2),
             nn.Linear(64, 32),  # 增加一层 Linear
-            nn.ReLU(),
+            nn.LeakyReLU(0.2),
             nn.Linear(32, 32),  # 保持输出维度不变
+            nn.LeakyReLU(0.2),
+        )
+
+        # Attention机制
+        self.attention = nn.Sequential(
+            nn.Linear(128 + 64, 128),
             nn.ReLU(),
+            nn.Linear(128, 1),
+            nn.Softmax(dim=1)  # Softmax归一化权重
         )
 
     def forward(self, observations) -> th.Tensor:

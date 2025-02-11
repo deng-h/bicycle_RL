@@ -212,9 +212,9 @@ class BicycleLidar:
         back_wheel_joint_state = p.getJointState(self.bicycleId, self.back_wheel_joint, self.client)
         back_wheel_joint_vel = back_wheel_joint_state[1]
 
-        fly_wheel_joint_state = p.getJointState(self.bicycleId, self.fly_wheel_joint, self.client)
+        # fly_wheel_joint_state = p.getJointState(self.bicycleId, self.fly_wheel_joint, self.client)
         # fly_wheel_joint_ang = fly_wheel_joint_state[0] % (2 * math.pi)
-        fly_wheel_joint_vel = fly_wheel_joint_state[1]
+        # fly_wheel_joint_vel = fly_wheel_joint_state[1]
 
         lidar_info = self._get_lidar_info3(pos)
         is_collided = self._is_collided()
@@ -225,7 +225,6 @@ class BicycleLidar:
                        roll_angle,
                        handlebar_joint_ang,
                        back_wheel_joint_vel,
-                       fly_wheel_joint_vel,
                        lidar_info,
                        is_collided
                        ]
