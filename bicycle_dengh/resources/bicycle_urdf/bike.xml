@@ -80,32 +80,32 @@
         <joint_properties damping="0.0" friction="0.0"/>
     </joint>
 
-    <link name="camera">
-        <visual>
-            <geometry>
-                <box size="0.05 0.20 0.05"/> <!-- 或者使用球体 <sphere radius="0.05"/> -->
-            </geometry>
-            <material name="camera_material">
-                <color rgba="0 0 1 1"/> <!-- 红色表示相机位置 -->
-            </material>
-        </visual>
-        <collision>
-            <geometry>
-                <box size="0.05 0.05 0.05"/>
-            </geometry>
-        </collision>
-        <inertial>
-            <mass value="0"/>
-            <inertia ixx="0" iyy="0" izz="0"/>
-        </inertial>
-    </link>
+<!--    <link name="camera">-->
+<!--        <visual>-->
+<!--            <geometry>-->
+<!--                <box size="0.05 0.20 0.05"/> &lt;!&ndash; 或者使用球体 <sphere radius="0.05"/> &ndash;&gt;-->
+<!--            </geometry>-->
+<!--            <material name="camera_material">-->
+<!--                <color rgba="0 0 1 1"/> &lt;!&ndash; 红色表示相机位置 &ndash;&gt;-->
+<!--            </material>-->
+<!--        </visual>-->
+<!--        <collision>-->
+<!--            <geometry>-->
+<!--                <box size="0.05 0.05 0.05"/>-->
+<!--            </geometry>-->
+<!--        </collision>-->
+<!--        <inertial>-->
+<!--            <mass value="0"/>-->
+<!--            <inertia ixx="0" iyy="0" izz="0"/>-->
+<!--        </inertial>-->
+<!--    </link>-->
 
     <!-- 约束相机与车把手的相对位置 -->
-    <joint name="camera_joint" type="fixed">
-        <parent link="handlebarLink" />
-        <child link="camera" />
-        <origin xyz="0.2 0 0.2" rpy="0 0 0"/> <!-- 根据需求调整位置和角度 -->
-    </joint>
+<!--    <joint name="camera_joint" type="fixed">-->
+<!--        <parent link="handlebarLink" />-->
+<!--        <child link="camera" />-->
+<!--        <origin xyz="0.2 0 0.2" rpy="0 0 0"/> &lt;!&ndash; 根据需求调整位置和角度 &ndash;&gt;-->
+<!--    </joint>-->
 
     <link name="frontWheelLink">
         <inertial>

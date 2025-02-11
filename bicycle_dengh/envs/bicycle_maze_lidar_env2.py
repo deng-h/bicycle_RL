@@ -111,7 +111,7 @@ class BicycleMazeLidarEnv2(gymnasium.Env):
         # p.changeDynamics(plane_id, -1, lateralFriction=friction_coefficient)
         p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, 1)
         p.setGravity(0, 0, -10, physicsClientId=self.client)
-        # p.setTimeStep(1. / 24., self.client)
+        p.setTimeStep(1. / 30., self.client)
 
     def step(self, action):
         # Rescale action from [-1, 1] to original [low, high] interval

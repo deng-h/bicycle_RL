@@ -58,17 +58,17 @@ class BicycleLidar:
                                     physicsClientId=self.client)
         # Number of joints: 7
         # jointIndex: 0 jointName: 'frame_to_handlebar'
-        # jointIndex: 1 jointName: 'camera_joint'
-        # jointIndex: 2 jointName: 'handlebar_to_frontwheel'
-        # jointIndex: 3 jointName: 'frame_to_backwheel'
-        # jointIndex: 4 jointName: 'frame_to_flyWheelLink'
-        # jointIndex: 5 jointName: 'flyWheelLink_to_flyWheel'
-        # jointIndex: 6 jointName: 'frame_to_gyros'
+        # jointIndex: 已删除 jointName: 'camera_joint'
+        # jointIndex: 1 jointName: 'handlebar_to_frontwheel'
+        # jointIndex: 2 jointName: 'frame_to_backwheel'
+        # jointIndex: 3 jointName: 'frame_to_flyWheelLink'
+        # jointIndex: 4 jointName: 'flyWheelLink_to_flyWheel'
+        # jointIndex: 5 jointName: 'frame_to_gyros'
         self.handlebar_joint = 0
-        self.front_wheel_joint = 2
-        self.back_wheel_joint = 3
-        self.fly_wheel_joint = 5
-        self.gyros_link = 6
+        self.front_wheel_joint = 1
+        self.back_wheel_joint = 2
+        self.fly_wheel_joint = 4
+        self.gyros_link = 5
         self.MAX_FORCE = 2000
 
         self.max_buffer_size = 20
@@ -79,6 +79,12 @@ class BicycleLidar:
         self.initial_joint_positions = None
         self.initial_joint_velocities = None
         self.initial_position, self.initial_orientation = p.getBasePositionAndOrientation(self.bicycleId, self.client)
+
+        self.lidar_update_frequency = 2  # 每 2 帧更新一次激光雷达
+        self.collision_check_frequency = 2 # 每 2 帧检查一次碰撞
+        self.frame_count = 0
+        # 用于在不更新激光雷达信息的帧中，仍然提供一个值，避免程序出错
+        self.last_lidar_info = np.full(self.num_rays, self.ray_len, dtype=np.float32)  # 初始化 last_lidar_info
 
         # 设置飞轮速度上限
         p.changeDynamics(self.bicycleId,
@@ -190,8 +196,9 @@ class BicycleLidar:
                                 physicsClientId=self.client)
 
     def get_observation(self):
+        self.frame_count += 1
         # Get the position位置 and orientation方向(姿态) of the bicycle in the simulation
-        pos, ori = p.getBasePositionAndOrientation(bodyUniqueId=self.bicycleId, physicsClientId=self.client)
+        pos, _ = p.getBasePositionAndOrientation(bodyUniqueId=self.bicycleId, physicsClientId=self.client)
         # The rotation order is first roll around X, then pitch around Y and finally yaw around Z
         # p.getBaseVelocity()返回的格式 (线速度(x, y, z), 角速度(wx, wy, wz))
         # _, angular_velocity = p.getBaseVelocity(self.bicycleId, self.client)
@@ -216,8 +223,13 @@ class BicycleLidar:
         # fly_wheel_joint_ang = fly_wheel_joint_state[0] % (2 * math.pi)
         # fly_wheel_joint_vel = fly_wheel_joint_state[1]
 
-        lidar_info = self._get_lidar_info3(pos)
-        is_collided = self._is_collided()
+        lidar_info = None  # 初始化 lidar_info
+        if self.frame_count % self.lidar_update_frequency == 0:
+            lidar_info = self._get_lidar_info3(pos)
+
+        is_collided = False  # 初始化 is_collided
+        if self.frame_count % self.collision_check_frequency == 0:
+            is_collided = self._is_collided()
 
         observation = [pos[0],
                        pos[1],
@@ -225,9 +237,23 @@ class BicycleLidar:
                        roll_angle,
                        handlebar_joint_ang,
                        back_wheel_joint_vel,
-                       lidar_info,
+                       lidar_info if lidar_info is not None else self.last_lidar_info, # 使用上次的激光雷达信息
                        is_collided
-                       ]
+                      ]
+        # 保存激光雷达信息，下次使用
+        self.last_lidar_info = lidar_info if lidar_info is not None else self.last_lidar_info
+
+        # lidar_info = self._get_lidar_info3(pos)
+        # is_collided = self._is_collided()
+        # observation = [pos[0],
+        #                pos[1],
+        #                yaw_angle,
+        #                roll_angle,
+        #                handlebar_joint_ang,
+        #                back_wheel_joint_vel,
+        #                lidar_info,
+        #                is_collided
+        #                ]
 
         return observation
 
@@ -238,6 +264,8 @@ class BicycleLidar:
         p.resetJointState(self.bicycleId, self.fly_wheel_joint, 0, 0, self.client)
         p.resetJointState(self.bicycleId, self.front_wheel_joint, 0, 0, self.client)
         p.resetJointState(self.bicycleId, self.back_wheel_joint, 0, 0, self.client)
+        self.last_lidar_info = np.full(self.num_rays, self.ray_len, dtype=np.float32)  # 初始化 last_lidar_info
+        self.frame_count = 0
         return self.get_observation()
 
     """
