@@ -101,19 +101,21 @@ class MyFeatureExtractor2(BaseFeaturesExtractor):
 class MyFeatureExtractorLidar(BaseFeaturesExtractor):
     def __init__(self, observation_space: gym.spaces.Dict):
         # 输入给net_arch网络的特征维度=图像特征维度+自行车的状态向量维度
-        super().__init__(observation_space, features_dim=96+32)
+        super().__init__(observation_space, features_dim=128)
 
         self.lidar_model = nn.Sequential(
-            nn.Conv1d(in_channels=1, out_channels=4, kernel_size=5, stride=2, padding=2),  # 下采样
+            nn.Conv1d(in_channels=1, out_channels=8, kernel_size=5, stride=2, padding=2),
             nn.ReLU(),
-            nn.Conv1d(in_channels=4, out_channels=16, kernel_size=5, stride=2, padding=2),  # 下采样
+            nn.Conv1d(in_channels=8, out_channels=16, kernel_size=5, stride=2, padding=2),
             nn.ReLU(),
-            nn.Conv1d(in_channels=16, out_channels=32, kernel_size=3, stride=2, padding=1),  # 进一步下采样
+            nn.Conv1d(in_channels=16, out_channels=32, kernel_size=3, stride=2, padding=1),
+            nn.ReLU(),
+            nn.Conv1d(in_channels=32, out_channels=64, kernel_size=3, stride=2, padding=1),
             nn.ReLU(),
             nn.Flatten(),
-            nn.Linear(32 * 45, 96),
+            nn.Linear(64 * 23, 128),
             nn.ReLU(),
-            nn.Linear(96, 96),
+            nn.Linear(128, 96),
             nn.ReLU(),
         )
 
@@ -127,22 +129,35 @@ class MyFeatureExtractorLidar(BaseFeaturesExtractor):
             nn.LeakyReLU(0.2),
         )
 
-        # Attention机制
-        self.attention = nn.Sequential(
-            nn.Linear(128 + 64, 128),
-            nn.ReLU(),
-            nn.Linear(128, 1),
-            nn.Softmax(dim=1)  # Softmax归一化权重
-        )
+        # Feature fusion with attention
+        self.fusion_layer = AttentionFusion(lidar_dim=96, state_dim=32, output_dim=128)
 
     def forward(self, observations) -> th.Tensor:
         lidar_obs = observations["lidar"]
         lidar_obs = lidar_obs.clone().detach().float()
-        lidar_obs = lidar_obs.unsqueeze(1)  # 添加通道维度，变为 (batch_size, 1, 800)
-        lidar_output = self.lidar_model(lidar_obs)  # 通过图像特征提取器处理图像特征
+        lidar_obs = lidar_obs.unsqueeze(1)
+        lidar_feat = self.lidar_model(lidar_obs)  # 通过图像特征提取器处理图像特征
 
         obs = observations["obs"]
-        state_output = self.state_model(obs)
+        state_feat = self.state_model(obs)
 
-        combined_features = th.cat([lidar_output, state_output], dim=1)  # 拼接图像特征和状态特征
+        combined_features = self.fusion_layer(lidar_feat, state_feat)
         return combined_features
+
+
+class AttentionFusion(nn.Module):
+    def __init__(self, lidar_dim, state_dim, output_dim):
+        super().__init__()
+        self.attention = nn.Sequential(
+            nn.Linear(lidar_dim + state_dim, 64),
+            nn.ReLU(),
+            nn.Linear(64, 1),
+            nn.Sigmoid()
+        )
+        self.fc = nn.Linear(lidar_dim + state_dim, output_dim)
+
+    def forward(self, lidar_features, state_features):
+        combined = th.cat([lidar_features, state_features], dim=1)
+        attention_weights = self.attention(combined)
+        fused_features = attention_weights * combined
+        return self.fc(fused_features)

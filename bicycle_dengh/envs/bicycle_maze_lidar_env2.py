@@ -169,7 +169,7 @@ class BicycleMazeLidarEnv2(gymnasium.Env):
         self.terminated = False
         self.truncated = False
         # action [车把角度，前后轮速度]
-        # obs [翻滚角, 车把角度, 后轮速度, 飞轮转速, 车与目标点距离, 车与目标点角度]
+        # obs [翻滚角, 车把角度, 后轮速度, 车与目标点距离, 车与目标点角度]
         roll_angle = obs[0]
         distance_to_goal = obs[3]
 
@@ -179,12 +179,12 @@ class BicycleMazeLidarEnv2(gymnasium.Env):
         # ========== 平衡奖励 ==========
 
         # ========== 导航奖励 ==========
-        diff_dist_to_goal = self.prev_dist_to_goal - distance_to_goal
-        distance_rwd = diff_dist_to_goal / (5.0 / 24.0)
+        diff_dist_to_goal = (self.prev_dist_to_goal - distance_to_goal) * 1000.0
+        distance_rwd = 0.0
         if diff_dist_to_goal > 0.0:
-            distance_rwd = (1.0 / 10.0) * distance_rwd
+            distance_rwd = (1.0 / 10.0) * diff_dist_to_goal
         else:
-            distance_rwd = (1.2 / 10.0) * distance_rwd
+            distance_rwd = (1.2 / 10.0) * diff_dist_to_goal
         # ========== 导航奖励 ==========
 
         # ========== 避障奖励 ==========
