@@ -12,6 +12,7 @@ from utils import my_tools
 from simple_pid import PID
 from stable_baselines3.common.env_checker import check_env
 from gymnasium.wrappers import TimeLimit
+import yaml
 
 
 def collision_penalty(lidar_distances, alpha=0.1, threshold=5.0):
@@ -43,6 +44,8 @@ class BicycleMazeLidarEnv2(gymnasium.Env):
     metadata = {'render_modes': ['rgb_array']}
 
     def __init__(self, gui=False):
+        with open("bicycle_dengh\envs\BicycleMazeLidarEnv2Config.yaml", "r", encoding='utf-8') as f:
+            self.config = yaml.safe_load(f)
         self.goal = (0, 0)
         self.terminated = False
         self.truncated = False
@@ -52,7 +55,7 @@ class BicycleMazeLidarEnv2(gymnasium.Env):
         self.prev_dist_to_goal = 0.
         self.roll_angle_pid = PID(1100, 100, 0, setpoint=0.0)
         self.current_roll_angle = 0.0
-        self._max_episode_steps = 6000
+        self._max_episode_steps = self.config["max_episode_steps"]
         self._elapsed_steps = None
         self.action_space = gymnasium.spaces.box.Box(low=-1., high=1., shape=(2,), dtype=np.float32)
 
@@ -177,6 +180,7 @@ class BicycleMazeLidarEnv2(gymnasium.Env):
         # obs [翻滚角, 车把角度, 后轮速度, 车与目标点距离, 车与目标点角度]
         roll_angle = obs[0]
         distance_to_goal = obs[3]
+        angle_to_target = obs[4]
 
         # ========== 平衡奖励 ==========
         if math.fabs(roll_angle) >= 0.35:
@@ -189,21 +193,25 @@ class BicycleMazeLidarEnv2(gymnasium.Env):
         if diff_dist_to_goal > 0.0:
             distance_rwd = diff_dist_to_goal
         else:
-            distance_rwd = 1.5 * diff_dist_to_goal
+            distance_rwd = 0.5 * diff_dist_to_goal
+
+        proximity_rwd = 0.0
+        if distance_to_goal <= self.config["proximity_threshold"]:
+            proximity_rwd = 1.0  # 给予接近目标奖励
+            if diff_dist_to_goal > 0.0:
+                distance_rwd += 0.5 * diff_dist_to_goal
+
+        goal_rwd = 0.0
+        if math.fabs(distance_to_goal) <= self.config["goal_threshold"]:
+            self.terminated = True
+            goal_rwd = 100.0
         # ========== 导航奖励 ==========
 
         # ========== 避障奖励 ==========
         collision_penalty_rwd = collision_penalty(lidar_info, alpha=0.1, threshold=2.0)
         # ========== 避障奖励 ==========
 
-        # ========== 到达目标点奖励 ==========
-        goal_rwd = 0.0
-        if math.fabs(distance_to_goal) <= 0.5:
-            self.terminated = True
-            goal_rwd = 100.0
-        # ========== 到达目标点奖励 ==========
-
-        total_reward = distance_rwd + goal_rwd
+        total_reward = distance_rwd + goal_rwd + proximity_rwd
         return total_reward
 
     def render(self):
