@@ -80,11 +80,11 @@ class BicycleLidar:
         self.initial_joint_velocities = None
         self.initial_position, self.initial_orientation = p.getBasePositionAndOrientation(self.bicycleId, self.client)
 
-        self.lidar_update_frequency = 2  # 每 2 帧更新一次激光雷达
-        self.collision_check_frequency = 2 # 每 2 帧检查一次碰撞
+        self.lidar_update_frequency = 3  # 每 n 帧更新一次激光雷达
+        self.collision_check_frequency = 3  # 每 n 帧检查一次碰撞
         self.frame_count = 0
-        # 用于在不更新激光雷达信息的帧中，仍然提供一个值，避免程序出错
-        self.last_lidar_info = np.full(self.num_rays, self.ray_len, dtype=np.float32)  # 初始化 last_lidar_info
+        # 初始化 last_lidar_info 用于在不更新激光雷达信息的帧中，仍然提供一个值，避免程序出错
+        self.last_lidar_info = np.full(self.num_rays, self.ray_len, dtype=np.float32)
 
         # 设置飞轮速度上限
         p.changeDynamics(self.bicycleId,
@@ -228,8 +228,8 @@ class BicycleLidar:
             lidar_info = self._get_lidar_info3(pos)
 
         is_collided = False  # 初始化 is_collided
-        if self.frame_count % self.collision_check_frequency == 0:
-            is_collided = self._is_collided()
+        # if self.frame_count % self.collision_check_frequency == 0:
+        #     is_collided = self._is_collided()
 
         observation = [pos[0],
                        pos[1],

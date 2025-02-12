@@ -52,7 +52,7 @@ class BicycleMazeLidarEnv2(gymnasium.Env):
         self.prev_dist_to_goal = 0.
         self.roll_angle_pid = PID(1100, 100, 0, setpoint=0.0)
         self.current_roll_angle = 0.0
-        self._max_episode_steps = 10000
+        self._max_episode_steps = 7000
         self._elapsed_steps = None
         self.action_space = gymnasium.spaces.box.Box(low=-1., high=1., shape=(2,), dtype=np.float32)
 
@@ -111,7 +111,7 @@ class BicycleMazeLidarEnv2(gymnasium.Env):
         # p.changeDynamics(plane_id, -1, lateralFriction=friction_coefficient)
         p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, 1)
         p.setGravity(0, 0, -10, physicsClientId=self.client)
-        p.setTimeStep(1. / 30., self.client)
+        p.setTimeStep(1. / 120., self.client)
 
     def step(self, action):
         # Rescale action from [-1, 1] to original [low, high] interval
@@ -179,7 +179,7 @@ class BicycleMazeLidarEnv2(gymnasium.Env):
         # ========== 平衡奖励 ==========
 
         # ========== 导航奖励 ==========
-        diff_dist_to_goal = (self.prev_dist_to_goal - distance_to_goal) * 1000.0
+        diff_dist_to_goal = (self.prev_dist_to_goal - distance_to_goal) * 100.0
         distance_rwd = 0.0
         if diff_dist_to_goal > 0.0:
             distance_rwd = (1.0 / 10.0) * diff_dist_to_goal
@@ -198,7 +198,7 @@ class BicycleMazeLidarEnv2(gymnasium.Env):
             goal_rwd = 100.0
         # ========== 到达目标点奖励 ==========
 
-        total_reward = distance_rwd + goal_rwd
+        total_reward = distance_rwd + goal_rwd + collision_penalty_rwd
         return total_reward
 
     def render(self):
