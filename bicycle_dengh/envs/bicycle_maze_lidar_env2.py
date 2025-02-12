@@ -185,11 +185,11 @@ class BicycleMazeLidarEnv2(gymnasium.Env):
 
         # ========== 导航奖励 ==========
         diff_dist_to_goal = (self.prev_dist_to_goal - distance_to_goal) * 100.0
-        distance_rwd = diff_dist_to_goal
-        # if diff_dist_to_goal > 0.0:
-        #     distance_rwd = (1.0 / 10.0) * diff_dist_to_goal
-        # else:
-        #     distance_rwd = (1.2 / 10.0) * diff_dist_to_goal
+        distance_rwd = 0.0
+        if diff_dist_to_goal > 0.0:
+            distance_rwd = diff_dist_to_goal
+        else:
+            distance_rwd = 1.5 * diff_dist_to_goal
         # ========== 导航奖励 ==========
 
         # ========== 避障奖励 ==========
