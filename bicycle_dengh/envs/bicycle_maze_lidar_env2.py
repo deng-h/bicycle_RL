@@ -52,7 +52,7 @@ class BicycleMazeLidarEnv2(gymnasium.Env):
         self.prev_dist_to_goal = 0.
         self.roll_angle_pid = PID(1100, 100, 0, setpoint=0.0)
         self.current_roll_angle = 0.0
-        self._max_episode_steps = 7000
+        self._max_episode_steps = 6000
         self._elapsed_steps = None
         self.action_space = gymnasium.spaces.box.Box(low=-1., high=1., shape=(2,), dtype=np.float32)
 
