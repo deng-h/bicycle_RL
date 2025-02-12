@@ -121,7 +121,6 @@ def generate_goal_pos():
         for x, cell in enumerate(row):
             if cell == 'X' or cell == 'S':  # 如果该位置为障碍物
                 obstacle_coords.add((x - 24.5, flipped_y))  # 将障碍物的坐标添加到集合中
-    print(obstacle_coords)
     return obstacle_coords
 
 def build_maze(client):
