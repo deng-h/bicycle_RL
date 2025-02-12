@@ -98,6 +98,9 @@ class BicycleMazeLidarEnv2(gymnasium.Env):
             self.flywheel_param = p.addUserDebugParameter('flywheel_param', -40, 40, 0)
         else:
             self.client = p.connect(p.DIRECT)
+            p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, 0)
+            p.configureDebugVisualizer(p.COV_ENABLE_GUI, 0)
+            p.configureDebugVisualizer(p.COV_ENABLE_SHADOWS, 0)
 
         p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, 0)
         p.configureDebugVisualizer(p.COV_ENABLE_SHADOWS, 0)  # 关闭阴影效果，透明的陀螺仪会显示出来，问题不大
@@ -112,7 +115,7 @@ class BicycleMazeLidarEnv2(gymnasium.Env):
         # p.changeDynamics(plane_id, -1, lateralFriction=friction_coefficient)
         p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, 1)
         p.setGravity(0, 0, -10, physicsClientId=self.client)
-        p.setTimeStep(1. / 120., self.client)
+        p.setTimeStep(1. / 90., self.client)
 
     def step(self, action):
         # Rescale action from [-1, 1] to original [low, high] interval
