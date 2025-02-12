@@ -13,6 +13,8 @@ from simple_pid import PID
 from stable_baselines3.common.env_checker import check_env
 from gymnasium.wrappers import TimeLimit
 import yaml
+import platform
+import os
 
 
 def collision_penalty(lidar_distances, alpha=0.1, threshold=5.0):
@@ -44,7 +46,12 @@ class BicycleMazeLidarEnv2(gymnasium.Env):
     metadata = {'render_modes': ['rgb_array']}
 
     def __init__(self, gui=False):
-        with open("bicycle_dengh\envs\BicycleMazeLidarEnv2Config.yaml", "r", encoding='utf-8') as f:
+        system = platform.system()
+        if system == "Windows":
+            yaml_file_path = "bicycle_dengh\envs\BicycleMazeLidarEnv2Config.yaml"
+        else:
+            yaml_file_path = "/root/bicycle-rl/bicycle_dengh/envs/BicycleMazeLidarEnv2Config.yaml"
+        with open(yaml_file_path, "r", encoding='utf-8') as f:
             self.config = yaml.safe_load(f)
         self.goal = (0, 0)
         self.terminated = False
