@@ -102,7 +102,8 @@ class BicycleMazeLidarEnv2(gymnasium.Env):
         p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, 0)
         p.configureDebugVisualizer(p.COV_ENABLE_SHADOWS, 0)  # 关闭阴影效果，透明的陀螺仪会显示出来，问题不大
 
-        obstacle_ids = my_tools.build_maze(self.client)
+        # obstacle_ids = my_tools.build_maze(self.client)
+        obstacle_ids = []
         self.bicycle = BicycleLidar(self.client, self.max_flywheel_vel, obstacle_ids)
         p.setAdditionalSearchPath(pybullet_data.getDataPath())
         plane_id = p.loadURDF("plane.urdf", physicsClientId=self.client)
@@ -135,7 +136,7 @@ class BicycleMazeLidarEnv2(gymnasium.Env):
             p.resetDebugVisualizerCamera(camera_distance, camera_yaw, camera_pitch, bike_pos)
 
         # 计算奖励值
-        reward = self._reward_fun(obs_, lidar_info=obs[6], is_collision=obs[7])
+        reward = self._reward_fun(obs_, lidar_info=obs[6])
         self.prev_dist_to_goal = distance_to_goal
 
         self._elapsed_steps += 1
@@ -165,7 +166,7 @@ class BicycleMazeLidarEnv2(gymnasium.Env):
 
         return {"lidar": obs[6], "obs": obs_}, {}
 
-    def _reward_fun(self, obs, lidar_info, is_collision):
+    def _reward_fun(self, obs, lidar_info):
         self.terminated = False
         self.truncated = False
         # action [车把角度，前后轮速度]
@@ -188,7 +189,7 @@ class BicycleMazeLidarEnv2(gymnasium.Env):
         # ========== 导航奖励 ==========
 
         # ========== 避障奖励 ==========
-        collision_penalty_rwd = collision_penalty(lidar_info, alpha=0.1, threshold=3.0)
+        collision_penalty_rwd = collision_penalty(lidar_info, alpha=0.1, threshold=2.0)
         # ========== 避障奖励 ==========
 
         # ========== 到达目标点奖励 ==========
@@ -198,7 +199,7 @@ class BicycleMazeLidarEnv2(gymnasium.Env):
             goal_rwd = 100.0
         # ========== 到达目标点奖励 ==========
 
-        total_reward = distance_rwd + goal_rwd + collision_penalty_rwd
+        total_reward = distance_rwd + goal_rwd
         return total_reward
 
     def render(self):
