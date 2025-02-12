@@ -105,9 +105,10 @@ class BicycleMazeLidarEnv2(gymnasium.Env):
         p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, 0)
         p.configureDebugVisualizer(p.COV_ENABLE_SHADOWS, 0)  # 关闭阴影效果，透明的陀螺仪会显示出来，问题不大
 
-        # obstacle_ids = my_tools.build_maze(self.client)
-        obstacle_ids = []
-        self.bicycle = BicycleLidar(self.client, self.max_flywheel_vel, obstacle_ids)
+        # self.obstacle_ids = my_tools.build_maze(self.client)
+        # 得到目标点不允许生成的位置的集合
+        self.generate_goal_pos = my_tools.generate_goal_pos()
+        self.bicycle = BicycleLidar(self.client, self.max_flywheel_vel, obstacle_ids=[])
         p.setAdditionalSearchPath(pybullet_data.getDataPath())
         plane_id = p.loadURDF("plane.urdf", physicsClientId=self.client)
         friction_coefficient = 0.5  # 摩擦系数
@@ -115,7 +116,7 @@ class BicycleMazeLidarEnv2(gymnasium.Env):
         # p.changeDynamics(plane_id, -1, lateralFriction=friction_coefficient)
         p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, 1)
         p.setGravity(0, 0, -10, physicsClientId=self.client)
-        p.setTimeStep(1. / 90., self.client)
+        p.setTimeStep(1. / 60., self.client)
 
     def step(self, action):
         # Rescale action from [-1, 1] to original [low, high] interval
@@ -153,7 +154,7 @@ class BicycleMazeLidarEnv2(gymnasium.Env):
         self.truncated = False
         self._elapsed_steps = 0
 
-        self.goal = my_tools.generate_goal()
+        self.goal = my_tools.generate_goal(self.generate_goal_pos)
         goal = Goal(self.client, self.goal)
         # 因为没有重置环境，每次reset后要清除先前的Goal
         if self.prev_goal_id is not None:
@@ -162,10 +163,10 @@ class BicycleMazeLidarEnv2(gymnasium.Env):
 
         obs = self.bicycle.reset()
         distance_to_goal = np.linalg.norm(np.array([obs[0], obs[1]]) - np.array(self.goal))
-        self.prev_dist_to_goal = distance_to_goal
         angle_to_target = my_tools.calculate_angle_to_target(obs[0], obs[1], obs[2], self.goal[0], self.goal[1])
-        self.current_roll_angle = obs[3]
         obs_ = np.array([obs[3], obs[4], obs[5], distance_to_goal, angle_to_target], dtype=np.float32)
+        self.prev_dist_to_goal = distance_to_goal
+        self.current_roll_angle = obs[3]
 
         return {"lidar": obs[6], "obs": obs_}, {}
 
@@ -184,11 +185,11 @@ class BicycleMazeLidarEnv2(gymnasium.Env):
 
         # ========== 导航奖励 ==========
         diff_dist_to_goal = (self.prev_dist_to_goal - distance_to_goal) * 100.0
-        distance_rwd = 0.0
-        if diff_dist_to_goal > 0.0:
-            distance_rwd = (1.0 / 10.0) * diff_dist_to_goal
-        else:
-            distance_rwd = (1.2 / 10.0) * diff_dist_to_goal
+        distance_rwd = diff_dist_to_goal
+        # if diff_dist_to_goal > 0.0:
+        #     distance_rwd = (1.0 / 10.0) * diff_dist_to_goal
+        # else:
+        #     distance_rwd = (1.2 / 10.0) * diff_dist_to_goal
         # ========== 导航奖励 ==========
 
         # ========== 避障奖励 ==========

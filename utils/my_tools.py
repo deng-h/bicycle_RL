@@ -16,7 +16,6 @@ maze_config = os.path.join(os.path.dirname(__file__), "../bicycle_dengh/resource
 wall_length = 2.0
 wall_height = 1.5
 maze_size = 25
-obstacle_coords = set()  # 存储障碍物的坐标
 
 
 def degrees_to_radians(degrees):
@@ -94,7 +93,7 @@ def generate_goal_point():
     return (x, y)
 
 
-def generate_goal():
+def generate_goal(obstacle_ids):
     """
     随机生成目标点的坐标，不与障碍物坐标重合
     """
@@ -102,10 +101,28 @@ def generate_goal():
         x = random.randint(-25, 25)
         y = random.randint(-3, 47)
 
+        if -5 <= x <= 5 and -3 <= y <= 3:
+            continue
+
         # 检查生成的坐标是否不在障碍物集合中
-        if (x, y) not in obstacle_coords:
+        if (x, y) not in obstacle_ids:
             return x - 0.5, y - 0.5
 
+# 目标点不允许生成的位置
+def generate_goal_pos():
+    obstacle_coords = set()  # 存储障碍物的坐标
+    with open(maze_config, 'r') as file:
+        data = json.load(file)
+        maze_layout = np.array(data['maze'])
+
+    # 遍历迷宫布局
+    for y, row in enumerate(maze_layout):
+        flipped_y = len(maze_layout) - y - 1  # 翻转y坐标
+        for x, cell in enumerate(row):
+            if cell == 'X' or cell == 'S':  # 如果该位置为障碍物
+                obstacle_coords.add((x - 24.5, flipped_y))  # 将障碍物的坐标添加到集合中
+    print(obstacle_coords)
+    return obstacle_coords
 
 def build_maze(client):
     # Load maze boundary
@@ -137,10 +154,7 @@ def build_maze(client):
                                                 # +0.5是因为要让BOX刚好落在网格内，“不压线”
                                                 basePosition=[x - 24.5, flipped_y - 2.5, 1.0],
                                                 physicsClientId=client)
-                obstacle_coords.add((x - 24.5, flipped_y))  # 将障碍物的坐标添加到集合中
                 obstacle_ids.append(obstacle_id)
-            elif cell == 'S':  # 不让障碍物生成的区域
-                obstacle_coords.add((x - 24.5, flipped_y))  # 将障碍物的坐标添加到集合中
     return obstacle_ids
 
 

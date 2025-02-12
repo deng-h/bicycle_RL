@@ -20,7 +20,7 @@ python enjoy.py \
 --algo ppo \
 --env BicycleMazeLidar2-v0 \
 --folder logs/ \
---exp-id 5 \
+--exp-id 2 \
 --env-kwargs gui:True \
 --load-best \
 --no-render \
