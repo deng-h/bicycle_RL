@@ -186,6 +186,7 @@ class BicycleMazeLidarEnv2(gymnasium.Env):
         # action [车把角度，前后轮速度]
         # obs [翻滚角, 车把角度, 后轮速度, 车与目标点距离, 车与目标点角度]
         roll_angle = obs[0]
+        bicycle_vel = obs[2]
         distance_to_goal = obs[3]
         angle_to_target = obs[4]
 
@@ -195,20 +196,18 @@ class BicycleMazeLidarEnv2(gymnasium.Env):
         # ========== 平衡奖励 ==========
 
         # ========== 导航奖励 ==========
-        diff_dist_to_goal = (self.prev_dist_to_goal - distance_to_goal) * 100.0
-        distance_rwd = 0.0
-        if diff_dist_to_goal > 0.0:
-            distance_rwd = diff_dist_to_goal
-        else:
-            distance_rwd = 1.2 * diff_dist_to_goal
+        diff_dist  = (self.prev_dist_to_goal - distance_to_goal) * 100.0
+        distance_rwd = diff_dist if diff_dist > 0 else 1.5 * diff_dist
+
+        angle_rwd = math.cos(angle_to_target) * 0.5  # 角度对齐奖励
 
         proximity_rwd = 0.0
         if distance_to_goal <= self.config["proximity_threshold"]:
-            proximity_rwd = 1.0  # 给予接近目标奖励
-            if diff_dist_to_goal > 0.0:
-                distance_rwd += 0.5 * diff_dist_to_goal
+            proximity_rwd = angle_rwd * 1.5 - bicycle_vel * 0.2
+            if diff_dist  > 0.0:
+                distance_rwd += 0.5 * diff_dist 
             else:
-                distance_rwd -= diff_dist_to_goal
+                distance_rwd -= diff_dist
 
         goal_rwd = 0.0
         if math.fabs(distance_to_goal) <= self.config["goal_threshold"]:
@@ -220,7 +219,7 @@ class BicycleMazeLidarEnv2(gymnasium.Env):
         collision_penalty_rwd = collision_penalty(lidar_info, alpha=0.1, threshold=2.0)
         # ========== 避障奖励 ==========
 
-        total_reward = distance_rwd + goal_rwd + proximity_rwd
+        total_reward = distance_rwd + goal_rwd + proximity_rwd + angle_rwd
         return total_reward
 
     def render(self):

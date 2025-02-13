@@ -20,8 +20,8 @@ python enjoy.py \
 --algo ppo \
 --env BicycleMazeLidar2-v0 \
 --folder logs/ \
---exp-id 4 \
+--exp-id 8 \
 --env-kwargs gui:True \
 --load-best \
 --no-render \
---n-timesteps 12000
+--n-timesteps 15000
