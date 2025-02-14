@@ -78,13 +78,13 @@ class BicycleMazeLidarEnv2(gymnasium.Env):
         # Retrieve the max/min values，环境内部对action_space做了归一化
         self.action_low, self.action_high = self.actual_action_space.low, self.actual_action_space.high
 
-        # 车把角度, 后轮速度, 车与目标点距离, 车与目标点角度
+        # 翻滚角, 车把角度, 后轮速度, 车与目标点距离, 车与目标点角度
         self.observation_space = gymnasium.spaces.Dict({
             "lidar": gymnasium.spaces.box.Box(low=0., high=100., shape=(180,), dtype=np.float32),
             "obs": gymnasium.spaces.box.Box(
-                low=np.array([-1.57, -10., -100., -math.pi]),
-                high=np.array([1.57, 10., 100., math.pi]),
-                shape=(4,),
+                low=np.array([-math.pi, -1.57, -10., -100., -math.pi]),
+                high=np.array([math.pi, 1.57, 10., 100., math.pi]),
+                shape=(5,),
                 dtype=np.float32
             ),
         })
@@ -140,7 +140,7 @@ class BicycleMazeLidarEnv2(gymnasium.Env):
 
         distance_to_goal = np.linalg.norm(np.array([obs[0], obs[1]]) - np.array(self.goal))
         angle_to_target = my_tools.calculate_angle_to_target(obs[0], obs[1], obs[2], self.goal[0], self.goal[1])
-        obs_ = np.array([obs[4], obs[5], distance_to_goal, angle_to_target], dtype=np.float32)
+        obs_ = np.array([obs[3], obs[4], obs[5], distance_to_goal, angle_to_target], dtype=np.float32)
 
         self.current_roll_angle = obs[3]
 
@@ -176,7 +176,7 @@ class BicycleMazeLidarEnv2(gymnasium.Env):
         obs = self.bicycle.reset()
         distance_to_goal = np.linalg.norm(np.array([obs[0], obs[1]]) - np.array(self.goal))
         angle_to_target = my_tools.calculate_angle_to_target(obs[0], obs[1], obs[2], self.goal[0], self.goal[1])
-        obs_ = np.array([obs[4], obs[5], distance_to_goal, angle_to_target], dtype=np.float32)
+        obs_ = np.array([obs[3], obs[4], obs[5], distance_to_goal, angle_to_target], dtype=np.float32)
         self.prev_dist_to_goal = distance_to_goal
         self.current_roll_angle = obs[3]
 
@@ -186,15 +186,15 @@ class BicycleMazeLidarEnv2(gymnasium.Env):
         self.terminated = False
         self.truncated = False
         # action [车把角度，前后轮速度]
-        # obs [车把角度, 后轮速度, 车与目标点距离, 车与目标点角度]
-        # roll_angle = obs[0]
-        bicycle_vel = obs[1]
-        distance_to_goal = obs[2]
-        angle_to_target = obs[3]
+        # obs [翻滚角, 车把角度, 后轮速度, 车与目标点距离, 车与目标点角度]
+        roll_angle = obs[0]
+        bicycle_vel = obs[2]
+        distance_to_goal = obs[3]
+        angle_to_target = obs[4]
 
         # ========== 平衡奖励 ==========
-        # if math.fabs(roll_angle) >= 0.35:
-        #     self.terminated = True
+        if math.fabs(roll_angle) >= 0.35:
+            self.terminated = True
         # ========== 平衡奖励 ==========
 
         # ========== 导航奖励 ==========

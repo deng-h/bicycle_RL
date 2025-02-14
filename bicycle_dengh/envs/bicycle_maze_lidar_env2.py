@@ -188,9 +188,9 @@ class BicycleMazeLidarEnv2(gymnasium.Env):
         # action [车把角度，前后轮速度]
         # obs [翻滚角, 车把角度, 后轮速度, 车与目标点距离, 车与目标点角度]
         roll_angle = obs[0]
-        bicycle_vel = obs[1]
-        distance_to_goal = obs[2]
-        angle_to_target = obs[3]
+        bicycle_vel = obs[2]
+        distance_to_goal = obs[3]
+        angle_to_target = obs[4]
 
         # ========== 平衡奖励 ==========
         if math.fabs(roll_angle) >= 0.35:
