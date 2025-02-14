@@ -5,29 +5,27 @@ import pybullet as p
 import pybullet_data
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 from stable_baselines3.common.env_util import make_vec_env
+from stable_baselines3.common.env_checker import check_env
 from bicycle_dengh.resources.bicycle_lidar import BicycleLidar
 from bicycle_dengh.resources.goal import Goal
 import math
 from utils import my_tools
 from simple_pid import PID
-from stable_baselines3.common.env_checker import check_env
-from gymnasium.wrappers import TimeLimit
 import yaml
 import platform
-import os
 
 
-def collision_penalty(lidar_distances, alpha=0.1, threshold=5.0):
+def collision_penalty(lidar_data, alpha=0.1, threshold=5.0):
     """
     计算基于激光雷达的碰撞惩罚。
 
-    :param lidar_distances: 激光雷达检测到的距离数组 (1x360)。
+    :param lidar_data: 激光雷达检测到的距离数组 (1x360)。
     :param alpha: 控制惩罚指数衰减的速度因子，值越大衰减越快。
     :param threshold: 惩罚的距离阈值，只有小于该值的距离才会被考虑惩罚。
     :return: 碰撞惩罚值 (负值)。
     """
     # 找到所有小于阈值的距离
-    close_distances = lidar_distances[lidar_distances < threshold]
+    close_distances = lidar_data[lidar_data < threshold]
 
     if len(close_distances) == 0:
         return 0.0  # 没有障碍物靠近，不惩罚
@@ -48,7 +46,7 @@ class BicycleMazeLidarEnv2(gymnasium.Env):
     def __init__(self, gui=False):
         system = platform.system()
         if system == "Windows":
-            yaml_file_path = "bicycle_dengh\envs\BicycleMazeLidarEnv2Config.yaml"
+            yaml_file_path = "D:\\data\\1-L\\9-bicycle\\bicycle-rl\\bicycle_dengh\envs\BicycleMazeLidarEnv2Config.yaml"
         else:
             yaml_file_path = "/root/bicycle-rl/bicycle_dengh/envs/BicycleMazeLidarEnv2Config.yaml"
         with open(yaml_file_path, "r", encoding='utf-8') as f:
@@ -63,6 +61,10 @@ class BicycleMazeLidarEnv2(gymnasium.Env):
         self.roll_angle_pid = PID(1100, 100, 0, setpoint=0.0)
         self.current_roll_angle = 0.0
         self._max_episode_steps = self.config["max_episode_steps"]
+        self.proximity_threshold = self.config["proximity_threshold"]
+        self.goal_threshold = self.config["goal_threshold"]
+        self.safe_distance = self.config["safe_distance"]
+        self.front_safe = self.config["front_safe"]
         self._elapsed_steps = None
         self.action_space = gymnasium.spaces.box.Box(low=-1., high=1., shape=(2,), dtype=np.float32)
 
@@ -76,13 +78,13 @@ class BicycleMazeLidarEnv2(gymnasium.Env):
         # Retrieve the max/min values，环境内部对action_space做了归一化
         self.action_low, self.action_high = self.actual_action_space.low, self.actual_action_space.high
 
-        # 翻滚角, 车把角度, 后轮速度, 车与目标点距离, 车与目标点角度
+        # 车把角度, 后轮速度, 车与目标点距离, 车与目标点角度
         self.observation_space = gymnasium.spaces.Dict({
-            "lidar": gymnasium.spaces.box.Box(low=0., high=150., shape=(360,), dtype=np.float32),
+            "lidar": gymnasium.spaces.box.Box(low=0., high=100., shape=(180,), dtype=np.float32),
             "obs": gymnasium.spaces.box.Box(
-                low=np.array([-math.pi, -1.57, -10., -100., -math.pi]),
-                high=np.array([math.pi, 1.57, 10., 100., math.pi]),
-                shape=(5,),
+                low=np.array([-1.57, -10., -100., -math.pi]),
+                high=np.array([1.57, 10., 100., math.pi]),
+                shape=(4,),
                 dtype=np.float32
             ),
         })
@@ -115,7 +117,7 @@ class BicycleMazeLidarEnv2(gymnasium.Env):
         p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, 0)
         p.configureDebugVisualizer(p.COV_ENABLE_SHADOWS, 0)  # 关闭阴影效果，透明的陀螺仪会显示出来，问题不大
 
-        # self.obstacle_ids = my_tools.build_maze(self.client)
+        # obstacle_ids = my_tools.build_maze(self.client)
         # 得到目标点不允许生成的位置的集合
         self.generate_goal_pos = my_tools.generate_goal_pos()
         self.bicycle = BicycleLidar(self.client, self.max_flywheel_vel, obstacle_ids=[])
@@ -138,7 +140,7 @@ class BicycleMazeLidarEnv2(gymnasium.Env):
 
         distance_to_goal = np.linalg.norm(np.array([obs[0], obs[1]]) - np.array(self.goal))
         angle_to_target = my_tools.calculate_angle_to_target(obs[0], obs[1], obs[2], self.goal[0], self.goal[1])
-        obs_ = np.array([obs[3], obs[4], obs[5], distance_to_goal, angle_to_target], dtype=np.float32)
+        obs_ = np.array([obs[4], obs[5], distance_to_goal, angle_to_target], dtype=np.float32)
 
         self.current_roll_angle = obs[3]
 
@@ -150,7 +152,7 @@ class BicycleMazeLidarEnv2(gymnasium.Env):
             p.resetDebugVisualizerCamera(camera_distance, camera_yaw, camera_pitch, bike_pos)
 
         # 计算奖励值
-        reward = self._reward_fun(obs_, lidar_info=obs[6])
+        reward = self._reward_fun(obs_, lidar_data=obs[6], is_collision=obs[7])
         self.prev_dist_to_goal = distance_to_goal
 
         self._elapsed_steps += 1
@@ -174,53 +176,76 @@ class BicycleMazeLidarEnv2(gymnasium.Env):
         obs = self.bicycle.reset()
         distance_to_goal = np.linalg.norm(np.array([obs[0], obs[1]]) - np.array(self.goal))
         angle_to_target = my_tools.calculate_angle_to_target(obs[0], obs[1], obs[2], self.goal[0], self.goal[1])
-        obs_ = np.array([obs[3], obs[4], obs[5], distance_to_goal, angle_to_target], dtype=np.float32)
+        obs_ = np.array([obs[4], obs[5], distance_to_goal, angle_to_target], dtype=np.float32)
         self.prev_dist_to_goal = distance_to_goal
         self.current_roll_angle = obs[3]
 
         return {"lidar": obs[6], "obs": obs_}, {}
 
-    def _reward_fun(self, obs, lidar_info):
+    def _reward_fun(self, obs, lidar_data, is_collision=False):
         self.terminated = False
         self.truncated = False
         # action [车把角度，前后轮速度]
-        # obs [翻滚角, 车把角度, 后轮速度, 车与目标点距离, 车与目标点角度]
-        roll_angle = obs[0]
-        distance_to_goal = obs[3]
-        angle_to_target = obs[4]
+        # obs [车把角度, 后轮速度, 车与目标点距离, 车与目标点角度]
+        # roll_angle = obs[0]
+        bicycle_vel = obs[1]
+        distance_to_goal = obs[2]
+        angle_to_target = obs[3]
 
         # ========== 平衡奖励 ==========
-        if math.fabs(roll_angle) >= 0.35:
-            self.terminated = True
+        # if math.fabs(roll_angle) >= 0.35:
+        #     self.terminated = True
         # ========== 平衡奖励 ==========
 
         # ========== 导航奖励 ==========
-        diff_dist_to_goal = (self.prev_dist_to_goal - distance_to_goal) * 100.0
-        distance_rwd = 0.0
-        if diff_dist_to_goal > 0.0:
-            distance_rwd = diff_dist_to_goal
-        else:
-            distance_rwd = 1.2 * diff_dist_to_goal
+        diff_dist = (self.prev_dist_to_goal - distance_to_goal) * 100.0
+        distance_rwd = diff_dist if diff_dist > 0 else 0.9 * diff_dist
+
+        # 角度对齐奖励
+        angle_rwd = math.cos(angle_to_target) * 0.5  
 
         proximity_rwd = 0.0
-        if distance_to_goal <= self.config["proximity_threshold"]:
-            proximity_rwd = 1.0  # 给予接近目标奖励
-            if diff_dist_to_goal > 0.0:
-                distance_rwd += 0.5 * diff_dist_to_goal
+        if distance_to_goal <= self.proximity_threshold:
+            proximity_rwd = angle_rwd * 1.5 - bicycle_vel * 0.2
+            if diff_dist > 0.0:
+                distance_rwd += 0.5 * diff_dist 
             else:
-                distance_rwd -= diff_dist_to_goal
+                distance_rwd -= 0.8 * diff_dist
 
         goal_rwd = 0.0
-        if math.fabs(distance_to_goal) <= self.config["goal_threshold"]:
+        if math.fabs(distance_to_goal) <= self.goal_threshold:
             self.terminated = True
             goal_rwd = 100.0
+
+        navigation_rwd = distance_rwd + angle_rwd + proximity_rwd + goal_rwd
         # ========== 导航奖励 ==========
 
         # ========== 避障奖励 ==========
-        collision_penalty_rwd = collision_penalty(lidar_info, alpha=0.1, threshold=2.0)
-        # ========== 避障奖励 ==========
+        # 基础安全惩罚
+        min_obstacle_dist = np.min(lidar_data)
+        obstacle_penalty = np.clip(1/(min_obstacle_dist + 1e-5) - 1/self.safe_distance, 0, 10)
+        # collision_penalty_rwd = collision_penalty(lidar_data, alpha=0.1, threshold=2.0)
+        # 前向区域惩罚
+        front_sector = np.concatenate([lidar_data[315:], lidar_data[:45]])
+        front_min_dist = np.min(front_sector)
+        front_penalty = np.clip(1/(front_min_dist + 1e-5) - 1/self.front_safe, 0, 15)
+        # 碰撞检测
+        collision_penalty = -50 if is_collision else 0.0
+        # 速度适应
+        speed_penalty = -0.2 * bicycle_vel if min_obstacle_dist < self.safe_distance else 0.0
 
-        total_reward = distance_rwd + goal_rwd + proximity_rwd
+        # 综合避障奖励
+        obstacle_rwd = - (obstacle_penalty + front_penalty + collision_penalty) + speed_penalty
+        # print(f"obstacle_penalty: {obstacle_penalty}, front_penalty: {front_penalty}, collision_penalty: {collision_penalty}, speed_penalty: {speed_penalty}")
+
+        # ========== 避障奖励 ==========
+        
+        # 动态权重融合
+        survival_factor = 0.8 if min_obstacle_dist < self.safe_distance else 1.0
+        # print(f"navigation_rwd: {navigation_rwd}, obstacle_rwd: {obstacle_rwd}")
+        # total_reward = navigation_rwd * survival_factor + obstacle_rwd
+        total_reward = navigation_rwd
+
         return total_reward
 
     def render(self):
@@ -272,15 +297,15 @@ def check_observation_space(observation, observation_space):
 
 
 if __name__ == '__main__':
-    env = gymnasium.make('BicycleMazeLidar-v0', gui=True)
+    env = gymnasium.make('BicycleMazeLidar2-v0', gui=True)
     obs, infos = env.reset()
     for i in range(4000):
-        action = np.array([1.0, -1.0, 0.0], np.float32)
+        action = np.array([1.0, -1.0], np.float32)
         obs, _, terminated, truncated, infos = env.step(action)
         # check_observation_space(obs, env.observation_space)
 
         # if terminated or truncated:
         #     obs, _ = env.reset()
-        time.sleep(1)
+        time.sleep(10000)
 
     env.close()

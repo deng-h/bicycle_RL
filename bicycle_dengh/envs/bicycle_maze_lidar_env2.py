@@ -117,7 +117,7 @@ class BicycleMazeLidarEnv2(gymnasium.Env):
         p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, 0)
         p.configureDebugVisualizer(p.COV_ENABLE_SHADOWS, 0)  # 关闭阴影效果，透明的陀螺仪会显示出来，问题不大
 
-        obstacle_ids = my_tools.build_maze(self.client)
+        # obstacle_ids = my_tools.build_maze(self.client)
         # 得到目标点不允许生成的位置的集合
         self.generate_goal_pos = my_tools.generate_goal_pos()
         self.bicycle = BicycleLidar(self.client, self.max_flywheel_vel, obstacle_ids=[])

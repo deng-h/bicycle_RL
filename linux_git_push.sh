@@ -16,6 +16,6 @@ git commit -m "commit from linux"
 current_branch=$(git branch --show-current)
 
 # 推送到远程仓库对应的分支
-git push origin "$current_branch"
+git push origin master
 
 echo "修改已成功提交并推送到远程仓库。"
