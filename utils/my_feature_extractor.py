@@ -121,7 +121,7 @@ class MyFeatureExtractorLidar(BaseFeaturesExtractor):
 
         # 定义状态特征提取器
         self.state_model = nn.Sequential(
-            nn.Linear(4, 64),
+            nn.Linear(5, 64),
             nn.LeakyReLU(0.2),
             nn.Linear(64, 32),  # 增加一层 Linear
             nn.LeakyReLU(0.2),
