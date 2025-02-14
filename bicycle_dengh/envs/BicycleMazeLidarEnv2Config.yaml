@@ -1,3 +1,9 @@
-max_episode_steps: 4000  
+max_episode_steps: 5000  # 每回合最大步长数
+
+# 导航参数
 proximity_threshold: 2.0  # 接近目标的距离阈值
 goal_threshold: 1.0  # 设置到达目标的距离阈值
+
+# 避障参数
+safe_distance: 4.0  # 安全距离
+front_safe: 5.0  # 前向安全距离

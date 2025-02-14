@@ -113,7 +113,7 @@ class MyFeatureExtractorLidar(BaseFeaturesExtractor):
             nn.Conv1d(in_channels=32, out_channels=64, kernel_size=3, stride=2, padding=1),
             nn.ReLU(),
             nn.Flatten(),
-            nn.Linear(64 * 23, 128),
+            nn.Linear(64 * 12, 128),  # nn.Linear(64 * 23, 128)是360×1的激光雷达数据
             nn.ReLU(),
             nn.Linear(128, 96),
             nn.ReLU(),
@@ -121,7 +121,7 @@ class MyFeatureExtractorLidar(BaseFeaturesExtractor):
 
         # 定义状态特征提取器
         self.state_model = nn.Sequential(
-            nn.Linear(5, 64),
+            nn.Linear(4, 64),
             nn.LeakyReLU(0.2),
             nn.Linear(64, 32),  # 增加一层 Linear
             nn.LeakyReLU(0.2),

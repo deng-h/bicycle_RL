@@ -73,7 +73,7 @@ class BicycleLidar:
 
         self.max_buffer_size = 20
         self.number_of_frames = 3
-        self.num_rays = 360
+        self.num_rays = 180
         self.ray_len = 100
         self.lidar_origin_offset = [0., 0., .7]  # 激光雷达相对于小车的位置偏移量
         self.initial_joint_positions = None
@@ -227,9 +227,7 @@ class BicycleLidar:
         if self.frame_count % self.lidar_update_frequency == 0:
             lidar_info = self._get_lidar_info3(pos)
 
-        is_collided = False  # 初始化 is_collided
-        # if self.frame_count % self.collision_check_frequency == 0:
-        #     is_collided = self._is_collided()
+        is_collided = self._is_collided()
 
         observation = [pos[0],
                        pos[1],
@@ -237,7 +235,7 @@ class BicycleLidar:
                        roll_angle,
                        handlebar_joint_ang,
                        back_wheel_joint_vel,
-                       lidar_info if lidar_info is not None else self.last_lidar_info, # 使用上次的激光雷达信息
+                       lidar_info if lidar_info is not None else self.last_lidar_info,  # 使用上次的激光雷达信息
                        is_collided
                       ]
         # 保存激光雷达信息，下次使用
@@ -300,7 +298,7 @@ class BicycleLidar:
 
     def _is_collided(self):
         for obstacle_id in self.obstacle_ids:
-            contact_points = p.getClosestPoints(self.bicycleId, obstacle_id, distance=0.0, physicsClientId=self.client)
+            contact_points = p.getClosestPoints(self.bicycleId, obstacle_id, distance=0.2, physicsClientId=self.client)
             if len(contact_points) > 0:
                 return True
         return False
@@ -338,20 +336,20 @@ class BicycleLidar:
 
         results = p.rayTestBatch(rayFromPositions=rayFrom.tolist(), rayToPositions=rayTo.tolist())
 
-        # for i, result in enumerate(results):
-        #     if result[0] < 0:
-        #         p.addUserDebugLine(rayFrom[i], rayTo[i], lineColorRGB=[0, 1, 0], lineWidth=1.0)
-        #     else:
-        #         hit_position = result[3]
-        #         # 计算击中点到射线起点的距离
-        #         distance = ((hit_position[0] - rayFrom[i][0]) ** 2 +
-        #                     (hit_position[1] - rayFrom[i][1]) ** 2 +
-        #                     (hit_position[2] - rayFrom[i][2]) ** 2) ** 0.5
-        #         # 在击中点附近显示距离
-        #         text_position = (hit_position[0], hit_position[1], hit_position[2] + 0.1)  # 提高文本显示位置
-        #         p.addUserDebugText(f"{distance:.2f} m", text_position, textColorRGB=[1, 1, 1], textSize=1.0)
-        #         # 显示击中点的射线
-        #         p.addUserDebugLine(rayFrom[i], hit_position, lineColorRGB=[1, 0, 0], lineWidth=1.0)
+        for i, result in enumerate(results):
+            if result[0] < 0:
+                p.addUserDebugLine(rayFrom[i], rayTo[i], lineColorRGB=[0, 1, 0], lineWidth=1.0)
+            else:
+                hit_position = result[3]
+                # 计算击中点到射线起点的距离
+                distance = ((hit_position[0] - rayFrom[i][0]) ** 2 +
+                            (hit_position[1] - rayFrom[i][1]) ** 2 +
+                            (hit_position[2] - rayFrom[i][2]) ** 2) ** 0.5
+                # 在击中点附近显示距离
+                text_position = (hit_position[0], hit_position[1], hit_position[2] + 0.1)  # 提高文本显示位置
+                p.addUserDebugText(f"{distance:.2f} m", text_position, textColorRGB=[1, 1, 1], textSize=1.0)
+                # 显示击中点的射线
+                p.addUserDebugLine(rayFrom[i], hit_position, lineColorRGB=[1, 0, 0], lineWidth=1.0)
 
         # 计算距离
         distance = np.array([
@@ -360,4 +358,32 @@ class BicycleLidar:
         ], dtype=np.float32)
 
         return distance
+
+    def draw_circle(self, center_pos, radius, num_segments=24, color=None):
+        """
+        在PyBullet中绘制圆形。
+
+        Args:
+            center_pos (list or np.array): 圆心位置 [x, y, z]。
+            radius (float): 圆的半径。
+            num_segments (int): 用于近似圆形的线段数量。默认值为24。
+            color (list): 圆形的颜色，RGB格式，例如 [1, 0, 0] 代表红色。
+        """
+        if color is None:
+            color = [1, 0, 0]
+        points = []
+        for i in range(num_segments):
+            angle = 2 * np.pi * i / num_segments
+            x = center_pos[0] + radius * np.cos(angle)
+            y = center_pos[1] + radius * np.sin(angle)
+            z = center_pos[2]  # 保持与圆心相同的z坐标
+            points.append([x, y, z])
+
+        # 绘制线段连接点，形成圆形
+        for i in range(num_segments):
+            p.addUserDebugLine(
+                lineFromXYZ=points[i],
+                lineToXYZ=points[(i + 1) % num_segments],  # 连接到下一个点，最后一个点连接到第一个点
+                lineColorRGB=color
+            )
 
