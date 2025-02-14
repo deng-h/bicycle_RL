@@ -199,7 +199,7 @@ class BicycleMazeLidarEnv2(gymnasium.Env):
 
         # ========== 导航奖励 ==========
         diff_dist = (self.prev_dist_to_goal - distance_to_goal) * 100.0
-        distance_rwd = diff_dist if diff_dist > 0 else diff_dist
+        distance_rwd = diff_dist if diff_dist > 0 else 1.2 * diff_dist
 
         # 角度对齐奖励
         # angle_rwd = math.cos(angle_to_target) * 0.5
