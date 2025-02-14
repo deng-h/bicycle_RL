@@ -187,21 +187,21 @@ class BicycleMazeLidarEnv2(gymnasium.Env):
         self.truncated = False
         # action [车把角度，前后轮速度]
         # obs [翻滚角, 车把角度, 后轮速度, 车与目标点距离, 车与目标点角度]
-        roll_angle = obs[0]
+        # roll_angle = obs[0]
         bicycle_vel = obs[2]
         distance_to_goal = obs[3]
         angle_to_target = obs[4]
 
         # ========== 平衡奖励 ==========
-        if math.fabs(roll_angle) >= 0.35:
-            self.terminated = True
+        # if math.fabs(roll_angle) >= 0.35:
+        #     self.terminated = True
         # ========== 平衡奖励 ==========
 
         # ========== 导航奖励 ==========
-        current_dist_penalty = -0.2 * distance_to_goal  # 当前距离惩罚
+        current_dist_penalty = -0.1 * distance_to_goal  # 当前距离惩罚
         diff_dist = (self.prev_dist_to_goal - distance_to_goal) * 100.0
-        distance_rwd = diff_dist if diff_dist > 0.0 else 1.2 * diff_dist  # 仅奖励距离减少的情况
-        angle_penalty = -0.05 * abs(angle_to_target)  # 角度偏差惩罚
+        distance_rwd = diff_dist if 1.5 * diff_dist > 0.0 else 1.2 * diff_dist
+        angle_penalty = -0.5 * abs(angle_to_target)  # 角度偏差惩罚
 
         # proximity_rwd = 0.0
         # if distance_to_goal <= self.proximity_threshold:
