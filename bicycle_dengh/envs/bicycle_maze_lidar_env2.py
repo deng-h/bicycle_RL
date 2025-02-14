@@ -202,22 +202,22 @@ class BicycleMazeLidarEnv2(gymnasium.Env):
         distance_rwd = diff_dist if diff_dist > 0 else 0.9 * diff_dist
 
         # 角度对齐奖励
-        angle_rwd = math.cos(angle_to_target) * 0.5  
-
-        proximity_rwd = 0.0
-        if distance_to_goal <= self.proximity_threshold:
-            proximity_rwd = angle_rwd * 1.5 - bicycle_vel * 0.2
-            if diff_dist > 0.0:
-                distance_rwd += 0.5 * diff_dist 
-            else:
-                distance_rwd -= 0.8 * diff_dist
+        # angle_rwd = math.cos(angle_to_target) * 0.5
+        #
+        # proximity_rwd = 0.0
+        # if distance_to_goal <= self.proximity_threshold:
+        #     proximity_rwd = angle_rwd * 1.5 - bicycle_vel * 0.2
+        #     if diff_dist > 0.0:
+        #         distance_rwd += 0.5 * diff_dist
+        #     else:
+        #         distance_rwd -= 0.8 * diff_dist
 
         goal_rwd = 0.0
         if math.fabs(distance_to_goal) <= self.goal_threshold:
             self.terminated = True
             goal_rwd = 100.0
 
-        navigation_rwd = distance_rwd + angle_rwd + proximity_rwd + goal_rwd
+        navigation_rwd = distance_rwd + goal_rwd
         # ========== 导航奖励 ==========
 
         # ========== 避障奖励 ==========
