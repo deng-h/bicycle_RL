@@ -336,20 +336,20 @@ class BicycleLidar:
 
         results = p.rayTestBatch(rayFromPositions=rayFrom.tolist(), rayToPositions=rayTo.tolist())
 
-        for i, result in enumerate(results):
-            if result[0] < 0:
-                p.addUserDebugLine(rayFrom[i], rayTo[i], lineColorRGB=[0, 1, 0], lineWidth=1.0)
-            else:
-                hit_position = result[3]
-                # 计算击中点到射线起点的距离
-                distance = ((hit_position[0] - rayFrom[i][0]) ** 2 +
-                            (hit_position[1] - rayFrom[i][1]) ** 2 +
-                            (hit_position[2] - rayFrom[i][2]) ** 2) ** 0.5
-                # 在击中点附近显示距离
-                text_position = (hit_position[0], hit_position[1], hit_position[2] + 0.1)  # 提高文本显示位置
-                p.addUserDebugText(f"{distance:.2f} m", text_position, textColorRGB=[1, 1, 1], textSize=1.0)
-                # 显示击中点的射线
-                p.addUserDebugLine(rayFrom[i], hit_position, lineColorRGB=[1, 0, 0], lineWidth=1.0)
+        # for i, result in enumerate(results):
+        #     if result[0] < 0:
+        #         p.addUserDebugLine(rayFrom[i], rayTo[i], lineColorRGB=[0, 1, 0], lineWidth=1.0)
+        #     else:
+        #         hit_position = result[3]
+        #         # 计算击中点到射线起点的距离
+        #         distance = ((hit_position[0] - rayFrom[i][0]) ** 2 +
+        #                     (hit_position[1] - rayFrom[i][1]) ** 2 +
+        #                     (hit_position[2] - rayFrom[i][2]) ** 2) ** 0.5
+        #         # 在击中点附近显示距离
+        #         text_position = (hit_position[0], hit_position[1], hit_position[2] + 0.1)  # 提高文本显示位置
+        #         p.addUserDebugText(f"{distance:.2f} m", text_position, textColorRGB=[1, 1, 1], textSize=1.0)
+        #         # 显示击中点的射线
+        #         p.addUserDebugLine(rayFrom[i], hit_position, lineColorRGB=[1, 0, 0], lineWidth=1.0)
 
         # 计算距离
         distance = np.array([
