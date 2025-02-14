@@ -120,7 +120,7 @@ class BicycleMazeLidarEnv2(gymnasium.Env):
         obstacle_ids = my_tools.build_maze(self.client)
         # 得到目标点不允许生成的位置的集合
         self.generate_goal_pos = my_tools.generate_goal_pos()
-        self.bicycle = BicycleLidar(self.client, self.max_flywheel_vel, obstacle_ids=obstacle_ids)
+        self.bicycle = BicycleLidar(self.client, self.max_flywheel_vel, obstacle_ids=[])
         p.setAdditionalSearchPath(pybullet_data.getDataPath())
         plane_id = p.loadURDF("plane.urdf", physicsClientId=self.client)
         friction_coefficient = 0.5  # 摩擦系数
@@ -243,7 +243,8 @@ class BicycleMazeLidarEnv2(gymnasium.Env):
         # 动态权重融合
         survival_factor = 0.8 if min_obstacle_dist < self.safe_distance else 1.0
         # print(f"navigation_rwd: {navigation_rwd}, obstacle_rwd: {obstacle_rwd}")
-        total_reward = navigation_rwd * survival_factor + obstacle_rwd
+        # total_reward = navigation_rwd * survival_factor + obstacle_rwd
+        total_reward = navigation_rwd
 
         return total_reward
 

@@ -29,7 +29,7 @@ python train.py \
 --conf-file "$CONF_FILE" \
 --vec-env subproc \
 --progress \
---device cpu
-#--trained-agent ./logs/ppo/BicycleMazeLidar2-v0_11/best_model.zip
+--device cpu \
+--trained-agent ./logs/ppo/BicycleMazeLidar2-v0_1/best_model.zip
 
 #--tensorboard-log ./logs/tensorboard/
