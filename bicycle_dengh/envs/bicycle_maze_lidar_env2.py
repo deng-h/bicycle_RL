@@ -198,49 +198,49 @@ class BicycleMazeLidarEnv2(gymnasium.Env):
         # ========== 平衡奖励 ==========
 
         # ========== 导航奖励 ==========
-        current_dist_penalty = -0.1 * distance_to_goal  # 当前距离惩罚
-        diff_dist = (self.prev_dist_to_goal - distance_to_goal) * 100.0
-        distance_rwd = diff_dist if 1.5 * diff_dist > 0.0 else 1.2 * diff_dist
-        angle_penalty = -0.5 * abs(angle_to_target)  # 角度偏差惩罚
+        diff_dist  = (self.prev_dist_to_goal - distance_to_goal) * 100.0
+        distance_rwd = diff_dist if diff_dist > 0 else 1.5 * diff_dist
 
-        # proximity_rwd = 0.0
-        # if distance_to_goal <= self.proximity_threshold:
-        #     proximity_rwd = angle_rwd * 1.5 - bicycle_vel * 0.2
-        #     if diff_dist > 0.0:
-        #         distance_rwd += 0.5 * diff_dist
-        #     else:
-        #         distance_rwd -= 0.8 * diff_dist
+        angle_rwd = math.cos(angle_to_target) * 0.5  # 角度对齐奖励
+
+        proximity_rwd = 0.0
+        if distance_to_goal <= self.config["proximity_threshold"]:
+            proximity_rwd = angle_rwd * 1.5 - bicycle_vel * 0.2
+            if diff_dist  > 0.0:
+                distance_rwd += 0.5 * diff_dist 
+            else:
+                distance_rwd -= diff_dist
 
         goal_rwd = 0.0
-        if math.fabs(distance_to_goal) <= self.goal_threshold:
+        if math.fabs(distance_to_goal) <= self.config["goal_threshold"]:
             self.terminated = True
             goal_rwd = 100.0
-
-        navigation_rwd = distance_rwd + current_dist_penalty + angle_penalty + goal_rwd
+            
+        navigation_rwd = distance_rwd + angle_rwd + proximity_rwd + goal_rwd
         # ========== 导航奖励 ==========
 
         # ========== 避障奖励 ==========
         # 基础安全惩罚
-        min_obstacle_dist = np.min(lidar_data)
-        obstacle_penalty = np.clip(1/(min_obstacle_dist + 1e-5) - 1/self.safe_distance, 0, 10)
+        # min_obstacle_dist = np.min(lidar_data)
+        # obstacle_penalty = np.clip(1/(min_obstacle_dist + 1e-5) - 1/self.safe_distance, 0, 10)
         # collision_penalty_rwd = collision_penalty(lidar_data, alpha=0.1, threshold=2.0)
         # 前向区域惩罚
-        front_sector = np.concatenate([lidar_data[315:], lidar_data[:45]])
-        front_min_dist = np.min(front_sector)
-        front_penalty = np.clip(1/(front_min_dist + 1e-5) - 1/self.front_safe, 0, 15)
+        # front_sector = np.concatenate([lidar_data[315:], lidar_data[:45]])
+        # front_min_dist = np.min(front_sector)
+        # front_penalty = np.clip(1/(front_min_dist + 1e-5) - 1/self.front_safe, 0, 15)
         # 碰撞检测
-        collision_penalty = -50 if is_collision else 0.0
+        # collision_penalty = -50 if is_collision else 0.0
         # 速度适应
-        speed_penalty = -0.2 * bicycle_vel if min_obstacle_dist < self.safe_distance else 0.0
+        # speed_penalty = -0.2 * bicycle_vel if min_obstacle_dist < self.safe_distance else 0.0
 
         # 综合避障奖励
-        obstacle_rwd = - (obstacle_penalty + front_penalty + collision_penalty) + speed_penalty
+        # obstacle_rwd = - (obstacle_penalty + front_penalty + collision_penalty) + speed_penalty
         # print(f"obstacle_penalty: {obstacle_penalty}, front_penalty: {front_penalty}, collision_penalty: {collision_penalty}, speed_penalty: {speed_penalty}")
 
         # ========== 避障奖励 ==========
         
         # 动态权重融合
-        survival_factor = 0.8 if min_obstacle_dist < self.safe_distance else 1.0
+        # survival_factor = 0.8 if min_obstacle_dist < self.safe_distance else 1.0
         # print(f"navigation_rwd: {navigation_rwd}, obstacle_rwd: {obstacle_rwd}")
         # total_reward = navigation_rwd * survival_factor + obstacle_rwd
         total_reward = navigation_rwd
