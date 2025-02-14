@@ -227,9 +227,7 @@ class BicycleLidar:
         if self.frame_count % self.lidar_update_frequency == 0:
             lidar_info = self._get_lidar_info3(pos)
 
-        is_collided = False  # 初始化 is_collided
-        # if self.frame_count % self.collision_check_frequency == 0:
-        #     is_collided = self._is_collided()
+        is_collided = self._is_collided()
 
         observation = [pos[0],
                        pos[1],
@@ -237,7 +235,7 @@ class BicycleLidar:
                        roll_angle,
                        handlebar_joint_ang,
                        back_wheel_joint_vel,
-                       lidar_info if lidar_info is not None else self.last_lidar_info, # 使用上次的激光雷达信息
+                       lidar_info if lidar_info is not None else self.last_lidar_info,  # 使用上次的激光雷达信息
                        is_collided
                       ]
         # 保存激光雷达信息，下次使用
@@ -300,7 +298,7 @@ class BicycleLidar:
 
     def _is_collided(self):
         for obstacle_id in self.obstacle_ids:
-            contact_points = p.getClosestPoints(self.bicycleId, obstacle_id, distance=0.0, physicsClientId=self.client)
+            contact_points = p.getClosestPoints(self.bicycleId, obstacle_id, distance=0.2, physicsClientId=self.client)
             if len(contact_points) > 0:
                 return True
         return False
@@ -360,4 +358,32 @@ class BicycleLidar:
         ], dtype=np.float32)
 
         return distance
+
+    def draw_circle(self, center_pos, radius, num_segments=24, color=None):
+        """
+        在PyBullet中绘制圆形。
+
+        Args:
+            center_pos (list or np.array): 圆心位置 [x, y, z]。
+            radius (float): 圆的半径。
+            num_segments (int): 用于近似圆形的线段数量。默认值为24。
+            color (list): 圆形的颜色，RGB格式，例如 [1, 0, 0] 代表红色。
+        """
+        if color is None:
+            color = [1, 0, 0]
+        points = []
+        for i in range(num_segments):
+            angle = 2 * np.pi * i / num_segments
+            x = center_pos[0] + radius * np.cos(angle)
+            y = center_pos[1] + radius * np.sin(angle)
+            z = center_pos[2]  # 保持与圆心相同的z坐标
+            points.append([x, y, z])
+
+        # 绘制线段连接点，形成圆形
+        for i in range(num_segments):
+            p.addUserDebugLine(
+                lineFromXYZ=points[i],
+                lineToXYZ=points[(i + 1) % num_segments],  # 连接到下一个点，最后一个点连接到第一个点
+                lineColorRGB=color
+            )
 
