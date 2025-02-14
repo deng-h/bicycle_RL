@@ -198,9 +198,9 @@ class BicycleMazeLidarEnv2(gymnasium.Env):
         # ========== 平衡奖励 ==========
 
         # ========== 导航奖励 ==========
-        current_dist_penalty = -0.1 * distance_to_goal  # 当前距离惩罚
+        current_dist_penalty = -0.2 * distance_to_goal  # 当前距离惩罚
         diff_dist = (self.prev_dist_to_goal - distance_to_goal) * 100.0
-        distance_rwd = max(diff_dist, 0)  # 仅奖励距离减少的情况
+        distance_rwd = diff_dist if diff_dist > 0.0 else 1.2 * diff_dist  # 仅奖励距离减少的情况
         angle_penalty = -0.05 * abs(angle_to_target)  # 角度偏差惩罚
 
         # proximity_rwd = 0.0
