@@ -30,6 +30,6 @@ python train.py \
 --vec-env subproc \
 --progress \
 --device cpu
-# --trained-agent ./logs/ppo/BicycleMazeLidar2-v0_3/best_model.zip
+--trained-agent ./logs/ppo/BicycleMazeLidar2-v0_2/best_model.zip
 
 #--tensorboard-log ./logs/tensorboard/
