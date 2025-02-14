@@ -113,7 +113,7 @@ class MyFeatureExtractorLidar(BaseFeaturesExtractor):
             nn.Conv1d(in_channels=32, out_channels=64, kernel_size=3, stride=2, padding=1),
             nn.ReLU(),
             nn.Flatten(),
-            nn.Linear(64 * 23, 128),
+            nn.Linear(64 * 12, 128),
             nn.ReLU(),
             nn.Linear(128, 96),
             nn.ReLU(),

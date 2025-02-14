@@ -73,7 +73,7 @@ class BicycleLidar:
 
         self.max_buffer_size = 20
         self.number_of_frames = 3
-        self.num_rays = 360
+        self.num_rays = 180
         self.ray_len = 100
         self.lidar_origin_offset = [0., 0., .7]  # 激光雷达相对于小车的位置偏移量
         self.initial_joint_positions = None

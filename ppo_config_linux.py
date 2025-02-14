@@ -7,6 +7,7 @@ hyperparams = {
         n_envs=32,
         n_timesteps=300000,
         learning_rate=1e-4,
+        batch_size=512,
         policy_kwargs=dict(
             features_extractor_class=MyFeatureExtractorLidar,
             net_arch=dict(pi=[512, 512], vf=[512, 512])

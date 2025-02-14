@@ -78,7 +78,7 @@ class BicycleMazeLidarEnv2(gymnasium.Env):
 
         # 翻滚角, 车把角度, 后轮速度, 车与目标点距离, 车与目标点角度
         self.observation_space = gymnasium.spaces.Dict({
-            "lidar": gymnasium.spaces.box.Box(low=0., high=150., shape=(360,), dtype=np.float32),
+            "lidar": gymnasium.spaces.box.Box(low=0., high=100., shape=(180,), dtype=np.float32),
             "obs": gymnasium.spaces.box.Box(
                 low=np.array([-math.pi, -1.57, -10., -100., -math.pi]),
                 high=np.array([math.pi, 1.57, 10., 100., math.pi]),
