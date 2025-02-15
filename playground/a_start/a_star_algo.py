@@ -26,7 +26,7 @@ def a_star_pathfinding(grid_map, start, goal):
         raise ValueError("起始点或目标点超出网格地图范围")
 
     if grid_map[start[0], start[1]] == 1 or grid_map[goal[0], goal[1]] == 1:
-        return None  # 起始点或目标点是障碍物，无法生成路径
+        raise ValueError("起始点或目标点是障碍物，无法生成路径")
 
     open_set = []  # 开放集合 (优先队列)
     heapq.heappush(open_set, (0, start)) # 将起点加入开放集合，优先级为 0

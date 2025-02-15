@@ -34,6 +34,16 @@ register(
 )
 
 register(
+    id="BicycleMazeLidar3-v0",
+    entry_point='bicycle_dengh.envs:BicycleMazeLidarEnv3'
+)
+
+register(
+    id="BicycleMazeLidar4-v0",
+    entry_point='bicycle_dengh.envs:BicycleMazeLidarEnv4'
+)
+
+register(
     id="BalanceEnvS-v0",
     entry_point='bicycle_dengh.envs:BalanceEnvS'
 )

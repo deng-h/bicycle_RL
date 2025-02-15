@@ -18,9 +18,9 @@ echo "开始执行"
 # 导航
 python enjoy.py \
 --algo ppo \
---env BicycleMazeLidar2-v0 \
+--env BicycleMazeLidar3-v0 \
 --folder logs/ \
---exp-id 7 \
+--exp-id 5 \
 --env-kwargs gui:True \
 --load-best \
 --no-render \

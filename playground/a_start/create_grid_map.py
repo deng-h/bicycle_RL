@@ -39,6 +39,7 @@ def create_grid_map(client_id, grid_size_x, grid_size_y, resolution=1.0):
     return grid_map
 
 
+# 带有障碍物膨胀的网格地图创建函数
 def create_grid_map2(client_id, grid_size_x, grid_size_y, resolution=1.0, inflation_radius=1): # 添加 inflation_radius 参数
     """
     创建网格地图，标记被障碍物占据的网格单元, 并进行障碍物膨胀。

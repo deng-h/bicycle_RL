@@ -5,29 +5,7 @@ import time
 from a_star_algo import a_star_pathfinding
 from create_grid_map import create_grid_map2
 from visualize_path import visualize_path, smooth_path_bezier
-
-
-def create_obstacle(client_id, obstacle_positions):
-    """
-    创建一个或多个障碍物。
-
-    参数:
-        client_id: PyBullet 客户端 ID
-        obstacle_positions: 障碍物位置列表，每个位置是一个列表 [x, y, z]
-
-    返回:
-        障碍物的 bodyId 列表
-    """
-    collision_shape = p.createCollisionShape(p.GEOM_BOX, halfExtents=[0.5, 0.5, 1.0])
-    visual_shape = p.createVisualShape(p.GEOM_BOX, halfExtents=[0.5, 0.5, 1.0], rgbaColor=[0.92, 0.94, 0.94, 1])
-    obstacle_ids = []
-    for obstacle_pos in obstacle_positions:
-        obstacle_id = p.createMultiBody(baseCollisionShapeIndex=collision_shape,
-                                            baseVisualShapeIndex=visual_shape,
-                                            basePosition=obstacle_pos,
-                                            physicsClientId=client_id)
-        obstacle_ids.append(obstacle_id)
-    return obstacle_ids
+from create_obstacle import create_obstacle
 
 
 if __name__ == '__main__':
@@ -38,102 +16,15 @@ if __name__ == '__main__':
     planeId = p.loadURDF("plane.urdf")
 
     # 设置俯视视角
-    # 相机距离
-    camera_distance = 10
-    # 相机偏航角（水平旋转）
-    camera_yaw = 0
-    # 相机俯仰角（垂直旋转），-90 度表示俯视
-    camera_pitch = -85
-    # 相机目标位置
-    camera_target_position = [15, 15, 10]
-
+    camera_distance = 10  # 相机距离
+    camera_yaw = 0  # 相机偏航角（水平旋转）
+    camera_pitch = -85  # 相机俯仰角（垂直旋转）
+    camera_target_position = [15, 15, 10]  # 相机目标位置
     # 重置调试可视化相机
     p.resetDebugVisualizerCamera(camera_distance, camera_yaw, camera_pitch, camera_target_position)
 
-    # 定义不同的障碍物位置列表
-    obstacle_positions_set1 = [
-        [8 + 0.5, 5 + 0.5, 1],
-        [8 + 0.5, 6 + 0.5, 1],
-        [8 + 0.5, 7 + 0.5, 1],
-        [8 + 0.5, 8 + 0.5, 1],
-        [8 + 0.5, 9 + 0.5, 1],
-        [8 + 0.5, 10 + 0.5, 1],
-        [8 + 0.5, 11 + 0.5, 1],
-        [8 + 0.5, 12 + 0.5, 1],
-        [9 + 0.5, 12 + 0.5, 1],
-        [10 + 0.5, 12 + 0.5, 1],
-        [11 + 0.5, 12 + 0.5, 1],
-        [12 + 0.5, 12 + 0.5, 1],
-        [13 + 0.5, 12 + 0.5, 1],
-        [14 + 0.5, 12 + 0.5, 1],
-        [14 + 0.5, 13 + 0.5, 1],
-        [14 + 0.5, 14 + 0.5, 1],
-        [14 + 0.5, 15 + 0.5, 1],
-        [14 + 0.5, 16 + 0.5, 1],
-        [14 + 0.5, 17 + 0.5, 1],
-        [14 + 0.5, 18 + 0.5, 1],
-        [14 + 0.5, 19 + 0.5, 1],
-        [14 + 0.5, 20 + 0.5, 1],
-        [14 + 0.5, 21 + 0.5, 1],
-        [14 + 0.5, 22 + 0.5, 1],
-        [13 + 0.5, 22 + 0.5, 1],
-        [12 + 0.5, 22 + 0.5, 1],
-        [11 + 0.5, 22 + 0.5, 1],
-        [10 + 0.5, 22 + 0.5, 1],
-        [9 + 0.5, 22 + 0.5, 1],
-        [8 + 0.5, 22 + 0.5, 1],
-        [8 + 0.5, 23 + 0.5, 1],
-        [8 + 0.5, 24 + 0.5, 1],
-        [8 + 0.5, 25 + 0.5, 1],
-        [8 + 0.5, 26 + 0.5, 1],
-        [7 + 0.5, 26 + 0.5, 1],
-        [6 + 0.5, 26 + 0.5, 1],
-        [5 + 0.5, 26 + 0.5, 1],
-
-        [0 + 0.5, 15 + 0.5, 1],
-        [1 + 0.5, 15 + 0.5, 1],
-        [2 + 0.5, 15 + 0.5, 1],
-        [3 + 0.5, 15 + 0.5, 1],
-
-        [16 + 0.5, 6 + 0.5, 1],
-        [16 + 0.5, 7 + 0.5, 1],
-        [17 + 0.5, 6 + 0.5, 1],
-        [17 + 0.5, 7 + 0.5, 1],
-
-        [25 + 0.5, 3 + 0.5, 1],
-        [25 + 0.5, 4 + 0.5, 1],
-        [26 + 0.5, 3 + 0.5, 1],
-        [26 + 0.5, 4 + 0.5, 1],
-
-        [18 + 0.5, 26 + 0.5, 1],
-        [18 + 0.5, 27 + 0.5, 1],
-        [19 + 0.5, 26 + 0.5, 1],
-        [19 + 0.5, 27 + 0.5, 1],
-
-        [23 + 0.5, 10 + 0.5, 1],
-        [24 + 0.5, 10 + 0.5, 1],
-        [25 + 0.5, 10 + 0.5, 1],
-        [22 + 0.5, 10 + 0.5, 1],
-        [22 + 0.5, 11 + 0.5, 1],
-        [22 + 0.5, 12 + 0.5, 1],
-        [22 + 0.5, 13 + 0.5, 1],
-        [22 + 0.5, 14 + 0.5, 1],
-        [22 + 0.5, 15 + 0.5, 1],
-        [22 + 0.5, 16 + 0.5, 1],
-        [22 + 0.5, 17 + 0.5, 1],
-        [22 + 0.5, 18 + 0.5, 1],
-        [22 + 0.5, 19 + 0.5, 1],
-        [22 + 0.5, 20 + 0.5, 1],
-        [22 + 0.5, 21 + 0.5, 1],
-        [22 + 0.5, 22 + 0.5, 1],
-        [22 + 0.5, 23 + 0.5, 1],
-        [23 + 0.5, 23 + 0.5, 1],
-        [24 + 0.5, 23 + 0.5, 1],
-        [25 + 0.5, 23 + 0.5, 1],
-    ]
-
     # 使用不同的位置列表创建障碍物
-    obstacle_ids_1 = create_obstacle(physicsClient, obstacle_positions_set1)
+    obstacle_ids_1 = create_obstacle(physicsClient)
     grid_size_x = 30
     grid_size_y = 30
     grid_map = create_grid_map2(physicsClient, grid_size_x, grid_size_y)
@@ -162,8 +53,6 @@ if __name__ == '__main__':
     smoothed_path_world = None  # 初始化平滑路径世界坐标
 
     if path:
-
-        # 进行路径平滑
         path_world_coords = []  # 将网格坐标路径转换为世界坐标路径，用于 Bezier 曲线平滑
         for grid_pos in path:
             world_x = grid_pos[1] * 1.0 + 1.0 / 2.0
@@ -182,7 +71,6 @@ if __name__ == '__main__':
         print("平滑后的路径：", smoothed_path_grid)
         visualize_path(physicsClient, path)  # 可视化原始路径
         visualize_path(physicsClient, path, smooth_path=smoothed_path_world)  # 同时可视化原始路径和平滑路径 (平滑路径为蓝色)
-
     else:
         print("未能找到路径。")
 

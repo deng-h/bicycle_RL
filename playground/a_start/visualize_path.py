@@ -67,6 +67,7 @@ def smooth_path_bezier(path, segment_length=5):
     smoothed_path.append(path[-1]) # 添加最后一个点，确保路径完整性
     return np.array(smoothed_path)
 
+
 def visualize_path(client_id, path, resolution=1.0, smooth_path=None):
     """
     在 PyBullet 中可视化路径。
@@ -90,11 +91,8 @@ def visualize_path(client_id, path, resolution=1.0, smooth_path=None):
         world_z = 0.5  # 路径线的高度
         points.append([world_x, world_y, world_z])
 
-    # 使用 PyBullet 的 addUserDebugLine 绘制路径线段
-    # for i in range(len(points) - 1):
-    #     p.addUserDebugLine(points[i], points[i+1], line_color, lineWidth=line_width, physicsClientId=client_id)
-    if smooth_path is not None: # 如果提供了平滑路径，则可视化平滑路径
-        smooth_line_color = [0, 0, 1] # 蓝色，平滑路径颜色
+    if smooth_path is not None:  # 如果提供了平滑路径，则可视化平滑路径
+        smooth_line_color = [0, 0, 1]  # 蓝色，平滑路径颜色
         smooth_points = []
         for grid_pos in smooth_path: # smooth_path 已经是世界坐标
             smooth_points.append([grid_pos[0], grid_pos[1], 0.55]) # 平滑路径稍稍抬高，避免与原始路径重叠

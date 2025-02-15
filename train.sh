@@ -23,13 +23,33 @@ fi
 #--device cpu
 #--tensorboard-log ./logs/tensorboard/
 
+# BicycleMazeLidar2
+#python train.py \
+#--algo ppo \
+#--env BicycleMazeLidar2-v0 \
+#--conf-file "$CONF_FILE" \
+#--vec-env subproc \
+#--progress \
+#--device cpu
+#--trained-agent ./logs/ppo/BicycleMazeLidar2-v0_2/best_model.zip
+#--tensorboard-log ./logs/tensorboard/
+
+# BicycleMazeLidar3
+#python train.py \
+#--algo ppo \
+#--env BicycleMazeLidar3-v0 \
+#--conf-file "$CONF_FILE" \
+#--vec-env subproc \
+#--progress \
+#--device cpu \
+#--trained-agent ./logs/ppo/BicycleMazeLidar3-v0_5/best_model.zip
+
+# BicycleMazeLidar4
 python train.py \
 --algo ppo \
---env BicycleMazeLidar2-v0 \
+--env BicycleMazeLidar4-v0 \
 --conf-file "$CONF_FILE" \
 --vec-env subproc \
 --progress \
---device cpu 
-#--trained-agent ./logs/ppo/BicycleMazeLidar2-v0_2/best_model.zip
-
-#--tensorboard-log ./logs/tensorboard/
+--device cpu
+#--trained-agent ./logs/ppo/BicycleMazeLidar4-v0_5/best_model.zip
