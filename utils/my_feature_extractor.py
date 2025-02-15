@@ -101,7 +101,7 @@ class MyFeatureExtractor2(BaseFeaturesExtractor):
 class MyFeatureExtractorLidar(BaseFeaturesExtractor):
     def __init__(self, observation_space: gym.spaces.Dict):
         # 输入给net_arch网络的特征维度=图像特征维度+自行车的状态向量维度
-        super().__init__(observation_space, features_dim=128)
+        super().__init__(observation_space, features_dim=180 + 12)
 
         self.lidar_model = nn.Sequential(
             nn.Conv1d(in_channels=1, out_channels=8, kernel_size=5, stride=2, padding=2),
@@ -119,28 +119,19 @@ class MyFeatureExtractorLidar(BaseFeaturesExtractor):
             nn.ReLU(),
         )
 
-        # 定义状态特征提取器
-        self.state_model = nn.Sequential(
-            nn.Linear(5, 64),
-            nn.LeakyReLU(0.2),
-            nn.Linear(64, 32),  # 增加一层 Linear
-            nn.LeakyReLU(0.2),
-        )
-
         # Feature fusion with attention
-        self.fusion_layer = AttentionFusion(lidar_dim=96, state_dim=32, output_dim=128)
+        self.fusion_layer = AttentionFusion(lidar_dim=180, state_dim=12, output_dim=128)
 
     def forward(self, observations) -> th.Tensor:
         lidar_obs = observations["lidar"]
-        lidar_obs = lidar_obs.clone().detach().float()
-        lidar_obs = lidar_obs.unsqueeze(1)
-        lidar_feat = self.lidar_model(lidar_obs)  # 通过图像特征提取器处理图像特征
+        # lidar_obs = lidar_obs.clone().detach().float()
+        # lidar_obs = lidar_obs.unsqueeze(1)
+        # lidar_feat = self.lidar_model(lidar_obs)  # 通过图像特征提取器处理图像特征
 
         obs = observations["obs"]
-        state_feat = self.state_model(obs)
 
-        combined_features = self.fusion_layer(lidar_feat, state_feat)
-        return combined_features
+        # combined_features = self.fusion_layer(lidar_obs, obs)
+        return th.cat([lidar_obs, obs], dim=1)
 
 
 class AttentionFusion(nn.Module):
