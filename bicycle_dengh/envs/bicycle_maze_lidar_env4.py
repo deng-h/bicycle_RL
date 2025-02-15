@@ -190,7 +190,7 @@ class BicycleMazeLidarEnv4(gymnasium.Env):
         # ========== 平衡奖励 ==========
         roll_angle_rwd = 0.0
         if math.fabs(roll_angle) >= 0.35:
-            roll_angle_rwd = -100.0
+            roll_angle_rwd = -500.0
             self.terminated = True
         # ========== 平衡奖励 ==========
 
