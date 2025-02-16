@@ -17,12 +17,12 @@ class Bicycle:
 
         startOrientation = p.getQuaternionFromEuler([0, 0, 1.57])
         self.bicycleId = p.loadURDF(fileName=f_name, basePosition=[0, 0, 1], baseOrientation=startOrientation)
+
         self.handlebar_joint = 0
-        self.camera_joint = 1
-        self.front_wheel_joint = 2
-        self.back_wheel_joint = 3
-        self.fly_wheel_joint = 5
-        self.gyros_link = 6
+        self.front_wheel_joint = 1
+        self.back_wheel_joint = 2
+        self.fly_wheel_joint = 4
+        self.gyros_link = 5
         self.MAX_FORCE = 2000
 
         self.initial_joint_positions = None

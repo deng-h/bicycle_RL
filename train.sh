@@ -47,9 +47,19 @@ fi
 # BicycleMazeLidar4
 python train.py \
 --algo ppo \
---env BicycleMazeLidar4-v0 \
+--env BicycleMazeLidar3-v0 \
 --conf-file "$CONF_FILE" \
 --vec-env subproc \
 --progress \
 --device cpu
-#--trained-agent ./logs/ppo/BicycleMazeLidar4-v0_5/best_model.zip
+#--trained-agent ./logs/ppo/BicycleMazeLidar4-v0_4/best_model.zip
+
+# BicycleDengh-v0
+#python train.py \
+#--algo ppo \
+#--env BicycleDengh-v0 \
+#--conf-file "$CONF_FILE" \
+#--vec-env subproc \
+#--progress \
+#--device cpu \
+#--trained-agent ./logs/ppo/BicycleDengh-v0_2/best_model.zip

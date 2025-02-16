@@ -21,11 +21,11 @@ from simple_pid import PID
 import yaml
 import platform
 
-
-
 """
 想法：把自行车的翻滚角控制交给PID控制器，其他控制交给RL模型
 """
+
+
 class BicycleMazeLidarEnv4(gymnasium.Env):
     metadata = {'render_modes': ['rgb_array']}
 
@@ -45,18 +45,16 @@ class BicycleMazeLidarEnv4(gymnasium.Env):
         self.max_flywheel_vel = 120.
         self.prev_goal_id = None
         self.prev_dist_to_goal = 0.
-        self.roll_angle_pid = PID(1100, 0, 0, setpoint=0.0)
+        self.roll_angle_pid = PID(700, 20, 0, setpoint=0.0)
         self.current_roll_angle = 0.0
         self._max_episode_steps = self.config["max_episode_steps"]
         self.proximity_threshold = self.config["proximity_threshold"]
         self.goal_threshold = self.config["goal_threshold"]
         self.safe_distance = self.config["safe_distance"]
-        self.front_safe = self.config["front_safe"]
         self._elapsed_steps = None
-        self.last_obs = None
-        self.last_last_obs = None
         self.path_index = 0
         self.bicycle_start_pos = (1, 1)
+
         self.action_space = gymnasium.spaces.box.Box(low=-1., high=1., shape=(2,), dtype=np.float32)
 
         # action_space[车把角度，前后轮速度]
@@ -66,32 +64,28 @@ class BicycleMazeLidarEnv4(gymnasium.Env):
             shape=(2,),
             dtype=np.float32)
 
-        # Retrieve the max/min values，环境内部对action_space做了归一化
         self.action_low, self.action_high = self.actual_action_space.low, self.actual_action_space.high
 
-        # 翻滚角, 车把角度, 后轮速度, 车与目标点距离, 车与目标点角度
+        # 翻滚角, 翻滚角角速度, 车把角度, 车把角速度, 后轮速度, 飞轮转速, 车与目标点距离, 车与目标点角度
         self.observation_space = gymnasium.spaces.box.Box(
-            low=np.array([-math.pi, -1.57, -10., -100., -math.pi, -math.pi, -1.57, -10., -100., -math.pi, -math.pi, -1.57, -10., -100., -math.pi]),
-            high=np.array([math.pi, 1.57, 10., 100., math.pi, math.pi, 1.57, 10., 100., math.pi, math.pi, 1.57, 10., 100.,math.pi]),
-                            shape=(15,),
-                            dtype=np.float32)
+            low=np.array([-math.pi, -50., -1.57, -50., -10., -self.max_flywheel_vel, -100., -math.pi]),
+            high=np.array([math.pi, 50., 1.57, 50., 10., self.max_flywheel_vel, 100., math.pi]),
+            shape=(8,),
+            dtype=np.float32)
 
         if self.gui:
             self.client = p.connect(p.GUI)
             self.camera_distance_param = p.addUserDebugParameter('camera_distance_param', 2, 60, 5)
             self.camera_yaw_param = p.addUserDebugParameter('camera_yaw_param', -180, 180, 0)
             self.camera_pitch_param = p.addUserDebugParameter('camera_pitch_param', -90, 90, -30)
-            self.bicycle_vel_param = p.addUserDebugParameter('bicycle_vel_param', 0.0, 3.0, 1.0)
-            self.handlebar_angle_param = p.addUserDebugParameter('handlebar_angle_param', -1.57, 1.57, 0)
+            self.bicycle_vel_param = p.addUserDebugParameter('bicycle_vel_param', -1.0, 1.0, -1.0)
+            self.handlebar_angle_param = p.addUserDebugParameter('handlebar_angle_param', -1.0, 1.0, 0)
             self.flywheel_param = p.addUserDebugParameter('flywheel_param', -40, 40, 0)
         else:
             self.client = p.connect(p.DIRECT)
-            p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, 0)
-            p.configureDebugVisualizer(p.COV_ENABLE_GUI, 0)
-            p.configureDebugVisualizer(p.COV_ENABLE_SHADOWS, 0)
 
         p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, 0)
-        p.configureDebugVisualizer(p.COV_ENABLE_SHADOWS, 0)  # 关闭阴影效果，透明的陀螺仪会显示出来，问题不大
+        p.configureDebugVisualizer(p.COV_ENABLE_SHADOWS, 0)
 
         create_obstacle(self.client)
         self.grid_map = create_grid_map2(self.client, 30, 30)  # 创建网格地图
@@ -105,23 +99,24 @@ class BicycleMazeLidarEnv4(gymnasium.Env):
         # p.changeDynamics(plane_id, -1, lateralFriction=friction_coefficient)
         p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, 1)
         p.setGravity(0, 0, -10, physicsClientId=self.client)
-        p.setTimeStep(1. / 120., self.client)
+        p.setTimeStep(1. / 30., self.client)
 
     def step(self, action):
-        # Rescale action from [-1, 1] to original [low, high] interval
         rescaled_action = self._rescale_action(action)
         roll_angle_control = self.roll_angle_pid(self.current_roll_angle)
+        # print(f"roll_angle_control: {roll_angle_control},rescaled_action={rescaled_action}")
         self.bicycle.apply_action2(rescaled_action, -roll_angle_control)
         p.stepSimulation(physicsClientId=self.client)
         obs = self.bicycle.get_observation()
 
         distance_to_goal_temp = np.linalg.norm(np.array([obs[0], obs[1]]) - np.array(self.goal_temp))
-        angle_to_target = my_tools.calculate_angle_to_target(obs[0], obs[1], obs[2], self.goal_temp[0], self.goal_temp[1])
-        curr_obs = np.array([obs[3], obs[4], obs[5], distance_to_goal_temp, angle_to_target], dtype=np.float32)
+        angle_to_target = my_tools.calculate_angle_to_target(obs[0], obs[1], obs[2], self.goal_temp[0],
+                                                             self.goal_temp[1])
+        obs_ = np.array([obs[3], obs[4], obs[5], obs[6], obs[7], obs[8], distance_to_goal_temp, angle_to_target], dtype=np.float32)
 
-        obs_ = np.concatenate((curr_obs, self.last_obs, self.last_last_obs))
-        self.last_last_obs = self.last_obs
-        self.last_obs = curr_obs
+        # obs_ = np.concatenate((curr_obs, self.last_obs, self.last_last_obs))
+        # self.last_last_obs = self.last_obs
+        # self.last_obs = curr_obs
 
         self.current_roll_angle = obs[3]
 
@@ -133,8 +128,7 @@ class BicycleMazeLidarEnv4(gymnasium.Env):
             # p.resetDebugVisualizerCamera(cameraDistance=10, cameraYaw=0, cameraPitch=-85, cameraTargetPosition=[15, 10, 10])
             p.resetDebugVisualizerCamera(camera_distance, camera_yaw, camera_pitch, bike_pos)
 
-        # 计算奖励值
-        reward = self._reward_fun(curr_obs)
+        reward = self._reward_fun(obs_)
         self.prev_dist_to_goal = distance_to_goal_temp
 
         self._elapsed_steps += 1
@@ -149,8 +143,9 @@ class BicycleMazeLidarEnv4(gymnasium.Env):
         self._elapsed_steps = 0
         self.path_index = 0  # 重置路径索引
         self.goal = get_goal_pos()
-        self.smoothed_path_world = self._get_path(self.goal)
+        # self.smoothed_path_world = [([1.5, 1.5]), ([5.1, 1.5]), ([8.7, 1.5]), ([12.3,  1.5]), ([15.9,  1.5]), ([19.5,  1.5]), ([23.1,  1.5]), ([26.6919,  1.5081]), ([28.5,  4.9]), ([28.5,  8.5]), ([28.5, 12.1]), ([28.5, 15.7]), ([28.5, 19.3]), ([28.5, 22.9]), ([28.5, 26.5])]
 
+        self.smoothed_path_world = self._get_path(self.goal)
         if self.smoothed_path_world is not None and len(self.smoothed_path_world) > 0:
             self.goal_temp = self.smoothed_path_world[0]  # 将目标点设置为路径的第一个点
         else:
@@ -165,12 +160,10 @@ class BicycleMazeLidarEnv4(gymnasium.Env):
 
         obs = self.bicycle.reset()
         distance_to_goal_temp = np.linalg.norm(np.array([obs[0], obs[1]]) - np.array(self.goal_temp))
-        angle_to_target = my_tools.calculate_angle_to_target(obs[0], obs[1], obs[2], self.goal_temp[0], self.goal_temp[1])
+        angle_to_target = my_tools.calculate_angle_to_target(obs[0], obs[1], obs[2], self.goal_temp[0],
+                                                             self.goal_temp[1])
 
-        curr_obs = np.array([obs[3], obs[4], obs[5], distance_to_goal_temp, angle_to_target], dtype=np.float32)
-        self.last_obs = curr_obs
-        self.last_last_obs = curr_obs
-        obs_ = np.concatenate((curr_obs, self.last_obs, self.last_last_obs))
+        obs_ = np.array([obs[3], obs[4], obs[5], obs[6], obs[7], obs[8], distance_to_goal_temp, angle_to_target], dtype=np.float32)
 
         self.prev_dist_to_goal = distance_to_goal_temp
         self.current_roll_angle = obs[3]
@@ -180,17 +173,15 @@ class BicycleMazeLidarEnv4(gymnasium.Env):
     def _reward_fun(self, obs):
         self.terminated = False
         self.truncated = False
-        # action [车把角度，前后轮速度]
-        # obs [翻滚角, 车把角度, 后轮速度, 车与目标点距离, 车与目标点角度]
+        # action [车把角度，前后轮速度, 飞轮速度]
+        # obs [翻滚角, 翻滚角角速度, 车把角度, 车把角速度, 后轮速度, 飞轮转速, 车与目标点距离, 车与目标点角度]
         roll_angle = obs[0]
-        bicycle_vel = obs[2]
-        distance_to_goal_temp = obs[3]
-        # angle_to_target = obs[4]
+        bicycle_vel = obs[4]
+        distance_to_goal_temp = obs[6]
+        angle_to_target = obs[7]
 
         # ========== 平衡奖励 ==========
-        roll_angle_rwd = 0.0
         if math.fabs(roll_angle) >= 0.35:
-            roll_angle_rwd = -500.0
             self.terminated = True
         # ========== 平衡奖励 ==========
 
@@ -211,15 +202,17 @@ class BicycleMazeLidarEnv4(gymnasium.Env):
                 self.terminated = True  # 到达路径终点，可以结束 episode
 
         navigation_rwd = distance_rwd + goal_rwd + goal_temp_rwd
+        # print(f"distance_rwd: {distance_rwd}, goal_rwd: {goal_rwd}, goal_temp_rwd: {goal_temp_rwd}, angle_rwd: {angle_rwd}")
         # ========== 导航奖励 ==========
 
         # ========== 避障奖励 ==========
         # ========== 避障奖励 ==========
 
-        still_penalty = 0.0
-        if math.fabs(bicycle_vel) <= 0.2:
-            still_penalty = -1.0
-        total_reward = navigation_rwd + roll_angle_rwd + still_penalty
+        # still_penalty = 0.0
+        # if math.fabs(bicycle_vel) <= 0.2:
+        #     still_penalty = -1.0
+
+        total_reward = navigation_rwd
 
         return total_reward
 
@@ -268,15 +261,16 @@ class BicycleMazeLidarEnv4(gymnasium.Env):
             # --- 抽稀代码结束 ---
 
             # 可视化
-            if smoothed_path_world is not None and self.gui:
-                smooth_points = []
-                colors = []
-                for grid_pos in smoothed_path_world:  # smooth_path 已经是世界坐标
-                    smooth_points.append([grid_pos[0], grid_pos[1], 0.55])  # 平滑路径稍稍抬高，避免与原始路径重叠
-                    colors.append([0, 0, 1])
-                p.addUserDebugPoints(smooth_points, colors, pointSize=10, physicsClientId=self.client)
+            # if smoothed_path_world is not None and self.gui:
+            #     smooth_points = []
+            #     colors = []
+            #     for grid_pos in smoothed_path_world:  # smooth_path 已经是世界坐标
+            #         smooth_points.append([grid_pos[0], grid_pos[1], 0.55])  # 平滑路径稍稍抬高，避免与原始路径重叠
+            #         colors.append([0, 0, 1])
+            #     p.addUserDebugPoints(smooth_points, colors, pointSize=10, physicsClientId=self.client)
 
         return smoothed_path_world
+
 
 def check_observation_space(observation, observation_space):
     """
@@ -313,14 +307,17 @@ def check_observation_space(observation, observation_space):
 
 if __name__ == '__main__':
     env = gymnasium.make('BicycleMazeLidar4-v0', gui=True)
+
     obs, _ = env.reset()
     # check_observation_space(obs, env.observation_space)
     for i in range(10000):
-        action = np.array([0.0, -1.0], np.float32)
+        vel = p.readUserDebugParameter(env.bicycle_vel_param)
+        handbar = p.readUserDebugParameter(env.handlebar_angle_param)
+        action = np.array([handbar, vel], np.float32)
         obs, _, terminated, truncated, infos = env.step(action)
 
-        # if terminated or truncated:
-        #     obs, _ = env.reset()
-        time.sleep(1. / 120.)
+        if terminated or truncated:
+            obs, _ = env.reset()
+        time.sleep(1. / 30.)
 
     env.close()

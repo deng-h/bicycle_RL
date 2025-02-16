@@ -18,10 +18,11 @@ echo "开始执行"
 # 导航
 python enjoy.py \
 --algo ppo \
---env BicycleMazeLidar4-v0 \
+--env BicycleMazeLidar3-v0 \
 --folder logs/ \
 --exp-id 1 \
 --env-kwargs gui:True \
 --load-best \
 --no-render \
+--device cpu \
 --n-timesteps 15000
