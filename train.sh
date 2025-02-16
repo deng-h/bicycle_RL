@@ -44,13 +44,14 @@ fi
 #--device cpu \
 #--trained-agent ./logs/ppo/BicycleMazeLidar3-v0_5/best_model.zip
 
-# BicycleMazeLidar4
+# BicycleMazeLidar5
 python train.py \
 --algo ppo \
---env BicycleMazeLidar3-v0 \
+--env BicycleMazeLidar5-v0 \
 --conf-file "$CONF_FILE" \
 --vec-env subproc \
 --progress \
+--seed 2945312559 \
 --device cpu
 #--trained-agent ./logs/ppo/BicycleMazeLidar4-v0_4/best_model.zip
 

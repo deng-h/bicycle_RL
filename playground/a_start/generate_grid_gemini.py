@@ -2,10 +2,10 @@ import pybullet as p
 import pybullet_data
 import numpy as np
 import time
-from a_star_algo import a_star_pathfinding
-from create_grid_map import create_grid_map2
-from visualize_path import visualize_path, smooth_path_bezier
-from create_obstacle import create_obstacle
+from playground.a_start.a_star_algo import a_star_pathfinding
+from playground.a_start.create_grid_map import create_grid_map2
+from playground.a_start.visualize_path import visualize_path, smooth_path_bezier
+from playground.a_start.create_obstacle import create_obstacle
 
 
 if __name__ == '__main__':

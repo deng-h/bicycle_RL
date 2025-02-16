@@ -6,4 +6,5 @@ from bicycle_dengh.envs.bicycle_maze_lidar_env import BicycleMazeLidarEnv
 from bicycle_dengh.envs.bicycle_maze_lidar_env2 import BicycleMazeLidarEnv2
 from bicycle_dengh.envs.bicycle_maze_lidar_env3 import BicycleMazeLidarEnv3
 from bicycle_dengh.envs.bicycle_maze_lidar_env4 import BicycleMazeLidarEnv4
+from bicycle_dengh.envs.bicycle_maze_lidar_env5 import BicycleMazeLidarEnv5
 from bicycle_dengh.envs.balance_env_s import BalanceEnvS
