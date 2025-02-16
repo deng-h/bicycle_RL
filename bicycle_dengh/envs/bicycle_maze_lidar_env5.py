@@ -26,9 +26,9 @@ class BicycleMazeLidarEnv5(gymnasium.Env):
     def __init__(self, gui=False):
         system = platform.system()
         if system == "Windows":
-            yaml_file_path = "D:\\data\\1-L\\9-bicycle\\bicycle-rl\\bicycle_dengh\envs\BicycleMazeLidarEnv2Config.yaml"
+            yaml_file_path = "D:\data\\1-L\9-bicycle\\bicycle-rl\\bicycle_dengh\envs\BicycleMazeLidarEnvConfig.yaml"
         else:
-            yaml_file_path = "/root/bicycle-rl/bicycle_dengh/envs/BicycleMazeLidarEnv2Config.yaml"
+            yaml_file_path = "/root/bicycle-rl/bicycle_dengh/envs/BicycleMazeLidarEnvConfig.yaml"
         with open(yaml_file_path, "r", encoding='utf-8') as f:
             self.config = yaml.safe_load(f)
         self.goal = (0, 0)
@@ -39,7 +39,7 @@ class BicycleMazeLidarEnv5(gymnasium.Env):
         self.max_flywheel_vel = 120.
         self.prev_goal_id = None
         self.prev_dist_to_goal = 0.
-        self.roll_angle_pid = PID(1100, 100, 0, setpoint=0.0)
+        self.roll_angle_pid = PID(600, 100, 0, setpoint=0.0)
         self.current_roll_angle = 0.0
         self._max_episode_steps = self.config["max_episode_steps"]
         self.proximity_threshold = self.config["proximity_threshold"]
@@ -105,6 +105,7 @@ class BicycleMazeLidarEnv5(gymnasium.Env):
         angle_to_target = my_tools.calculate_angle_to_target(obs[0], obs[1], obs[2], self.goal_temp[0], self.goal_temp[1])
         obs_ = np.array([obs[3], obs[4], obs[5], obs[6], obs[7], obs[8], distance_to_goal_temp, angle_to_target], dtype=np.float32)
         self.current_roll_angle = obs[3]
+        # print(f"roll_angle_control: {roll_angle_control}, current_roll_angle: {self.current_roll_angle}")
 
         if self.gui:
             bike_pos, _ = p.getBasePositionAndOrientation(self.bicycle.bicycleId, physicsClientId=self.client)
@@ -170,7 +171,6 @@ class BicycleMazeLidarEnv5(gymnasium.Env):
         # ========== 导航奖励 ==========
         diff_dist = (self.prev_dist_to_goal - distance_to_goal_temp) * 100.0
         distance_rwd = diff_dist if diff_dist > 0 else 1.5 * diff_dist
-
         # print(f"distance_rwd: {distance_rwd}")
 
         # angle_rwd = math.cos(angle_to_target) * 0.5  # 角度对齐奖励

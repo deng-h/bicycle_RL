@@ -33,18 +33,18 @@ if __name__ == '__main__':
     for row in grid_map:
         print(row)
 
-    # import matplotlib.pyplot as plt
-    # # origin='lower' 确保左下角为原点
-    # plt.imshow(grid_map, origin='lower', interpolation='nearest', cmap='gray')
-    # plt.title('Grid Map')
-    # plt.xlabel('X')
-    # plt.ylabel('Y')
-    # plt.colorbar(label='0: empty, 1: obstacle')
-    # plt.show()
+    import matplotlib.pyplot as plt
+    # origin='lower' 确保左下角为原点
+    plt.imshow(grid_map, origin='lower', interpolation='nearest', cmap='gray')
+    plt.title('Grid Map')
+    plt.xlabel('X')
+    plt.ylabel('Y')
+    plt.colorbar(label='0: empty, 1: obstacle')
+    plt.show()
 
     # 定义 A* 算法的起始点和目标点 (网格坐标)
     start_pos = (2, 2)  # 第 5 行，第 5 列 (从 0 开始计数)
-    goal_pos = (28, 28)  # 第 28 行，第 28 列
+    goal_pos = (20, 11)  # 第 28 行，第 28 列
 
     # 使用 A* 算法生成路径
     path = a_star_pathfinding(grid_map, start_pos, goal_pos)

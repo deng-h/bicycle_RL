@@ -1,3 +1,5 @@
 
 def get_goal_pos():
-    return (28, 28)
+    # (20, 11)
+    # (28, 28)
+    return (20, 11)

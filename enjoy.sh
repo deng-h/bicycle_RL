@@ -20,10 +20,10 @@ python enjoy.py \
 --algo ppo \
 --env BicycleMazeLidar5-v0 \
 --folder logs/ \
---exp-id 2 \
+--exp-id 4 \
 --env-kwargs gui:True \
 --load-best \
 --no-render \
 --device cpu \
 --seed 2945312559 \
---n-timesteps 15000
+--n-timesteps 55000

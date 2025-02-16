@@ -14,5 +14,18 @@ hyperparams = {
             net_arch=dict(pi=[512, 512], vf=[512, 512])
         ),
         # monitor_kwargs=dict(info_keywords=('flywheel_vel',))
-    )
+    ),
+
+    "BicycleMazeLidar5-v0": dict(
+        policy="MlpPolicy",
+        normalize=dict(norm_obs=True, norm_reward=True),
+        n_envs=1,
+        n_timesteps=300000,
+        learning_rate=3e-4,
+        batch_size=64,
+        ent_coef=0.1,
+        policy_kwargs=dict(
+            net_arch=dict(pi=[128, 128], vf=[128, 128])
+        ),
+    ),
 }
