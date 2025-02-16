@@ -52,9 +52,10 @@ python train.py \
 --vec-env subproc \
 --progress \
 --seed 2945312559 \
---optimize-hyperparameters \
---n-jobs 2 \
 --device cpu
+#--optimize-hyperparameters \
+#--n-jobs 2 \
+
 #--trained-agent ./logs/ppo/BicycleMazeLidar4-v0_4/best_model.zip
 
 # BicycleDengh-v0

@@ -18,7 +18,7 @@ class BicycleEnv5:
             f_name = os.path.join(os.path.dirname(__file__), 'bicycle_urdf/bike.xml')
 
         startOrientation = p.getQuaternionFromEuler([0, 0, 0])
-        self.bicycleId = p.loadURDF(fileName=f_name, basePosition=[1, 1, 1], baseOrientation=startOrientation,
+        self.bicycleId = p.loadURDF(fileName=f_name, basePosition=[0, 0, 1], baseOrientation=startOrientation,
                                     physicsClientId=self.client)
         # Number of joints: 7
         # jointIndex: 0 jointName: 'frame_to_handlebar'

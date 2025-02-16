@@ -54,7 +54,7 @@ class BicycleMazeLidarEnv5(gymnasium.Env):
         # action_space[车把角度，前后轮速度]
         self.actual_action_space = gymnasium.spaces.box.Box(
             low=np.array([-1.57, 0.]),
-            high=np.array([1.57, 5.]),
+            high=np.array([1.57, 2.]),
             shape=(2,),
             dtype=np.float32)
 
@@ -92,7 +92,7 @@ class BicycleMazeLidarEnv5(gymnasium.Env):
         p.loadURDF("plane.urdf", physicsClientId=self.client)
         p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, 1)
         p.setGravity(0, 0, -10, physicsClientId=self.client)
-        p.setTimeStep(1. / 120., self.client)
+        p.setTimeStep(1. / 24., self.client)
 
     def step(self, action):
         rescaled_action = self._rescale_action(action)

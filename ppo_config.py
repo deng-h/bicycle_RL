@@ -34,7 +34,7 @@ hyperparams = {
     "BicycleMazeLidar5-v0": dict(
         policy="MlpPolicy",
         normalize=dict(norm_obs=True, norm_reward=True),
-        n_envs=10,
+        n_envs=1,
         n_timesteps=300000,
         learning_rate=3e-4,
         batch_size=64,
