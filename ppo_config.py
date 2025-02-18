@@ -98,7 +98,7 @@ hyperparams = {
         n_steps=2048,
         batch_size=24576,  # n_steps * n_envs
         ent_coef=0.02,
-        n_timesteps=600000,
+        n_timesteps=5000000,
         policy_kwargs=dict(
             features_extractor_class=ZFeatureExtractor,
             net_arch=dict(pi=[256, 256], vf=[256, 256])

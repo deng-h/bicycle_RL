@@ -15,7 +15,7 @@ from bicycle_dengh.resources.goal import Goal
 
 
 class PurePursuitController:
-    def __init__(self, bicycle, lookahead_distance=1.0, wheelbase=1.4):
+    def __init__(self, bicycle, lookahead_distance=2.5, wheelbase=1.4):
         self.bicycle = bicycle
         self.lookahead_distance = lookahead_distance
         self.wheelbase = wheelbase  # 自行车轴距，需要根据你的自行车模型调整

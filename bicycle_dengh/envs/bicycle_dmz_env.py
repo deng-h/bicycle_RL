@@ -41,6 +41,7 @@ class BicycleDmzEnv(gymnasium.Env):
         self.prev_dist_to_goal = 0.
         self.prev_bicycle_pos = (0, 0)
         self.prev_center_angle = math.pi / 2
+        self.prev_yaw_angle = math.pi / 2
         self._max_episode_steps = self.config["max_episode_steps"]
         self.goal_threshold = self.config["goal_threshold"]
         self.safe_distance = self.config["safe_distance"]
@@ -51,11 +52,15 @@ class BicycleDmzEnv(gymnasium.Env):
 
         # 1 改变action_space的范围
         # 2 研究PP的前视距离和self.center_radius
-
-        # 以自行车为中心的角度
+        # 3 prev_center_angle
+        # 4 车把值滤波
+        # 尝试逐步增加纯跟踪算法的前视距离 Ld (Lookahead Distance) 的值，观察 steering_angle 的变化
+        # 找到一个既能保证跟踪性能，又能使 steering_angle 保持平稳的折衷值
+        # 限制车把转速 changeDynamics
+        # 以自行车为中心的扇形区域
         self.actual_action_space = gymnasium.spaces.box.Box(
-            low=np.array([-math.pi]),
-            high=np.array([math.pi]),
+            low=np.array([-1.4]),  # 1.4弧度 80.4度
+            high=np.array([1.4]),
             shape=(1,),
             dtype=np.float32)
 
@@ -104,6 +109,7 @@ class BicycleDmzEnv(gymnasium.Env):
         # print(f"center_angle: {center_angle:.3f}")
         pure_pursuit_point = self._calculate_new_position(self.prev_bicycle_pos[0],
                                                           self.prev_bicycle_pos[1],
+                                                          self.prev_yaw_angle,
                                                           self.center_radius, center_angle)
         # print(f"自行车坐标: {self.prev_bicycle_pos}, center_angle: {center_angle:.3f}, pure_pursuit_point: {pure_pursuit_point}")
         self.bicycle.apply_action3(fly_wheel_action=0.0, points=[pure_pursuit_point])
@@ -128,6 +134,7 @@ class BicycleDmzEnv(gymnasium.Env):
         self.prev_center_angle = center_angle
         self.prev_dist_to_goal = distance_to_goal
         self.prev_bicycle_pos = (obs[0], obs[1])
+        self.prev_yaw_angle = obs[2]
 
         self._elapsed_steps += 1
         if self._elapsed_steps >= self._max_episode_steps:
@@ -160,6 +167,7 @@ class BicycleDmzEnv(gymnasium.Env):
         self.prev_dist_to_goal = distance_to_goal
         self.prev_bicycle_pos = (obs[0], obs[1])
         self.prev_center_angle = math.pi / 2
+        self.prev_yaw_angle = math.pi / 2
 
         return {"lidar": obs[9], "bicycle": bicycle_obs}, {}
 
@@ -230,7 +238,7 @@ class BicycleDmzEnv(gymnasium.Env):
         """
         return self.action_low + (0.5 * (scaled_action + 1.0) * (self.action_high - self.action_low))
 
-    def _calculate_new_position(self, x, y, distance, angle):
+    def _calculate_new_position(self, x, y, yaw, distance, angle):
         """
         根据当前位置、距离和角度计算新的位置。
 
@@ -243,48 +251,18 @@ class BicycleDmzEnv(gymnasium.Env):
         返回:
             tuple: 新的机器人位置 (new_x, new_y)。
         """
+        # 目标点的角度是自行车yaw角度加上约束后的外部角度
+        target_angle = yaw + angle
+
         # 使用三角函数计算新位置
-        delta_x = distance * math.cos(angle)
-        delta_y = distance * math.sin(angle)
+        delta_x = distance * math.cos(target_angle)
+        delta_y = distance * math.sin(target_angle)
 
         # 计算新坐标
         new_x = x + delta_x
         new_y = y + delta_y
 
         return new_x, new_y
-
-
-def check_observation_space(observation, observation_space):
-    """
-    检查 step() 返回的 observation 是否在 observation_space 范围内。
-    """
-    errors = []
-    for key, space in observation_space.spaces.items():
-        if isinstance(space, gymnasium.spaces.Box):
-            obs = observation[key]
-            # 检查是否超出范围
-            low_violation = obs < space.low
-            high_violation = obs > space.high
-
-            # 如果存在超出范围的值，记录下来
-            if np.any(low_violation) or np.any(high_violation):
-                errors.append({
-                    "key": key,
-                    "out_of_bounds_indices": np.where(low_violation | high_violation)[0],
-                    "actual_values": obs,
-                    "low_bound": space.low,
-                    "high_bound": space.high,
-                })
-
-    if errors:
-        print("Observation out of bounds:")
-        for error in errors:
-            print(f"Key: {error['key']}")
-            for idx in error['out_of_bounds_indices']:
-                print(f"  Index {idx}: value={error['actual_values'][idx]}, "
-                      f"low={error['low_bound'][idx]}, high={error['high_bound'][idx]}")
-    else:
-        print("All observations are within bounds!")
 
 
 if __name__ == '__main__':
