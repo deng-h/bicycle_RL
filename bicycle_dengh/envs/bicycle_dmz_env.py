@@ -29,7 +29,7 @@ class BicycleDmzEnv(gymnasium.Env):
         if system == "Windows":
             yaml_file_path = "D:\\data\\1-L\\9-bicycle\\bicycle-rl\\bicycle_dengh\envs\BicycleMazeLidarEnvConfig.yaml"
         else:
-            yaml_file_path = "/root/bicycle-rl/bicycle_dengh/envs/icycleMazeLidarEnvConfig.yaml"
+            yaml_file_path = "/root/bicycle-rl/bicycle_dengh/envs/BicycleMazeLidarEnvConfig.yaml"
         with open(yaml_file_path, "r", encoding='utf-8') as f:
             self.config = yaml.safe_load(f)
         self.goal = (1, 1)
@@ -210,8 +210,10 @@ class BicycleDmzEnv(gymnasium.Env):
         # avoid_obstacle_rwd = obstacle_penalty
         # ========== 避障奖励 ==========
 
-        angle_penalty = -0.25 * math.fabs(delta_angle)
-
+        angle_penalty = 0.0
+        if math.fabs(delta_angle) >= 0.17:
+            angle_penalty = -0.5
+        # angle_penalty = -0.25 * math.fabs(delta_angle)
         # print(f"distance_rwd: {distance_rwd:.5f}, "
         #       f"goal_rwd: {goal_rwd:.5f}, "
         #       f"angle_penalty: {angle_penalty:.5f}")
