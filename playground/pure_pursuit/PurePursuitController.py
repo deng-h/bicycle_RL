@@ -15,11 +15,11 @@ from bicycle_dengh.resources.goal import Goal
 
 
 class PurePursuitController:
-    def __init__(self, bicycle, lookahead_distance=2.0, wheelbase=1.4):
+    def __init__(self, bicycle, lookahead_distance=1.0, wheelbase=1.4):
         self.bicycle = bicycle
         self.lookahead_distance = lookahead_distance
         self.wheelbase = wheelbase  # 自行车轴距，需要根据你的自行车模型调整
-        self.roll_angle_pid = PID(1000, 10, 0, setpoint=0.0)
+        self.roll_angle_pid = PID(1000, 0, 0, setpoint=0.0)
 
     def set_lookahead_distance(self, lookahead_distance):
         """动态调整lookahead distance"""
@@ -87,11 +87,12 @@ class PurePursuitController:
         action:  控制动作 [handlebar_angle, wheel_velocity, flywheel_velocity]
         lookahead_point:  Lookahead point 坐标 [x, y]
         """
-        observation = self.bicycle.get_observation()
+        # observation = self.bicycle.get_observation()
+        observation = self.bicycle.get_observation_simple()
         current_position = [observation[0], observation[1]]  # x, y 位置
+        current_yaw = observation[2]  # 偏航角 yaw_angle
         roll_angle = observation[3]  # 翻滚角 roll_angle
         roll_angle_control = self.roll_angle_pid(roll_angle)
-        current_yaw = observation[2]  # 偏航角 yaw_angle
 
         steering_angle, lookahead_point = self.calculate_steering_angle(current_position, current_yaw, path_points)
 

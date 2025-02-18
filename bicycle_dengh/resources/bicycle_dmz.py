@@ -62,7 +62,7 @@ class BicycleDmz:
 
     def init_pure_pursuit_controller(self, bicycle_object):
         self.pure_pursuit_controller = PurePursuitController(bicycle_object,
-                                                             lookahead_distance=2.0,
+                                                             lookahead_distance=2.5,
                                                              wheelbase=1.2)
 
     def apply_action3(self, fly_wheel_action, points):
@@ -159,6 +159,19 @@ class BicycleDmz:
                       ]
         # 保存激光雷达信息，下次使用
         self.last_lidar_info = lidar_info if lidar_info is not None else self.last_lidar_info
+
+        return observation
+
+    def get_observation_simple(self):
+        pos, _ = p.getBasePositionAndOrientation(bodyUniqueId=self.bicycleId, physicsClientId=self.client)
+        gyros_link_state = p.getLinkState(self.bicycleId, self.gyros_link, computeLinkVelocity=1,
+                                          physicsClientId=self.client)
+        gyros_link_orientation = gyros_link_state[1]
+        link_ang = p.getEulerFromQuaternion(gyros_link_orientation)
+        roll_angle = link_ang[0]
+        yaw_angle = link_ang[2]
+
+        observation = [pos[0], pos[1], yaw_angle, roll_angle]
 
         return observation
 

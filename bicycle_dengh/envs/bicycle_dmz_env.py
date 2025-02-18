@@ -40,15 +40,19 @@ class BicycleDmzEnv(gymnasium.Env):
         self.prev_goal_id = None
         self.prev_dist_to_goal = 0.
         self.prev_bicycle_pos = (0, 0)
+        self.prev_center_angle = math.pi / 2
         self._max_episode_steps = self.config["max_episode_steps"]
         self.goal_threshold = self.config["goal_threshold"]
         self.safe_distance = self.config["safe_distance"]
         self._elapsed_steps = None
-        self.center_radius = 5.0
-        self.last_center_angle = 0.0
+        self.center_radius = 2.5
+        self.episode_rwd = {"angle_penalty": 0.0, "navigation": 0.0, "obstacle": 0.0}
         self.action_space = gymnasium.spaces.box.Box(low=-1., high=1., shape=(1,), dtype=np.float32)
 
-        # 飞轮速度, 以自行车为中心的角度
+        # 1 改变action_space的范围
+        # 2 研究PP的前视距离和self.center_radius
+
+        # 以自行车为中心的角度
         self.actual_action_space = gymnasium.spaces.box.Box(
             low=np.array([-math.pi]),
             high=np.array([math.pi]),
@@ -61,8 +65,8 @@ class BicycleDmzEnv(gymnasium.Env):
         self.observation_space = gymnasium.spaces.Dict({
             "lidar": gymnasium.spaces.box.Box(low=0., high=50., shape=(120,), dtype=np.float32),
             "bicycle": gymnasium.spaces.box.Box(
-                low=np.array([0.0, -math.pi, -math.pi, -15.0, -1.57, -15.0, 0.0, -self.max_flywheel_vel]),
-                high=np.array([100.0, math.pi, math.pi, 15.0, 1.57, 15.0, 10.0, self.max_flywheel_vel]),
+                low=np.array([0.0, -math.pi, -math.pi, -15.0, -1.57, -30.0, 0.0, -self.max_flywheel_vel]),
+                high=np.array([100.0, math.pi, math.pi, 15.0, 1.57, 30.0, 10.0, self.max_flywheel_vel]),
                 shape=(8,),
                 dtype=np.float32),
         })
@@ -90,8 +94,8 @@ class BicycleDmzEnv(gymnasium.Env):
         p.changeDynamics(plane_id, -1, lateralFriction=1.5)
         p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, 1)
         p.setGravity(0, 0, -10, physicsClientId=self.client)
-        p.setRealTimeSimulation(0)
-        p.setTimeStep(1. / 120., self.client)
+        # p.setRealTimeSimulation(0)
+        # p.setTimeStep(1. / 150., self.client)
 
     def step(self, action):
         rescaled_action = self._rescale_action(action)
@@ -101,9 +105,7 @@ class BicycleDmzEnv(gymnasium.Env):
         pure_pursuit_point = self._calculate_new_position(self.prev_bicycle_pos[0],
                                                           self.prev_bicycle_pos[1],
                                                           self.center_radius, center_angle)
-        # print(f"pure_pursuit_point: {pure_pursuit_point:.3f}")
-        p.addUserDebugPoints([[pure_pursuit_point[0], pure_pursuit_point[1], 0.55]], [[0, 0, 1]], pointSize=10, physicsClientId=self.client)
-        # print(f"自行车坐标: {self.prev_bicycle_pos}, center_angle: {center_angle}, pure_pursuit_point: {pure_pursuit_point}")
+        # print(f"自行车坐标: {self.prev_bicycle_pos}, center_angle: {center_angle:.3f}, pure_pursuit_point: {pure_pursuit_point}")
         self.bicycle.apply_action3(fly_wheel_action=0.0, points=[pure_pursuit_point])
         p.stepSimulation(physicsClientId=self.client)
         obs = self.bicycle.get_observation()
@@ -120,10 +122,10 @@ class BicycleDmzEnv(gymnasium.Env):
             # p.resetDebugVisualizerCamera(cameraDistance=10, cameraYaw=0, cameraPitch=-85, cameraTargetPosition=[15, 10, 10])
             p.resetDebugVisualizerCamera(camera_distance, camera_yaw, camera_pitch, bike_pos)
 
-        delta_angle = center_angle - self.last_center_angle
-        self.last_center_angle = center_angle
+        delta_angle = center_angle - self.prev_center_angle
         reward = self._reward_fun(bicycle_obs, lidar_data=obs[9], delta_angle=delta_angle, is_collision=obs[10])
 
+        self.prev_center_angle = center_angle
         self.prev_dist_to_goal = distance_to_goal
         self.prev_bicycle_pos = (obs[0], obs[1])
 
@@ -137,9 +139,11 @@ class BicycleDmzEnv(gymnasium.Env):
         self.terminated = False
         self.truncated = False
         self._elapsed_steps = 0
-        self.last_center_angle = 0.0
-        x = random.randint(-25, 25)
-        y = random.randint(5, 50)
+        # print(self.episode_rwd)
+        self.episode_rwd = {"angle_penalty": 0.0, "navigation": 0.0, "obstacle": 0.0}
+
+        x = random.randint(-3, 3)
+        y = random.randint(15, 25)
         self.goal = (x, y)
         goal = Goal(self.client, self.goal)
         if self.prev_goal_id is not None:
@@ -155,6 +159,7 @@ class BicycleDmzEnv(gymnasium.Env):
 
         self.prev_dist_to_goal = distance_to_goal
         self.prev_bicycle_pos = (obs[0], obs[1])
+        self.prev_center_angle = math.pi / 2
 
         return {"lidar": obs[9], "bicycle": bicycle_obs}, {}
 
@@ -165,46 +170,48 @@ class BicycleDmzEnv(gymnasium.Env):
         # obs 机器人与目标点距离, 机器人与目标点的角度, 翻滚角, 翻滚角角速度, 车把角度, 车把角速度, 后轮速度, 飞轮速度
         distance_to_goal = obs[0]
         roll_angle = obs[2]
-        bicycle_vel = obs[6]
 
         # ========== 平衡奖励 ==========
         balance_rwd = 0.0
-        if math.fabs(roll_angle) >= 0.35:
+        if math.fabs(roll_angle) >= 0.45:
             self.terminated = True
-            balance_rwd = -10.0
+            balance_rwd = -120.0
         # else:
         #     balance_rwd = 1.0 - (math.fabs(roll_angle) / 0.35) * 2.0
         #     balance_rwd = max(-1.0, min(1.0, balance_rwd))
         # ========== 平衡奖励 ==========
 
         # ========== 导航奖励 ==========
-        diff_dist = (self.prev_dist_to_goal - distance_to_goal) * 100.0
-        distance_rwd = diff_dist if diff_dist > 0 else 1.5 * diff_dist
+        diff_dist = (self.prev_dist_to_goal - distance_to_goal) * 2.5
+        distance_rwd = diff_dist if diff_dist > 0 else 1.2 * diff_dist
+
         goal_rwd = 0.0
         if distance_to_goal <= self.goal_threshold:
-            goal_rwd = 100.0
+            print("=====到达目标点=====")
+            self.terminated = True
+            goal_rwd = 1000.0
+
         navigation_rwd = distance_rwd + goal_rwd
         # ========== 导航奖励 ==========
 
         # ========== 避障奖励 ==========
-        obstacle_penalty = 0.0
-        min_obstacle_dist = np.min(lidar_data)
-        if min_obstacle_dist <= self.safe_distance:
-            obstacle_penalty = -10.0
-        avoid_obstacle_rwd = obstacle_penalty
+        # obstacle_penalty = 0.0
+        # min_obstacle_dist = np.min(lidar_data)
+        # if min_obstacle_dist <= self.safe_distance:
+        #     obstacle_penalty = -10.0
+        # avoid_obstacle_rwd = obstacle_penalty
         # ========== 避障奖励 ==========
 
-        still_penalty = 0.0
-        if math.fabs(bicycle_vel) <= 0.2:
-            still_penalty = -1.0
+        angle_penalty = -0.25 * math.fabs(delta_angle)
 
-        angle_penalty = math.fabs(delta_angle) * 0.5
+        # print(f"distance_rwd: {distance_rwd:.5f}, "
+        #       f"goal_rwd: {goal_rwd:.5f}, "
+        #       f"angle_penalty: {angle_penalty:.5f}")
 
-        # print(f"distance_rwd: {distance_rwd:.3f}, "
-        #       f"goal_rwd: {goal_rwd:.3f}, "
-        #       f"angle_penalty: {angle_penalty:.3f}")
+        # total_reward = balance_rwd + navigation_rwd + avoid_obstacle_rwd
+        # self.episode_rwd["angle_penalty"] += angle_penalty
+        # self.episode_rwd["navigation"] += navigation_rwd
 
-        # total_reward = balance_rwd + navigation_rwd + avoid_obstacle_rwd + still_penalty
         total_reward = balance_rwd + navigation_rwd + angle_penalty
 
         return total_reward
@@ -230,7 +237,7 @@ class BicycleDmzEnv(gymnasium.Env):
         参数:
             x (float): 当前机器人的 x 坐标。
             y (float): 当前机器人的 y 坐标。
-            distance (float): 随机生成的距离。
+            distance (float): 距离。
             angle (float): 随机生成的角度（弧度制，范围 -π 到 π）。
 
         返回:
