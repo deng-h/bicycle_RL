@@ -1,4 +1,4 @@
-max_episode_steps: 8000  # 每回合最大步长数
+max_episode_steps: 7000  # 每回合最大步长数
 
 # 导航参数
 goal_threshold: 1.0  # 设置到达目标的距离阈值

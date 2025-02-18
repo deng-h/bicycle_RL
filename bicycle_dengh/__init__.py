@@ -62,3 +62,8 @@ register(
     id="ZBicycleNaviEnv-v0",
     entry_point='bicycle_dengh.envs:ZBicycleNaviEnv'
 )
+
+register(
+    id="BicycleDmzEnv-v0",
+    entry_point='bicycle_dengh.envs:BicycleDmzEnv'
+)
