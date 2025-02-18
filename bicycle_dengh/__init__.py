@@ -52,3 +52,13 @@ register(
     id="BalanceEnvS-v0",
     entry_point='bicycle_dengh.envs:BalanceEnvS'
 )
+
+register(
+    id="ZBicycleBalanceEnv-v0",
+    entry_point='bicycle_dengh.envs:ZBicycleBalanceEnv'
+)
+
+register(
+    id="ZBicycleNaviEnv-v0",
+    entry_point='bicycle_dengh.envs:ZBicycleNaviEnv'
+)

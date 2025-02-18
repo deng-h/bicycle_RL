@@ -151,3 +151,22 @@ class AttentionFusion(nn.Module):
         fused_features = attention_weights * combined
         return self.fc(fused_features)
 
+
+class ZFeatureExtractor(BaseFeaturesExtractor):
+    def __init__(self, observation_space: gym.spaces.Dict):
+        # 输入给net_arch网络的特征维度=图像特征维度+自行车的状态向量维度
+        super().__init__(observation_space, features_dim=40 + 8)
+
+        self.lidar_model = nn.Sequential(
+            nn.Conv1d(in_channels=1, out_channels=1, kernel_size=3, stride=3),
+            nn.ReLU(),
+        )
+
+    def forward(self, observations) -> th.Tensor:
+        lidar_obs = observations["lidar"]
+        lidar_obs = lidar_obs.clone().detach().float()
+        lidar_obs = lidar_obs.unsqueeze(1)
+        lidar_feat = self.lidar_model(lidar_obs)  # 通过图像特征提取器处理图像特征
+        lidar_feat_flatten = th.flatten(lidar_feat, start_dim=1)
+        obs = observations["bicycle"]
+        return th.cat([lidar_feat_flatten, obs], dim=1)

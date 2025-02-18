@@ -48,7 +48,7 @@ class BicycleMazeLidarEnv2(gymnasium.Env):
     def __init__(self, gui=False):
         system = platform.system()
         if system == "Windows":
-            yaml_file_path = "/bicycle_dengh/envs/BicycleMazeLidarEnvConfig.yaml"
+            yaml_file_path = "D:\data\\1-L\9-bicycle\\bicycle-rl\\bicycle_dengh\envs\BicycleMazeLidarEnvConfig.yaml"
         else:
             yaml_file_path = "/root/bicycle-rl/bicycle_dengh/envs/BicycleMazeLidarEnvConfig.yaml"
         with open(yaml_file_path, "r", encoding='utf-8') as f:
