@@ -1,9 +1,9 @@
 import pandas as pd
 import os
 
-# 设置存放 CSV 文件的目录
-input_folder = "D:\\data\\1-L\9-bicycle\\bicycle-rl\exp_data\平衡实验数据处理\\3"  # 替换为你的 CSV 文件所在目录
-output_file = "D:\data\\1-L\9-bicycle\\bicycle-rl\exp_data\平衡实验数据处理\\3\\total.csv"  # 最终汇总的 CSV 文件名
+folder_name = "ZBicycleBalanceEnv-v0_5"
+input_folder = f"D:\\data\\1-L\9-bicycle\\bicycle-rl\exp_data\平衡实验数据处理\\{folder_name}"
+output_file = f"D:\data\\1-L\9-bicycle\\bicycle-rl\exp_data\平衡实验数据处理\\{folder_name}\\total.csv"
 
 # 创建一个空的 DataFrame 来存储汇总结果
 combined_df = pd.DataFrame()

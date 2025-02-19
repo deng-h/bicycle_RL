@@ -62,32 +62,13 @@ hyperparams = {
         policy="MlpPolicy",
         normalize=dict(norm_obs=True, norm_reward=False),
         n_envs=6,
-        n_steps=256,
-        batch_size=1536,  # n_steps * n_envs
+        n_steps=128,
+        batch_size=768,  # n_steps * n_envs
         gamma=0.99,
         n_epochs=4,
-        ent_coef=0.01,
-        n_timesteps=1000000,
-        learning_rate=3e-4,
+        n_timesteps=500000,
         policy_kwargs=dict(
-            net_arch=dict(pi=[64, 64], vf=[64, 64])
-        ),
-    ),
-
-    "ZBicycleNaviEnv-v0": dict(
-        policy="MultiInputPolicy",
-        normalize=dict(norm_obs=True, norm_reward=False, norm_obs_keys=['lidar', 'bicycle']),
-        n_envs=6,
-        n_steps=256,
-        batch_size=1536,  # n_steps * n_envs
-        gamma=0.99,
-        n_epochs=4,
-        ent_coef=0.01,
-        n_timesteps=1000000,
-        learning_rate=3e-4,
-        policy_kwargs=dict(
-            features_extractor_class=ZFeatureExtractor,
-            net_arch=dict(pi=[256, 256], vf=[256, 256])
+            # net_arch=dict(pi=[64, 64], vf=[64, 64])
         ),
     ),
 

@@ -18,11 +18,11 @@ echo "开始执行"
 # 导航
 python enjoy.py \
 --algo ppo \
---env BicycleDmzEnv-v0 \
+--env ZBicycleBalanceEnv-v0 \
 --folder logs/ \
---exp-id 17 \
+--exp-id 3 \
 --env-kwargs gui:True \
 --load-best \
 --no-render \
 --device cpu \
---n-timesteps 100000
+--n-timesteps 20000
