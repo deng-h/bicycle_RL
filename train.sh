@@ -51,7 +51,7 @@ python train.py \
 --vec-env subproc \
 --progress \
 --device cpu
-#--trained-agent ./logs/ppo/BicycleDmzEnv-v0_1/best_model.zip
+#--trained-agent ./logs/ppo/BicycleDmzEnv-v0_11/best_model.zip
 
 # BicycleDengh-v0
 #python train.py \

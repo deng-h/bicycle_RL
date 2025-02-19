@@ -16,8 +16,9 @@ class BicycleDmz:
         else:
             f_name = os.path.join(os.path.dirname(__file__), 'bicycle_urdf/bike.xml')
 
+        # 红色X轴，绿色Y轴，蓝色Z轴，RGB XYZ
         startOrientation = p.getQuaternionFromEuler([0, 0, 1.57])
-        self.bicycleId = p.loadURDF(fileName=f_name, basePosition=[1, 1, 1], baseOrientation=startOrientation,
+        self.bicycleId = p.loadURDF(fileName=f_name, basePosition=[0, 0, 1], baseOrientation=startOrientation,
                                     physicsClientId=self.client)
         self.pure_pursuit_controller = None
         self.handlebar_joint = 0
@@ -60,10 +61,10 @@ class BicycleDmz:
         self.cos_array = [self.ray_len * math.cos(2. * math.pi * float(i) / self.num_rays) for i in
                           range(self.num_rays)]
 
-    def init_pure_pursuit_controller(self, bicycle_object):
+    def init_pure_pursuit_controller(self, bicycle_object, lookahead_distance=2.5, wheelbase=1.2):
         self.pure_pursuit_controller = PurePursuitController(bicycle_object,
-                                                             lookahead_distance=2.5,
-                                                             wheelbase=1.2)
+                                                             lookahead_distance=lookahead_distance,
+                                                             wheelbase=wheelbase)
 
     def apply_action3(self, fly_wheel_action, points):
         """
@@ -74,7 +75,7 @@ class BicycleDmz:
         RL_action[1]控制前后轮速度
         PID_action[0]控制飞轮
         """
-        bicycle_vel = 2.0
+        bicycle_vel = 0.5
         # Pure Pursuit 控制车把
         pure_pursuit_action, _ = self.pure_pursuit_controller.get_control_action(points)
         # action[0] = frame_to_handlebar 车把位置控制
@@ -156,7 +157,7 @@ class BicycleDmz:
                        fly_wheel_joint_vel,
                        lidar_info if lidar_info is not None else self.last_lidar_info,  # 使用上次的激光雷达信息
                        is_collided
-                      ]
+                       ]
         # 保存激光雷达信息，下次使用
         self.last_lidar_info = lidar_info if lidar_info is not None else self.last_lidar_info
 
@@ -251,6 +252,6 @@ class BicycleDmz:
             p.addUserDebugLine(
                 lineFromXYZ=points[i],
                 lineToXYZ=points[(i + 1) % num_segments],  # 连接到下一个点，最后一个点连接到第一个点
-                lineColorRGB=color
+                lineColorRGB=color,
+                physicsClientId=self.client
             )
-

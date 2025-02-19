@@ -94,14 +94,16 @@ hyperparams = {
     "BicycleDmzEnv-v0": dict(
         policy="MultiInputPolicy",
         normalize=dict(norm_obs=True, norm_reward=False, norm_obs_keys=['lidar', 'bicycle']),
-        n_envs=12,
-        n_steps=2048,
-        batch_size=24576,  # n_steps * n_envs
-        ent_coef=0.02,
-        n_timesteps=5000000,
+        n_envs=10,
+        n_steps=1024,
+        batch_size=10240,  # n_steps * n_envs
+        ent_coef=0.01,
+        n_epochs=4,
+        n_timesteps=500000,
         policy_kwargs=dict(
             features_extractor_class=ZFeatureExtractor,
             net_arch=dict(pi=[256, 256], vf=[256, 256])
         ),
+        monitor_kwargs=dict(info_keywords=('reward',))
     ),
 }

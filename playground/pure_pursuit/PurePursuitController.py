@@ -70,7 +70,7 @@ class PurePursuitController:
         alpha = math.atan2(lookahead_in_vehicle_y, lookahead_in_vehicle_x) # 期望方向角 (车辆坐标系下)
 
         # 简化 Pure Pursuit 公式 (基于运动学自行车模型近似)
-        steering_angle = math.atan2( (2 * self.wheelbase * math.sin(alpha)), max(1e-6, self.lookahead_distance) ) # 避免除以零
+        steering_angle = math.atan2((2 * self.wheelbase * math.sin(alpha)), max(1e-6, self.lookahead_distance) ) # 避免除以零
 
         return steering_angle, lookahead_point
 

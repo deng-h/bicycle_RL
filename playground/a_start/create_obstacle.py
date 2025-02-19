@@ -14,7 +14,7 @@ def create_obstacle(client_id):
     """
 
     # 定义不同的障碍物位置列表
-    obstacle_positions = [
+    obstacle_positions1 = [
         [8 + 0.5, 5 + 0.5, 1],
         [8 + 0.5, 6 + 0.5, 1],
         [8 + 0.5, 7 + 0.5, 1],
@@ -95,10 +95,14 @@ def create_obstacle(client_id):
         [25 + 0.5, 23 + 0.5, 1],
     ]
 
+    obstacle_positions2 = [
+
+    ]
+
     collision_shape = p.createCollisionShape(p.GEOM_BOX, halfExtents=[0.5, 0.5, 1.0])
     visual_shape = p.createVisualShape(p.GEOM_BOX, halfExtents=[0.5, 0.5, 1.0], rgbaColor=[0.92, 0.94, 0.94, 1])
     obstacle_ids = []
-    for obstacle_pos in obstacle_positions:
+    for obstacle_pos in obstacle_positions1:
         obstacle_id = p.createMultiBody(baseCollisionShapeIndex=collision_shape,
                                             baseVisualShapeIndex=visual_shape,
                                             basePosition=obstacle_pos,

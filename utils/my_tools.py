@@ -76,6 +76,19 @@ def calculate_angle_to_target(a, b, phi, x, y):
     return angle_to_target
 
 
+def world_to_polar(robot_x, robot_y, target_x, target_y):
+    # 计算相对坐标
+    dx = target_x - robot_x
+    dy = target_y - robot_y
+
+    # 计算极径（距离）
+    rho = math.hypot(dx, dy)
+
+    # 计算极角（弧度），范围 [-π, π]
+    theta = math.atan2(dy, dx)
+
+    return rho, theta
+
 def generate_goal_point():
     # 随机生成距离，范围在10到20米之间
     distance = random.uniform(10, 20)
