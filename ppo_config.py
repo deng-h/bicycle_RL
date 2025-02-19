@@ -104,6 +104,6 @@ hyperparams = {
             features_extractor_class=ZFeatureExtractor,
             net_arch=dict(pi=[256, 256], vf=[256, 256])
         ),
-        monitor_kwargs=dict(info_keywords=('reward',))
+        # monitor_kwargs=dict(info_keywords=('reward',))
     ),
 }

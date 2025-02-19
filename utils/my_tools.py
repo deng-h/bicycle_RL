@@ -89,6 +89,24 @@ def world_to_polar(robot_x, robot_y, target_x, target_y):
 
     return rho, theta
 
+def world_to_polar_with_yaw(robot_x, robot_y, robot_yaw, target_x, target_y):
+    # 计算世界坐标系下的相对坐标
+    dx = target_x - robot_x
+    dy = target_y - robot_y
+
+    # 进行坐标旋转，将世界坐标系下的相对坐标转换到机器人自身坐标系下
+    dx_rotated = dx * math.cos(robot_yaw) + dy * math.sin(robot_yaw)
+    dy_rotated = -dx * math.sin(robot_yaw) + dy * math.cos(robot_yaw)
+
+    # 计算极径（距离），在旋转前后距离不变，所以可以直接使用旋转后的坐标计算，也可以使用原始的 dx, dy
+    rho = math.hypot(dx_rotated, dy_rotated) # 或者 rho = math.hypot(dx, dy)  结果一样
+
+    # 计算极角（弧度），范围 [-π, π]，此时的极角是相对于机器人自身坐标系的 x 轴（即机器人朝向）
+    theta = math.atan2(dy_rotated, dx_rotated)
+
+    return rho, theta
+
+
 def generate_goal_point():
     # 随机生成距离，范围在10到20米之间
     distance = random.uniform(10, 20)

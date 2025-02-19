@@ -104,6 +104,12 @@ class PurePursuitController:
         action = [target_handlebar_angle, target_wheel_velocity, -target_flywheel_velocity]
         return action, lookahead_point
 
+    def get_roll_angle_control(self):
+        observation = self.bicycle.get_observation_simple()
+        roll_angle = observation[3]
+        roll_angle_control = self.roll_angle_pid(roll_angle)
+        return -roll_angle_control
+
 def get_path(client, grid_map, bicycle_start_pos, goal_pos):
     path = a_star_pathfinding(grid_map, bicycle_start_pos, goal_pos)
     # path格式为[(row, col), (row, col), ...]

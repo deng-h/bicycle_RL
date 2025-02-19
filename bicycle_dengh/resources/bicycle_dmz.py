@@ -110,6 +110,49 @@ class BicycleDmz:
                                 force=self.MAX_FORCE,
                                 physicsClientId=self.client)
 
+    def apply_action4(self, handlebar_action):
+        """
+        Apply the action to the bicycle.控制分为两部分，前后轮速度和车把位置是RL控制，飞轮是PID控制。
+
+        Parameters:
+        RL_action[0]控制车把位置
+        RL_action[1]控制前后轮速度
+        PID_action[0]控制飞轮
+        """
+        bicycle_vel = 1.0
+        roll_angle_control = self.pure_pursuit_controller.get_roll_angle_control()
+        # action[0] = frame_to_handlebar 车把位置控制
+        p.setJointMotorControl2(bodyUniqueId=self.bicycleId,
+                                jointIndex=self.handlebar_joint,
+                                controlMode=p.POSITION_CONTROL,
+                                targetPosition=handlebar_action,
+                                force=self.MAX_FORCE,
+                                physicsClientId=self.client)
+
+        # handlebar_to_frontwheel 前轮速度控制
+        p.setJointMotorControl2(bodyUniqueId=self.bicycleId,
+                                jointIndex=self.front_wheel_joint,
+                                controlMode=p.VELOCITY_CONTROL,
+                                targetVelocity=bicycle_vel,
+                                force=self.MAX_FORCE,
+                                physicsClientId=self.client)
+
+        # frame_to_backwheel 后轮速度控制
+        p.setJointMotorControl2(bodyUniqueId=self.bicycleId,
+                                jointIndex=self.back_wheel_joint,
+                                controlMode=p.VELOCITY_CONTROL,
+                                targetVelocity=bicycle_vel,
+                                force=self.MAX_FORCE,
+                                physicsClientId=self.client)
+
+        # action[2] = flyWheelLink_to_flyWheel 飞轮控制
+        p.setJointMotorControl2(bodyUniqueId=self.bicycleId,
+                                jointIndex=self.fly_wheel_joint,
+                                controlMode=p.VELOCITY_CONTROL,
+                                targetVelocity=roll_angle_control,
+                                force=self.MAX_FORCE,
+                                physicsClientId=self.client)
+
     def get_observation(self):
         self.frame_count += 1
         # Get the position位置 and orientation方向(姿态) of the bicycle in the simulation

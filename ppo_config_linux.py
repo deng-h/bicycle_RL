@@ -1,4 +1,4 @@
-from utils.my_feature_extractor import MyFeatureExtractorLidar
+from utils.my_feature_extractor import MyFeatureExtractorLidar, ZFeatureExtractor
 
 hyperparams = {
     "BicycleMazeLidar2-v0": dict(
@@ -28,4 +28,21 @@ hyperparams = {
             net_arch=dict(pi=[128, 128], vf=[128, 128])
         ),
     ),
+
+    "BicycleDmzEnv-v0": dict(
+        policy="MultiInputPolicy",
+        normalize=dict(norm_obs=True, norm_reward=False, norm_obs_keys=['lidar', 'bicycle']),
+        n_envs=10,
+        n_steps=1024,
+        batch_size=25600,  # n_steps * n_envs
+        ent_coef=0.01,
+        n_epochs=4,
+        n_timesteps=500000,
+        policy_kwargs=dict(
+            features_extractor_class=ZFeatureExtractor,
+            net_arch=dict(pi=[256, 256], vf=[256, 256])
+        ),
+        # monitor_kwargs=dict(info_keywords=('reward',))
+    ),
+
 }

@@ -155,7 +155,7 @@ class AttentionFusion(nn.Module):
 class ZFeatureExtractor(BaseFeaturesExtractor):
     def __init__(self, observation_space: gym.spaces.Dict):
         # 输入给net_arch网络的特征维度=图像特征维度+自行车的状态向量维度
-        super().__init__(observation_space, features_dim=40 + 7)
+        super().__init__(observation_space, features_dim=40 + 6)
 
         self.lidar_model = nn.Sequential(
             nn.Conv1d(in_channels=1, out_channels=1, kernel_size=3, stride=3),

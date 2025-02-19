@@ -20,7 +20,7 @@ python enjoy.py \
 --algo ppo \
 --env BicycleDmzEnv-v0 \
 --folder logs/ \
---exp-id 14 \
+--exp-id 17 \
 --env-kwargs gui:True \
 --load-best \
 --no-render \
