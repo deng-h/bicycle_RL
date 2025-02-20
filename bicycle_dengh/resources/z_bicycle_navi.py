@@ -18,7 +18,7 @@ class ZBicycleNavi:
         else:
             f_name = os.path.join(os.path.dirname(__file__), 'bicycle_urdf/bike.xml')
 
-        startOrientation = p.getQuaternionFromEuler([0, 0, 0])
+        startOrientation = p.getQuaternionFromEuler([0, 0, 1.57])
         self.bicycleId = p.loadURDF(fileName=f_name, basePosition=[-1, 0, 1], baseOrientation=startOrientation,
                                     physicsClientId=self.client)
         # Number of joints: 7
@@ -37,10 +37,10 @@ class ZBicycleNavi:
         self.MAX_FORCE = 2000
         self.roll_angle_pid = PID(1000, 0, 0, setpoint=0.0)
         self.last_roll_angle = 0.0
-        self.bicycle_vel = 0.5
+        self.bicycle_vel = 1.0
 
-        self.num_rays = 90
-        self.ray_len = 50
+        self.num_rays = 180
+        self.ray_len = 20.0
         self.lidar_origin_offset = [0., 0., .7]  # 激光雷达相对于小车的位置偏移量
         self.initial_joint_positions = None
         self.initial_joint_velocities = None

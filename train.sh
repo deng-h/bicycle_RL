@@ -19,5 +19,6 @@ python train.py \
 --conf-file "$CONF_FILE" \
 --vec-env subproc \
 --progress \
---device cpu
-#--trained-agent ./logs/ppo/ZBicycleNaviEnv-v0_4/best_model.zip
+--seed 42 \
+--device cpu \
+--trained-agent ./logs/ppo/ZBicycleNaviEnv-v0_3/best_model.zip
