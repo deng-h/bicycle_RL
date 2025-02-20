@@ -6,7 +6,7 @@ import pybullet_data
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 from stable_baselines3.common.env_util import make_vec_env
 from stable_baselines3.common.env_checker import check_env
-from bicycle_dengh.resources.z_bicycle_navi import ZBicycleNavi
+from bicycle_dengh.resources.z_bicycle import ZBicycle
 from bicycle_dengh.resources.goal import Goal
 from playground.a_start.create_grid_map import create_grid_map2
 from playground.a_start.create_obstacle import create_obstacle
@@ -20,11 +20,10 @@ from utils import my_tools
 from simple_pid import PID
 import yaml
 import platform
-import random
 
 
 
-class ZBicycleNaviEnv(gymnasium.Env):
+class ZBicyclePursuitEnv(gymnasium.Env):
     metadata = {'render_modes': ['rgb_array']}
 
     def __init__(self, gui=False):
@@ -36,6 +35,7 @@ class ZBicycleNaviEnv(gymnasium.Env):
         with open(yaml_file_path, "r", encoding='utf-8') as f:
             self.config = yaml.safe_load(f)
         self.goal = (1, 1)
+        self.goal_temp = (1, 1)
         self.terminated = False
         self.truncated = False
         self.gui = gui
@@ -49,35 +49,26 @@ class ZBicycleNaviEnv(gymnasium.Env):
         self.safe_distance = self.config["safe_distance"]
         self._elapsed_steps = None
         self.bicycle_start_pos = (1, 1)
-        self.action_space = gymnasium.spaces.box.Box(low=-1., high=1., shape=(1,), dtype=np.float32)
-        self.episode_rwd = {"1": 0, "2": 0, "3": 0, "4": 0, "5": 0}
-        self.region_score = [0.0] * 30  # 对每个小扇形区域的评分
+        self.action_space = gymnasium.spaces.box.Box(low=-1., high=1., shape=(5,), dtype=np.float32)
 
-        # 车把角度
+        # 车把角度，前后轮速度, 飞轮速度, 相对路径点距离, 相对路径点的角度
         self.actual_action_space = gymnasium.spaces.box.Box(
-            low=np.array([-1.57]),
-            high=np.array([1.57]),
-            shape=(1,),
+            low=np.array([-1.57, 0., -self.max_flywheel_vel, -3.0, -math.pi]),
+            high=np.array([1.57, 5., self.max_flywheel_vel, 3.0, math.pi]),
+            shape=(5,),
             dtype=np.float32)
 
         self.action_low, self.action_high = self.actual_action_space.low, self.actual_action_space.high
 
-        # 第一部分：30 组 [0, -1.0] ~ [50, 1.0]
-        num_groups = 30
-        group1_low = np.array([0, -1.0])
-        group1_high = np.array([50, 1.0])
-        # 使用 numpy.tile 快速创建重复的 low 和 high 数组
-        part1_low = np.tile(group1_low, num_groups)
-        part1_high = np.tile(group1_high, num_groups)
-        # 第二部分：[-50, -math.pi, -1.4, -20] ~ [50, math.pi, 1.4, 20]
-        part2_low = np.array([-50, -math.pi, -1.4, -20])
-        part2_high = np.array([50, math.pi, 1.4, 20])
-        # 合并两部分 low 和 high 数组
-        low = np.concatenate([part1_low, part2_low])
-        high = np.concatenate([part1_high, part2_high])
-
-        # 30组(距离, 是否距离过近)数据, 机器人与目标点距离, 机器人与目标点的角度, 车把角度, 车把角速度
-        self.observation_space = gymnasium.spaces.Box(low=low, high=high, dtype=np.float32)
+        # 机器人与目标点距离, 机器人与目标点的角度, 翻滚角, 翻滚角角速度, 车把角度, 车把角速度, 后轮速度, 飞轮速度
+        self.observation_space = gymnasium.spaces.Dict({
+            "lidar": gymnasium.spaces.box.Box(low=0., high=50., shape=(120,), dtype=np.float32),
+            "bicycle": gymnasium.spaces.box.Box(
+                low=np.array([0.0, -math.pi, -math.pi, -15.0, -1.57, -15.0, 0.0, -self.max_flywheel_vel]),
+                high=np.array([100.0, math.pi, math.pi, 15.0, 1.57, 15.0, 10.0, self.max_flywheel_vel]),
+                shape=(8,),
+                dtype=np.float32),
+        })
 
         if self.gui:
             self.client = p.connect(p.GUI)
@@ -93,27 +84,26 @@ class ZBicycleNaviEnv(gymnasium.Env):
         p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, 0)
         p.configureDebugVisualizer(p.COV_ENABLE_SHADOWS, 0)
 
-        obstacle_ids = create_obstacle(self.client)
-        self.bicycle = ZBicycleNavi(self.client, self.max_flywheel_vel, obstacle_ids=obstacle_ids)
+        create_obstacle(self.client)
+        self.bicycle = ZBicycle(self.client, self.max_flywheel_vel, obstacle_ids=[])
         p.setAdditionalSearchPath(pybullet_data.getDataPath())
         plane_id = p.loadURDF("plane.urdf", physicsClientId=self.client)
-        p.changeDynamics(plane_id, -1, lateralFriction=1.5)  # 更改地面物体的动力学参数，包括摩擦系数，-1表示所有部件
+        # 更改地面物体的动力学参数，包括摩擦系数，-1表示所有部件
+        p.changeDynamics(plane_id, -1, lateralFriction=1.5)
         p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, 1)
         p.setGravity(0, 0, -10, physicsClientId=self.client)
-        # p.setRealTimeSimulation(0, physicsClientId=self.client)
         p.setTimeStep(1. / 24., self.client)
 
     def step(self, action):
         rescaled_action = self._rescale_action(action)
-        self.bicycle.apply_action2(rescaled_action)
+        gen_distance = rescaled_action[3]
+        gen_angle = rescaled_action[4]
+        self.bicycle.apply_action(rescaled_action[:3])
         p.stepSimulation(physicsClientId=self.client)
         obs = self.bicycle.get_observation()
-        distance_to_goal_temp = np.linalg.norm(np.array([obs[0], obs[1]]) - np.array(self.goal))
-        angle_to_target = my_tools.calculate_angle_to_target(obs[0], obs[1], obs[2], self.goal[0], self.goal[1])
-        bicycle_obs = np.array([distance_to_goal_temp, angle_to_target, obs[4], obs[5]], dtype=np.float32)
-
-        processed_lidar_data = self._process_lidar_data(lidar_data=obs[6])
-        total_obs = np.concatenate((processed_lidar_data, bicycle_obs))
+        distance_to_goal_temp = np.linalg.norm(np.array([obs[0], obs[1]]) - np.array(self.goal_temp))
+        angle_to_target = my_tools.calculate_angle_to_target(obs[0], obs[1], obs[2], self.goal_temp[0], self.goal_temp[1])
+        bicycle_obs = np.array([distance_to_goal_temp, angle_to_target, obs[3], obs[4], obs[5], obs[6], obs[7], obs[8]], dtype=np.float32)
 
         if self.gui:
             bike_pos, _ = p.getBasePositionAndOrientation(self.bicycle.bicycleId, physicsClientId=self.client)
@@ -123,7 +113,9 @@ class ZBicycleNaviEnv(gymnasium.Env):
             # p.resetDebugVisualizerCamera(cameraDistance=10, cameraYaw=0, cameraPitch=-85, cameraTargetPosition=[15, 10, 10])
             p.resetDebugVisualizerCamera(camera_distance, camera_yaw, camera_pitch, bike_pos)
 
-        reward = self._reward_fun(bicycle_obs, roll_angle=obs[3], processed_lidar_data=processed_lidar_data, is_collided=obs[7])
+        reward = self._reward_fun(bicycle_obs, lidar_data=obs[9],
+                                  bicycle_x=obs[0], bicycle_y=obs[1],
+                                  gen_distance=gen_distance, gen_angle=gen_angle)
 
         self.prev_dist_to_goal = distance_to_goal_temp
 
@@ -131,80 +123,72 @@ class ZBicycleNaviEnv(gymnasium.Env):
         if self._elapsed_steps >= self._max_episode_steps:
             self.truncated = True
 
-        return total_obs, reward, self.terminated, self.truncated, {}
+        return {"lidar": obs[9], "bicycle": bicycle_obs}, reward, self.terminated, self.truncated, {}
 
     def reset(self, seed=None, options=None):
         self.terminated = False
         self.truncated = False
         self._elapsed_steps = 0
-        self.region_score = [0.0] * 30
         self.goal = get_goal_pos()
-        # x = random.randint(3, 30)
-        # y = random.randint(3, 30)
-        # self.goal = (x, y)
         goal = Goal(self.client, self.goal)
         # 因为没有重置环境，每次reset后要清除先前的Goal
         if self.prev_goal_id is not None:
             p.removeBody(self.prev_goal_id, self.client)
         self.prev_goal_id = goal.id
-        if self.gui:
-            print(f"episode_rwd: {self.episode_rwd}")
-        self.episode_rwd = {"1": 0, "2": 0, "3": 0, "4": 0, "5": 0}
+
+        self.goal_temp = (1, 1)
         obs = self.bicycle.reset()
-        processed_lidar_data = self._process_lidar_data(lidar_data=obs[6])
+        distance_to_goal_temp = np.linalg.norm(np.array([obs[0], obs[1]]) - np.array(self.goal_temp))
+        angle_to_target = my_tools.calculate_angle_to_target(obs[0], obs[1], obs[2], self.goal_temp[0], self.goal_temp[1])
 
-        distance_to_goal_temp = np.linalg.norm(np.array([obs[0], obs[1]]) - np.array(self.goal))
-        angle_to_target = my_tools.calculate_angle_to_target(obs[0], obs[1], obs[2], self.goal[0], self.goal[1])
+        bicycle_obs = np.array([distance_to_goal_temp, angle_to_target, obs[3], obs[4], obs[5], obs[6], obs[7], obs[8]], dtype=np.float32)
 
-        bicycle_obs = np.array([distance_to_goal_temp, angle_to_target, obs[4], obs[5]], dtype=np.float32)
         self.prev_dist_to_goal = distance_to_goal_temp
-        total_obs = np.concatenate((processed_lidar_data, bicycle_obs))
-        return total_obs, {}
 
-    def _reward_fun(self, obs, roll_angle, processed_lidar_data, is_collided=False):
+        return {"lidar": obs[9], "bicycle": bicycle_obs}, {}
+
+    def _reward_fun(self, obs, lidar_data, bicycle_x, bicycle_y, gen_distance, gen_angle):
         self.terminated = False
         self.truncated = False
-        # processed_lidar_data数据是前方180度范围内分成30个扇形区域，每个区域的距离和是否距离过近
-        # action 车把角度
-        # obs 机器人与目标点距离, 机器人与目标点的角度, 翻滚角, 车把角度, 车把角速度
+        # action 车把角度，前后轮速度, 飞轮速度, 相对路径点的距离x, 相对路径点的距离y
+        # obs 机器人与目标点距离, 机器人与目标点的角度, 翻滚角, 翻滚角角速度, 车把角度, 车把角速度, 后轮速度, 飞轮速度
         distance_to_goal_temp = obs[0]
+        roll_angle = obs[2]
+        bicycle_vel = obs[6]
 
         # ========== 平衡奖励 ==========
         balance_rwd = 0.0
         if math.fabs(roll_angle) >= 0.35:
             self.terminated = True
             balance_rwd = -10.0
+        else:
+            balance_rwd = 1.0 - (math.fabs(roll_angle) / 0.35) * 2.0
+            balance_rwd = max(-1.0, min(1.0, balance_rwd))
         # ========== 平衡奖励 ==========
 
         # ========== 导航奖励 ==========
-        diff_dist = (self.prev_dist_to_goal - distance_to_goal_temp) * 5.0
-        distance_rwd = diff_dist if diff_dist > 0 else 1.2 * diff_dist
-
+        diff_dist = (self.prev_dist_to_goal - distance_to_goal_temp) * 100.0
+        distance_rwd = diff_dist if diff_dist > 0 else 1.5 * diff_dist
         goal_temp_rwd = 0.0
         if distance_to_goal_temp <= self.goal_threshold:
-            goal_temp_rwd = 200.0
-
+            self.goal_temp = self._calculate_new_position(bicycle_x, bicycle_y, gen_distance, gen_angle)
+            goal_temp_rwd = 10.0
         navigation_rwd = distance_rwd + goal_temp_rwd
         # ========== 导航奖励 ==========
 
         # ========== 避障奖励 ==========
-        collision_penalty = 0.0
-        if is_collided:
-            collision_penalty = -10.0
-            self.terminated = True
-            print("碰撞了")
-        # obstacle_penalty = 0.0
-        # min_obstacle_dist = np.min(lidar_data)
-        # if min_obstacle_dist <= self.safe_distance:
-        #     obstacle_penalty = -10.0
-        # avoid_obstacle_rwd = obstacle_penalty
+        obstacle_penalty = 0.0
+        min_obstacle_dist = np.min(lidar_data)
+        if min_obstacle_dist <= self.safe_distance:
+            obstacle_penalty = -10.0
+        avoid_obstacle_rwd = obstacle_penalty
         # ========== 避障奖励 ==========
 
-        if self.gui:
-            # print(f"distance_rwd: {distance_rwd}")
-            self.episode_rwd["1"] += distance_rwd
+        still_penalty = 0.0
+        if math.fabs(bicycle_vel) <= 0.2:
+            still_penalty = -1.0
 
-        total_reward = balance_rwd + navigation_rwd + collision_penalty
+        total_reward = balance_rwd + navigation_rwd + avoid_obstacle_rwd + still_penalty
 
         return total_reward
 
@@ -222,16 +206,28 @@ class ZBicycleNaviEnv(gymnasium.Env):
         """
         return self.action_low + (0.5 * (scaled_action + 1.0) * (self.action_high - self.action_low))
 
-    def _process_lidar_data(self, lidar_data):
-        distance_reshaped = lidar_data.reshape(30, 3)  # 使用reshape将其变为(30, 3)的形状，方便每3个元素进行平均
-        averaged_distance = np.mean(distance_reshaped, axis=1, keepdims=True).flatten().tolist()  # 对每一行取平均值
-        ret_array = []
-        for distance in averaged_distance:
-            ret_array.append(distance)
-            ret_array.append(-1.0 if distance <= self.safe_distance else 1.0)
-        return np.array(ret_array, dtype=np.float32)
+    def _calculate_new_position(self, x, y, distance, angle):
+        """
+        根据当前位置、距离和角度计算新的位置。
 
+        参数:
+            x (float): 当前机器人的 x 坐标。
+            y (float): 当前机器人的 y 坐标。
+            distance (float): 随机生成的距离。
+            angle (float): 随机生成的角度（弧度制，范围 -π 到 π）。
 
+        返回:
+            tuple: 新的机器人位置 (new_x, new_y)。
+        """
+        # 使用三角函数计算新位置
+        delta_x = distance * math.cos(angle)
+        delta_y = distance * math.sin(angle)
+
+        # 计算新坐标
+        new_x = x + delta_x
+        new_y = y + delta_y
+
+        return new_x, new_y
 def check_observation_space(observation, observation_space):
     """
     检查 step() 返回的 observation 是否在 observation_space 范围内。
@@ -266,11 +262,11 @@ def check_observation_space(observation, observation_space):
 
 
 if __name__ == '__main__':
-    env = gymnasium.make('ZBicycleNaviEnv-v0', gui=True)
+    env = gymnasium.make('BicycleMazeLidar3-v0', gui=True)
     obs, _ = env.reset()
     # check_observation_space(obs, env.observation_space)
     for i in range(10000):
-        action = np.array([0.0], np.float32)
+        action = np.array([0.0, -1.0], np.float32)
         obs, _, terminated, truncated, infos = env.step(action)
 
         # if terminated or truncated:

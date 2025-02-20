@@ -25,7 +25,7 @@ fi
 
 python train.py \
 --algo ppo \
---env ZBicycleBalanceEnv-v0 \
+--env ZBicycleNaviEnv-v0 \
 --conf-file "$CONF_FILE" \
 --vec-env subproc \
 --progress \

@@ -18,9 +18,9 @@ echo "开始执行"
 # 导航
 python enjoy.py \
 --algo ppo \
---env ZBicycleBalanceEnv-v0 \
+--env ZBicycleNaviEnv-v0 \
 --folder logs/ \
---exp-id 3 \
+--exp-id 1 \
 --env-kwargs gui:True \
 --load-best \
 --no-render \
