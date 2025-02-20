@@ -1,17 +1,34 @@
-from utils.my_feature_extractor import MyFeatureExtractorLidar
+from utils.my_feature_extractor import MyFeatureExtractorLidar, ZFeatureExtractor
 
 hyperparams = {
-    "BicycleMazeLidar2-v0": dict(
-        policy="MultiInputPolicy",
-        normalize=dict(norm_obs=True, norm_reward=False, norm_obs_keys=['lidar', 'obs']),
+    "ZBicycleNaviEnv-v0": dict(
+        policy="MlpPolicy",
+        normalize=dict(norm_obs=True, norm_reward=False),
         n_envs=32,
-        n_timesteps=500000,
-        learning_rate=3e-4,
-        batch_size=512,
+        n_steps=2048,
+        batch_size=65536,  # n_steps * n_envs
+        gamma=0.99,
+        n_epochs=4,
+        n_timesteps=1000000,
         policy_kwargs=dict(
-            features_extractor_class=MyFeatureExtractorLidar,
-            net_arch=dict(pi=[512, 512], vf=[512, 512]),
+            net_arch=dict(pi=[256, 256], vf=[256, 256])
         ),
-        # monitor_kwargs=dict(info_keywords=('flywheel_vel',))
-    )
+    ),
+
+    "BicycleDmzEnv-v0": dict(
+        policy="MultiInputPolicy",
+        normalize=dict(norm_obs=True, norm_reward=False, norm_obs_keys=['lidar', 'bicycle']),
+        n_envs=10,
+        n_steps=1024,
+        batch_size=25600,  # n_steps * n_envs
+        ent_coef=0.01,
+        n_epochs=4,
+        n_timesteps=500000,
+        policy_kwargs=dict(
+            features_extractor_class=ZFeatureExtractor,
+            net_arch=dict(pi=[256, 256], vf=[256, 256])
+        ),
+        # monitor_kwargs=dict(info_keywords=('reward',))
+    ),
+
 }
