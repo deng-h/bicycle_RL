@@ -10,7 +10,7 @@ hyperparams = {
         gamma=0.99,
         n_epochs=4,
         ent_coef=0.01,
-        n_timesteps=1000000,
+        n_timesteps=20000000,
         policy_kwargs=dict(
             net_arch=dict(pi=[256, 256, 256], vf=[256, 256, 256])
         ),

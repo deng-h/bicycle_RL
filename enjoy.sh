@@ -4,11 +4,11 @@ clear
 echo "开始执行"
 
 # 导航
-python enjoy.py \
+/home/chen/anaconda3/envs/denghang/bin/python enjoy.py \
 --algo ppo \
 --env ZBicycleNaviEnv-v0 \
 --folder logs/ \
---exp-id 3 \
+--exp-id 6 \
 --env-kwargs gui:True \
 --load-best \
 --no-render \

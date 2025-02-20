@@ -20,5 +20,5 @@ fi
 --vec-env subproc \
 --progress \
 --seed 42 \
---device cpu
-# --trained-agent ./logs/ppo/ZBicycleNaviEnv-v0_3/best_model.zip
+--device cpu \
+--trained-agent ./logs/ppo/ZBicycleNaviEnv-v0_6/best_model.zip

@@ -37,7 +37,7 @@ class ZBicycleNavi:
         self.MAX_FORCE = 2000
         self.roll_angle_pid = PID(1000, 0, 0, setpoint=0.0)
         self.last_roll_angle = 0.0
-        self.bicycle_vel = 1.0
+        self.bicycle_vel = 0.5
 
         self.num_rays = 180
         self.ray_len = 20.0
