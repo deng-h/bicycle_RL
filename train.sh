@@ -13,16 +13,6 @@ else
     CONF_FILE="ppo_config"
 fi
 
-# 平衡训练
-#python train.py \
-#--algo ppo \
-#--env BicycleBalance-v0 \
-#--conf-file ppo_config \
-#--vec-env subproc \
-#--progress \
-#--device cpu
-#--tensorboard-log ./logs/tensorboard/
-
 python train.py \
 --algo ppo \
 --env ZBicycleNaviEnv-v0 \
@@ -30,4 +20,4 @@ python train.py \
 --vec-env subproc \
 --progress \
 --device cpu
-#--trained-agent ./logs/ppo/BicycleDmzEnv-v0_11/best_model.zip
+#--trained-agent ./logs/ppo/ZBicycleNaviEnv-v0_4/best_model.zip

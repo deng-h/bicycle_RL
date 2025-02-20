@@ -20,9 +20,9 @@ python enjoy.py \
 --algo ppo \
 --env ZBicycleNaviEnv-v0 \
 --folder logs/ \
---exp-id 1 \
+--exp-id 6 \
 --env-kwargs gui:True \
 --load-best \
 --no-render \
 --device cpu \
---n-timesteps 20000
+--n-timesteps 1000000

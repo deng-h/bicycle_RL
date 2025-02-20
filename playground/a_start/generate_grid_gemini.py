@@ -44,7 +44,7 @@ if __name__ == '__main__':
 
     # 定义 A* 算法的起始点和目标点 (网格坐标)
     start_pos = (2, 2)  # 第 5 行，第 5 列 (从 0 开始计数)
-    goal_pos = (20, 11)  # 第 28 行，第 28 列
+    goal_pos = (10, 12)  #  (20, 11)
 
     # 使用 A* 算法生成路径
     path = a_star_pathfinding(grid_map, start_pos, goal_pos)

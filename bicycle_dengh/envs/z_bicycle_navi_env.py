@@ -101,7 +101,7 @@ class ZBicycleNaviEnv(gymnasium.Env):
         p.configureDebugVisualizer(p.COV_ENABLE_RENDERING, 1)
         p.setGravity(0, 0, -10, physicsClientId=self.client)
         # p.setRealTimeSimulation(0, physicsClientId=self.client)
-        p.setTimeStep(1. / 24., self.client)
+        p.setTimeStep(1. / 90., self.client)
 
     def step(self, action):
         rescaled_action = self._rescale_action(action)
@@ -116,12 +116,18 @@ class ZBicycleNaviEnv(gymnasium.Env):
         total_obs = np.concatenate((processed_lidar_data, bicycle_obs))
 
         if self.gui:
-            bike_pos, _ = p.getBasePositionAndOrientation(self.bicycle.bicycleId, physicsClientId=self.client)
-            camera_distance = p.readUserDebugParameter(self.camera_distance_param)
-            camera_yaw = p.readUserDebugParameter(self.camera_yaw_param)
-            camera_pitch = p.readUserDebugParameter(self.camera_pitch_param)
-            # p.resetDebugVisualizerCamera(cameraDistance=10, cameraYaw=0, cameraPitch=-85, cameraTargetPosition=[15, 10, 10])
-            p.resetDebugVisualizerCamera(camera_distance, camera_yaw, camera_pitch, bike_pos)
+            keys = p.getKeyboardEvents()
+            if ord(' ') in keys and keys[ord(' ')] & p.KEY_WAS_TRIGGERED:
+                time.sleep(10000)
+            elif ord('z') in keys and keys[ord('z')] & p.KEY_WAS_TRIGGERED:
+                # 设置俯视视角
+                p.resetDebugVisualizerCamera(cameraDistance=10, cameraYaw=0, cameraPitch=-89, cameraTargetPosition=[15, 15, 10])
+            elif ord('x') in keys and keys[ord('x')] & p.KEY_WAS_TRIGGERED:
+                bike_pos, _ = p.getBasePositionAndOrientation(self.bicycle.bicycleId, physicsClientId=self.client)
+                camera_distance = p.readUserDebugParameter(self.camera_distance_param)
+                camera_yaw = p.readUserDebugParameter(self.camera_yaw_param)
+                camera_pitch = p.readUserDebugParameter(self.camera_pitch_param)
+                p.resetDebugVisualizerCamera(camera_distance, camera_yaw, camera_pitch, bike_pos)
 
         reward = self._reward_fun(bicycle_obs, roll_angle=obs[3], processed_lidar_data=processed_lidar_data, is_collided=obs[7])
 
@@ -139,9 +145,6 @@ class ZBicycleNaviEnv(gymnasium.Env):
         self._elapsed_steps = 0
         self.region_score = [0.0] * 30
         self.goal = get_goal_pos()
-        # x = random.randint(3, 30)
-        # y = random.randint(3, 30)
-        # self.goal = (x, y)
         goal = Goal(self.client, self.goal)
         # 因为没有重置环境，每次reset后要清除先前的Goal
         if self.prev_goal_id is not None:
@@ -173,7 +176,7 @@ class ZBicycleNaviEnv(gymnasium.Env):
         balance_rwd = 0.0
         if math.fabs(roll_angle) >= 0.35:
             self.terminated = True
-            balance_rwd = -10.0
+            balance_rwd = -100.0
         # ========== 平衡奖励 ==========
 
         # ========== 导航奖励 ==========
@@ -190,21 +193,27 @@ class ZBicycleNaviEnv(gymnasium.Env):
         # ========== 避障奖励 ==========
         collision_penalty = 0.0
         if is_collided:
-            collision_penalty = -10.0
+            collision_penalty = -100.0
             self.terminated = True
             print("碰撞了")
-        # obstacle_penalty = 0.0
-        # min_obstacle_dist = np.min(lidar_data)
-        # if min_obstacle_dist <= self.safe_distance:
-        #     obstacle_penalty = -10.0
-        # avoid_obstacle_rwd = obstacle_penalty
+        even_index_data = processed_lidar_data[::2]
+        min_val = np.min(even_index_data)
+
+        # 离障碍物一定范围内开始做惩罚
+        obstacle_penalty = 0.0
+        if min_val <= 5.5:
+            obstacle_penalty = max(0.1, min_val)
+            obstacle_penalty = -1.0 / (obstacle_penalty * 5)
+
+        avoid_obstacle_rwd = obstacle_penalty + collision_penalty
         # ========== 避障奖励 ==========
 
         if self.gui:
-            # print(f"distance_rwd: {distance_rwd}")
+            print(f"distance_rwd: {distance_rwd}, obstacle_penalty: {obstacle_penalty}")
             self.episode_rwd["1"] += distance_rwd
+            self.episode_rwd["2"] += obstacle_penalty
 
-        total_reward = balance_rwd + navigation_rwd + collision_penalty
+        total_reward = balance_rwd + navigation_rwd + avoid_obstacle_rwd
 
         return total_reward
 

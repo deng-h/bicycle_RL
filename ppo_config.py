@@ -5,8 +5,8 @@ hyperparams = {
         policy="MlpPolicy",
         normalize=dict(norm_obs=True, norm_reward=False),
         n_envs=6,
-        n_steps=2048,
-        batch_size=12288,  # n_steps * n_envs
+        n_steps=3000,
+        batch_size=18000,  # n_steps * n_envs
         gamma=0.99,
         n_epochs=4,
         n_timesteps=500000,
