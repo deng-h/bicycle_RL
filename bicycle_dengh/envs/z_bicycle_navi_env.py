@@ -32,7 +32,7 @@ class ZBicycleNaviEnv(gymnasium.Env):
         if system == "Windows":
             yaml_file_path = "D:\\data\\1-L\\9-bicycle\\bicycle-rl\\bicycle_dengh\envs\BicycleMazeLidarEnvConfig.yaml"
         else:
-            yaml_file_path = "/root/bicycle-rl/bicycle_dengh/envs/icycleMazeLidarEnvConfig.yaml"
+            yaml_file_path = "/root/bicycle-rl/bicycle_dengh/envs/BicycleMazeLidarEnvConfig.yaml"
         with open(yaml_file_path, "r", encoding='utf-8') as f:
             self.config = yaml.safe_load(f)
         self.goal = (1, 1)
@@ -55,17 +55,17 @@ class ZBicycleNaviEnv(gymnasium.Env):
 
         # 车把角度
         self.actual_action_space = gymnasium.spaces.box.Box(
-            low=np.array([-1.57]),
-            high=np.array([1.57]),
+            low=np.array([-1.5]),
+            high=np.array([1.5]),
             shape=(1,),
             dtype=np.float32)
 
         self.action_low, self.action_high = self.actual_action_space.low, self.actual_action_space.high
 
-        # 第一部分：30 组 [0, -1.0] ~ [50, 1.0]
+        # 第一部分：30 组 [-50, -1.0] ~ [50, 1.0]
         num_groups = 30
-        group1_low = np.array([0, -1.0])
-        group1_high = np.array([50, 1.0])
+        group1_low = np.array([-50.0, -1.0])
+        group1_high = np.array([50.0, 1.0])
         # 使用 numpy.tile 快速创建重复的 low 和 high 数组
         part1_low = np.tile(group1_low, num_groups)
         part1_high = np.tile(group1_high, num_groups)

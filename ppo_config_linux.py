@@ -4,9 +4,9 @@ hyperparams = {
     "ZBicycleNaviEnv-v0": dict(
         policy="MlpPolicy",
         normalize=dict(norm_obs=True, norm_reward=False),
-        n_envs=20,
+        n_envs=25,
         n_steps=3000,
-        batch_size=60000,  # n_steps * n_envs
+        batch_size=75000,  # n_steps * n_envs
         gamma=0.99,
         n_epochs=4,
         n_timesteps=500000,
