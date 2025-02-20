@@ -31,7 +31,7 @@ class ZBicycleNaviEnv(gymnasium.Env):
         if system == "Windows":
             yaml_file_path = "D:\\data\\1-L\\9-bicycle\\bicycle-rl\\bicycle_dengh\envs\BicycleMazeLidarEnvConfig.yaml"
         else:
-            yaml_file_path = "/root/bicycle-rl/bicycle_dengh/envs/BicycleMazeLidarEnvConfig.yaml"
+            yaml_file_path = "/home/chen/denghang/bicycle-rl/bicycle_dengh/envs/BicycleMazeLidarEnvConfig.yaml"
         with open(yaml_file_path, "r", encoding='utf-8') as f:
             self.config = yaml.safe_load(f)
         self.goal = (1, 1)

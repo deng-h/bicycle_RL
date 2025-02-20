@@ -13,12 +13,12 @@ else
     CONF_FILE="ppo_config"
 fi
 
-python train.py \
+/home/chen/anaconda3/envs/denghang/bin/python train.py \
 --algo ppo \
 --env ZBicycleNaviEnv-v0 \
 --conf-file "$CONF_FILE" \
 --vec-env subproc \
 --progress \
 --seed 42 \
---device cpu \
---trained-agent ./logs/ppo/ZBicycleNaviEnv-v0_3/best_model.zip
+--device cpu
+# --trained-agent ./logs/ppo/ZBicycleNaviEnv-v0_3/best_model.zip

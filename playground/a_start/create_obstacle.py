@@ -171,7 +171,7 @@ def create_wall(x1, y1, x2, y2):
 
 
 def generate_obstacle_positions_from_file(
-        file_path='D:\data\\1-L\9-bicycle\\bicycle-rl\playground\\a_start\obstacle_map.txt'):
+        file_path='/home/chen/denghang/bicycle-rl/playground/a_start/obstacle_map.txt'):
     """
     从图画文件读取障碍物位置并生成 obstacle_positions2 列表。
     **修改：**
