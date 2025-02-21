@@ -123,9 +123,9 @@ def create_obstacle(client_id):
         [10 + 0.5, 16 + 0.5, 1],
     ]
 
-    collision_shape = p.createCollisionShape(p.GEOM_CYLINDER, halfExtents=[0.5, 0.5, 1.0], radius=1.5, height=3.0)
+    collision_shape = p.createCollisionShape(p.GEOM_CYLINDER, halfExtents=[0.5, 0.5, 1.0], radius=1.25, height=3.0)
     visual_shape = p.createVisualShape(p.GEOM_CYLINDER, halfExtents=[0.5, 0.5, 1.0],
-                                       rgbaColor=[0.92, 0.94, 0.94, 1], radius=1.5, length=3.0)
+                                       rgbaColor=[0.92, 0.94, 0.94, 1], radius=1.25, length=3.0)
     obstacle_ids = []
     obstacle_positions1 = generate_obstacle_positions_from_file()
     for obstacle_pos in obstacle_positions1:
@@ -135,10 +135,10 @@ def create_obstacle(client_id):
                                         physicsClientId=client_id)
         obstacle_ids.append(obstacle_id)
     # 根据你的需求创建四面墙
-    left = -14
-    right = 14
-    top = 26
-    bottom = -2
+    left = -15
+    right = 15
+    top = 27
+    bottom = -3
     left_wall = create_wall(left, bottom, left, top)
     right_wall = create_wall(right, bottom, right, top)
     top_wall = create_wall(left, top, right, top)

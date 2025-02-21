@@ -21,4 +21,4 @@ fi
 --progress \
 --seed 42 \
 --device cpu \
---trained-agent ./logs/ppo/ZBicycleNaviEnv-v0_6/best_model.zip
+--trained-agent ./logs/ppo/ZBicycleNaviEnv-v0_7/best_model.zip

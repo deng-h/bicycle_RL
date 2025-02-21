@@ -19,7 +19,7 @@ class ZBicycleNavi:
             f_name = os.path.join(os.path.dirname(__file__), 'bicycle_urdf/bike.xml')
 
         startOrientation = p.getQuaternionFromEuler([0, 0, 1.57])
-        self.bicycleId = p.loadURDF(fileName=f_name, basePosition=[-1, 0, 1], baseOrientation=startOrientation,
+        self.bicycleId = p.loadURDF(fileName=f_name, basePosition=[0, -1, 1], baseOrientation=startOrientation,
                                     physicsClientId=self.client)
         # Number of joints: 7
         # jointIndex: 0 jointName: 'frame_to_handlebar'
@@ -38,6 +38,7 @@ class ZBicycleNavi:
         self.roll_angle_pid = PID(1000, 0, 0, setpoint=0.0)
         self.last_roll_angle = 0.0
         self.bicycle_vel = 0.5
+        self.proximity_threshold = 0.3
 
         self.num_rays = 180
         self.ray_len = 20.0
@@ -126,9 +127,10 @@ class ZBicycleNavi:
 
         lidar_info = None  # 初始化 lidar_info
         is_collided = False
+        is_proximity = False
         if self.frame_count % self.lidar_update_frequency == 0:
             lidar_info = self._get_lidar_info4(pos, yaw_angle)
-            is_collided = self._is_collided()
+            is_collided, is_proximity = self._is_collided_and_proximity()
 
         self.last_roll_angle = roll_angle
         observation = [
@@ -139,7 +141,8 @@ class ZBicycleNavi:
             handlebar_joint_ang,
             handlebar_joint_vel,
             lidar_info if lidar_info is not None else self.last_lidar_info,  # 使用上次的激光雷达信息
-            is_collided
+            is_collided,
+            is_proximity
         ]
         # 保存激光雷达信息，下次使用
         self.last_lidar_info = lidar_info if lidar_info is not None else self.last_lidar_info
@@ -158,35 +161,45 @@ class ZBicycleNavi:
         self.last_roll_angle = 0.0
         return self.get_observation()
 
-    def _is_collided(self):
+    # def _is_collided(self):
+    #     """
+    #     检测机器人是否与任何障碍物发生真实碰撞 (使用 getContactPoints)。
+    #     """
+    #     for obstacle_id in self.obstacle_ids:
+    #         contact_points = p.getContactPoints(bodyA=self.bicycleId, bodyB=obstacle_id, physicsClientId=self.client)
+    #         if len(contact_points) > 0: # getContactPoints 返回的列表不为空，表示有接触点，即发生碰撞
+    #             return True
+    #     return False
+
+    # def _detect_obstacle_proximity(self):
+    #     """
+    #     检测机器人是否接近障碍物 (使用 getClosestPoints)。
+    #     返回true为太靠近，false为不是很靠近
+    #     """
+    #     for obstacle_id in self.obstacle_ids:
+    #         closest_points = p.getClosestPoints(bodyA=self.bicycleId, bodyB=obstacle_id, distance=self.proximity_threshold, physicsClientId=self.client)
+    #         if len(closest_points) > 0: # getClosestPoints 返回的列表不为空，表示在阈值距离内有最近点
+    #             return True
+    #     return False
+
+    def _is_collided_and_proximity(self):
+        """
+        检测机器人是否与任何障碍物发生真实碰撞 (使用 getContactPoints)
+        检测机器人是否接近障碍物 (使用 getClosestPoints)，返回true为太靠近，false为不是很靠近
+        返回碰撞检测和接近检测结果
+        """
         for obstacle_id in self.obstacle_ids:
-            contact_points = p.getClosestPoints(self.bicycleId, obstacle_id, distance=0.2, physicsClientId=self.client)
-            if len(contact_points) > 0:
-                return True
-        return False
+            contact_points = p.getContactPoints(bodyA=self.bicycleId, bodyB=obstacle_id, physicsClientId=self.client)
+            closest_points = p.getClosestPoints(bodyA=self.bicycleId, bodyB=obstacle_id, distance=self.proximity_threshold, physicsClientId=self.client)
+            is_collided = len(contact_points) > 0  # getContactPoints 返回的列表不为空，表示有接触点，即发生碰撞
+            is_proximity = len(closest_points) > 0  # getClosestPoints 返回的列表不为空，表示在阈值距离内有最近点
+            
+            if is_collided:
+                return True, True
+            elif is_collided is False and is_proximity is True:
+                return False, True
+        return False, False
 
-    def _get_lidar_info2(self, bicycle_pos):
-        rayFrom, rayTo = [], []
-        ray_start_x = bicycle_pos[0] + self.lidar_origin_offset[0]
-        ray_start_y = bicycle_pos[1] + self.lidar_origin_offset[1]
-        ray_start_z = bicycle_pos[2] + self.lidar_origin_offset[2]
-
-        for i in range(self.num_rays):
-            rayFrom.append([ray_start_x, ray_start_y, ray_start_z])
-            rayTo.append([
-                rayFrom[i][0] + self.sin_array[i],
-                rayFrom[i][1] + self.cos_array[i],
-                rayFrom[i][2]])
-
-        results = p.rayTestBatch(rayFromPositions=rayFrom, rayToPositions=rayTo)
-        distance = []
-        for res in results:
-            if res[0] < 0:
-                distance.append(self.ray_len)
-            else:
-                distance.append(np.linalg.norm(np.array(res[3]) - np.array([ray_start_x, ray_start_y, ray_start_z])))
-
-        return np.array(distance, dtype=np.float32)
 
     def _get_lidar_info3(self, bicycle_pos):
         # 计算射线起点的坐标

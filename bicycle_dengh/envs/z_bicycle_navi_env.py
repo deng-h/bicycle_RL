@@ -51,7 +51,6 @@ class ZBicycleNaviEnv(gymnasium.Env):
         self.action_space = gymnasium.spaces.box.Box(low=-1., high=1., shape=(1,), dtype=np.float32)
         self.episode_rwd = {"1": 0, "2": 0, "3": 0, "4": 0, "5": 0}
         self.radians_array = np.linspace(0, math.pi, 60)
-        self.log_index = 0
         x = 40  # 想要取出的中间元素个数
         array_length = 60  # 总共60个元素
         self.start_index = (array_length - x) // 2
@@ -139,7 +138,7 @@ class ZBicycleNaviEnv(gymnasium.Env):
                 p.resetDebugVisualizerCamera(camera_distance, camera_yaw, camera_pitch, bike_pos)
 
         reward = self._reward_fun(bicycle_obs, roll_angle=obs[3], processed_lidar_data=processed_lidar_data,
-                                  bicycle_yaw=obs[2], is_collided=obs[7])
+                                  bicycle_yaw=obs[2], is_collided=obs[7], is_proximity=obs[8])
 
         self.prev_dist_to_goal = distance_to_goal_temp
 
@@ -176,10 +175,9 @@ class ZBicycleNaviEnv(gymnasium.Env):
         total_obs = np.concatenate((processed_lidar_data, bicycle_obs))
         return total_obs, {}
 
-    def _reward_fun(self, obs, roll_angle, processed_lidar_data, bicycle_yaw, is_collided=False):
+    def _reward_fun(self, obs, roll_angle, processed_lidar_data, bicycle_yaw, is_collided=False, is_proximity=False):
         self.terminated = False
         self.truncated = False
-        # processed_lidar_data数据是前方180度范围内分成30个扇形区域，每个区域的距离和是否距离过近
         # action 车把角度
         # obs 机器人与目标点距离, 机器人与目标点的角度, 翻滚角, 车把角度, 车把角速度
         distance_to_goal = obs[0]
@@ -200,7 +198,6 @@ class ZBicycleNaviEnv(gymnasium.Env):
             print(f">>>到达目标点({self.goal[0]}, {self.goal[1]})！存活{self._elapsed_steps}步，奖励值{self.episode_rwd}")
             goal_rwd = 200.0
             self.terminated = True
-
         navigation_rwd = distance_rwd + goal_rwd
         # ========== 导航奖励 ==========
 
@@ -209,28 +206,34 @@ class ZBicycleNaviEnv(gymnasium.Env):
         if is_collided:
             collision_penalty = -100.0
             self.terminated = True
-            self.log_index += 1
-            if self.log_index % 200 == 0:
+            if self.gui:
                 print(f">>>碰撞！存活{self._elapsed_steps}步，奖励值{self.episode_rwd}")
 
         middle_elements = processed_lidar_data[self.start_index:self.end_index]  # 使用数组切片取出中间元素
         # 离障碍物一定范围内开始做惩罚
         min_val = np.min(middle_elements)
         obstacle_penalty = 0.0
-        if min_val <= 3.0:
+        if min_val <= 4.0:
             obstacle_penalty = max(0.1, min_val)
-            obstacle_penalty = -1.0 / (obstacle_penalty * 10)
+            obstacle_penalty = -1.0 / (obstacle_penalty * 50)
+        
+        # 太靠近给固定惩罚
+        proximity_penalty = 0.0
+        if is_proximity:
+            proximity_penalty = -0.025
 
-        # ds_rwd = self._deepseek_design_rwd(yaw=obs[3], processed_lidar=processed_lidar_data,
-        #                                    theta_array=self.radians_array) / 200000.0
+        # ds_rwd = self._deepseek_design_rwd(bicycle_yaw, processed_lidar_data, self.radians_array) / 100000.0
 
-        avoid_obstacle_rwd = obstacle_penalty + collision_penalty
+        avoid_obstacle_rwd = collision_penalty + obstacle_penalty + proximity_penalty
         # ========== 避障奖励 ==========
 
         # if self.gui:
-        #     print(f"distance_rwd: {distance_rwd}, obstacle_penalty: {obstacle_penalty}, ds_rwd: {ds_rwd}")
+        #     print(f"distance_rwd: {distance_rwd}, obstacle_penalty: {obstacle_penalty}, ds_rwd: {ds_rwd}, "
+        #             f"proximity_penalty: {proximity_penalty}")
+            
         self.episode_rwd["1"] += distance_rwd
         self.episode_rwd["2"] += obstacle_penalty
+        # self.episode_rwd["3"] += ds_rwd
 
         total_reward = balance_rwd + navigation_rwd + avoid_obstacle_rwd
 
