@@ -9,7 +9,7 @@ hyperparams = {
         batch_size=30000,  # n_steps * n_envs
         gamma=0.99,
         n_epochs=4,
-        ent_coef=0.02,
+        ent_coef=0.05,
         n_timesteps=6000000,
         policy_kwargs=dict(
             net_arch=dict(pi=[256, 256, 256], vf=[256, 256, 256])

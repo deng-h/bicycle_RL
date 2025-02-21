@@ -76,6 +76,28 @@ def calculate_angle_to_target(a, b, phi, x, y):
     return angle_to_target
 
 
+def calculate_goal_angle_gemini(robot_x, robot_y, robot_yaw, goal_x, goal_y):
+    """
+    计算目标点在小车自身坐标系下的角度。
+
+    Args:
+        robot_x: 小车在世界坐标系下的x坐标
+        robot_y: 小车在世界坐标系下的y坐标
+        robot_yaw: 小车的偏航角 (弧度)
+        goal_x: 目标点在世界坐标系下的x坐标
+        goal_y: 目标点在世界坐标系下的y坐标
+
+    Returns:
+        angle: 目标点相对于小车自身坐标系x轴正方向的角度 (弧度, 范围 [-pi, pi])
+    """
+    dx = goal_x - robot_x
+    dy = goal_y - robot_y
+    goal_x_robot_frame = math.sin(robot_yaw) * dx - math.cos(robot_yaw) * dy
+    goal_y_robot_frame = math.cos(robot_yaw) * dx + math.sin(robot_yaw) * dy
+    angle = math.atan2(goal_y_robot_frame, goal_x_robot_frame)
+    return angle
+
+
 def world_to_polar(robot_x, robot_y, target_x, target_y):
     # 计算相对坐标
     dx = target_x - robot_x

@@ -41,8 +41,8 @@ class ZBicycleNavi:
         self.proximity_threshold = 0.3
 
         self.num_rays = 180
-        self.ray_len = 20.0
-        self.lidar_origin_offset = [0., 0., .7]  # 激光雷达相对于小车的位置偏移量
+        self.ray_len = 12.0
+        self.lidar_origin_offset = [0., 0.55, .7]  # 激光雷达相对于小车的位置偏移量
         self.initial_joint_positions = None
         self.initial_joint_velocities = None
         self.initial_position, self.initial_orientation = p.getBasePositionAndOrientation(self.bicycleId, self.client)
@@ -74,6 +74,7 @@ class ZBicycleNavi:
 
     def apply_action2(self, handlebar_angle):
         roll_angle_control = self.roll_angle_pid(self.last_roll_angle)
+        # handlebar_angle正往左，负往右
         # action[0] = frame_to_handlebar 车把位置控制
         p.setJointMotorControl2(bodyUniqueId=self.bicycleId,
                                 jointIndex=self.handlebar_joint,
@@ -81,7 +82,7 @@ class ZBicycleNavi:
                                 targetPosition=handlebar_angle,
                                 force=self.MAX_FORCE,
                                 physicsClientId=self.client)
-
+        
         # action[1] = handlebar_to_frontwheel 前轮速度控制
         p.setJointMotorControl2(bodyUniqueId=self.bicycleId,
                                 jointIndex=self.front_wheel_joint,
@@ -250,30 +251,31 @@ class ZBicycleNavi:
 
         results = p.rayTestBatch(rayFromPositions=rayFrom.tolist(), rayToPositions=rayTo.tolist())
 
+        # p.removeAllUserDebugItems()
         # for i, result in enumerate(results):
-        #     if i == 0:
-        #         p.addUserDebugLine(rayFrom[i], rayTo[i], lineColorRGB=[1, 0, 0], lineWidth=2.0)
-        #     elif i == 5:
-        #         p.addUserDebugLine(rayFrom[i], rayTo[i], lineColorRGB=[0, 1, 0], lineWidth=2.0)
-        #     elif i == 10:
-        #         p.addUserDebugLine(rayFrom[i], rayTo[i], lineColorRGB=[0, 0, 1], lineWidth=2.0)
-        #     elif i == 15:
-        #         p.addUserDebugLine(rayFrom[i], rayTo[i], lineColorRGB=[1, 1, 1], lineWidth=2.0)
-        #     elif i == 20:
-        #         p.addUserDebugLine(rayFrom[i], rayTo[i], lineColorRGB=[0, 0, 0], lineWidth=2.0)
-        # if result[0] < 0:
-        #     p.addUserDebugLine(rayFrom[i], rayTo[i], lineColorRGB=[0, 1, 0], lineWidth=1.0)
-        # else:
-        #     hit_position = result[3]
-        #     # 计算击中点到射线起点的距离
-        #     distance = ((hit_position[0] - rayFrom[i][0]) ** 2 +
-        #                 (hit_position[1] - rayFrom[i][1]) ** 2 +
-        #                 (hit_position[2] - rayFrom[i][2]) ** 2) ** 0.5
-        #     # 在击中点附近显示距离
-        #     text_position = (hit_position[0], hit_position[1], hit_position[2] + 0.1)  # 提高文本显示位置
-        #     p.addUserDebugText(f"{distance:.2f} m", text_position, textColorRGB=[1, 1, 1], textSize=1.0)
-        #     # 显示击中点的射线
-        #     p.addUserDebugLine(rayFrom[i], hit_position, lineColorRGB=[1, 0, 0], lineWidth=1.0)
+            # if i == 0:
+            #     p.addUserDebugLine(rayFrom[i], rayTo[i], lineColorRGB=[1, 0, 0], lineWidth=2.0)
+            # elif i == 30:
+            #     p.addUserDebugLine(rayFrom[i], rayTo[i], lineColorRGB=[0, 1, 0], lineWidth=2.0)
+            # elif i == 60:
+            #     p.addUserDebugLine(rayFrom[i], rayTo[i], lineColorRGB=[0, 0, 1], lineWidth=2.0)
+            # elif i == 90:
+            #     p.addUserDebugLine(rayFrom[i], rayTo[i], lineColorRGB=[1, 1, 1], lineWidth=2.0)
+            # elif i == 120:
+            #     p.addUserDebugLine(rayFrom[i], rayTo[i], lineColorRGB=[0, 0, 0], lineWidth=2.0)
+            # if result[0] < 0:
+            #     p.addUserDebugLine(rayFrom[i], rayTo[i], lineColorRGB=[0, 1, 0], lineWidth=1.0)
+            # else:
+            #     hit_position = result[3]
+            #     # 计算击中点到射线起点的距离
+            #     distance = ((hit_position[0] - rayFrom[i][0]) ** 2 +
+            #                 (hit_position[1] - rayFrom[i][1]) ** 2 +
+            #                 (hit_position[2] - rayFrom[i][2]) ** 2) ** 0.5
+            #     # 在击中点附近显示距离
+            #     text_position = (hit_position[0], hit_position[1], hit_position[2] + 0.1)  # 提高文本显示位置
+            #     p.addUserDebugText(f"{distance:.2f} m", text_position, textColorRGB=[1, 1, 1], textSize=1.0)
+            #     # 显示击中点的射线
+            #     p.addUserDebugLine(rayFrom[i], hit_position, lineColorRGB=[1, 0, 0], lineWidth=1.0)
 
         # 计算距离
         distance = np.array([
@@ -281,6 +283,14 @@ class ZBicycleNavi:
             for res in results
         ], dtype=np.float32)
 
+        # distance_reshaped = distance.reshape(60, 3)  # 使用reshape将其变为(60, 3)的形状，方便每3个元素进行平均
+        # averaged_distance = np.mean(distance_reshaped, axis=1, keepdims=True).flatten().tolist()  # 对每一行取平均值
+        # p.removeAllUserDebugItems()
+        # for i in range(0, 60, 10):
+        #     result = averaged_distance[i]
+        #     angle = start_angle + (math.pi * float(i) / (60 - 1))  # 180度范围内的角度
+        #     rayTo[i] = rayFrom[i] + [result * math.cos(angle), result * math.sin(angle), 0]
+        #     p.addUserDebugLine(rayFrom[i], rayTo[i], lineColorRGB=[1, 0, 0], lineWidth=1.0)
         return distance
 
     def draw_circle(self, center_pos, radius, num_segments=24, color=None):

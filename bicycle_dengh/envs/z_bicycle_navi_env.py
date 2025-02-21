@@ -49,7 +49,7 @@ class ZBicycleNaviEnv(gymnasium.Env):
         self._elapsed_steps = None
         self.bicycle_start_pos = (1, 1)
         self.action_space = gymnasium.spaces.box.Box(low=-1., high=1., shape=(1,), dtype=np.float32)
-        self.episode_rwd = {"1": 0, "2": 0, "3": 0, "4": 0, "5": 0}
+        self.episode_rwd = {"1": 0, "2": 0, "3": 0, "4": 0}
         self.radians_array = np.linspace(0, math.pi, 60)
         x = 40  # 想要取出的中间元素个数
         array_length = 60  # 总共60个元素
@@ -65,16 +65,16 @@ class ZBicycleNaviEnv(gymnasium.Env):
 
         self.action_low, self.action_high = self.actual_action_space.low, self.actual_action_space.high
 
-        # 第一部分：60 个 [-20.0] ~ [20.0]
+        # 第一部分：60 个 [-12.0] ~ [12.0]
         num_groups = 60
-        group1_low = np.array([-20.0])
-        group1_high = np.array([20.0])
+        group1_low = np.array([-12.0])
+        group1_high = np.array([12.0])
         # 使用 numpy.tile 快速创建重复的 low 和 high 数组
         part1_low = np.tile(group1_low, num_groups)
         part1_high = np.tile(group1_high, num_groups)
-        # 第二部分：[-50, -math.pi, -1.4, -20] ~ [50, math.pi, 1.4, 20]
-        part2_low = np.array([-50.0, -math.pi, -1.4, -20.0])
-        part2_high = np.array([50.0, math.pi, 1.4, 20.0])
+        # 第二部分：[-50, -math.pi, -1.5, -20] ~ [50, math.pi, 1.5, 20]
+        part2_low = np.array([-50.0, -math.pi, -1.5, -20.0])
+        part2_high = np.array([50.0, math.pi, 1.5, 20.0])
         # 合并两部分 low 和 high 数组
         low = np.concatenate([part1_low, part2_low])
         high = np.concatenate([part1_high, part2_high])
@@ -116,10 +116,11 @@ class ZBicycleNaviEnv(gymnasium.Env):
         p.stepSimulation(physicsClientId=self.client)
         obs = self.bicycle.get_observation()
         distance_to_goal_temp = np.linalg.norm(np.array([obs[0], obs[1]]) - np.array(self.goal))
-        angle_to_target = my_tools.calculate_angle_to_target(obs[0], obs[1], obs[2], self.goal[0], self.goal[1])
+        angle_to_target = my_tools.calculate_goal_angle_gemini(obs[0], obs[1], obs[2], self.goal[0], self.goal[1])
         bicycle_obs = np.array([distance_to_goal_temp, angle_to_target, obs[4], obs[5]], dtype=np.float32)
 
         processed_lidar_data = self._process_lidar_data(lidar_data=obs[6])
+
         total_obs = np.concatenate((processed_lidar_data, bicycle_obs))
 
         if self.gui:
@@ -138,13 +139,13 @@ class ZBicycleNaviEnv(gymnasium.Env):
                 p.resetDebugVisualizerCamera(camera_distance, camera_yaw, camera_pitch, bike_pos)
 
         reward = self._reward_fun(bicycle_obs, roll_angle=obs[3], processed_lidar_data=processed_lidar_data,
-                                  bicycle_yaw=obs[2], is_collided=obs[7], is_proximity=obs[8])
+                                  handbar_angle=obs[4], is_collided=obs[7], is_proximity=obs[8])
 
         self.prev_dist_to_goal = distance_to_goal_temp
 
         self._elapsed_steps += 1
         if self._elapsed_steps >= self._max_episode_steps:
-            print(f">>>跑满啦！存活{self._elapsed_steps}步，奖励值{self.episode_rwd}")
+            print(f">>>跑满啦！奖励值{self.episode_rwd}")
             self.truncated = True
 
         return total_obs, reward, self.terminated, self.truncated, {}
@@ -153,7 +154,6 @@ class ZBicycleNaviEnv(gymnasium.Env):
         self.terminated = False
         self.truncated = False
         self._elapsed_steps = 0
-        self.region_score = [0.0] * 30
         self.goal = get_goal_pos()
         goal = Goal(self.client, self.goal)
         # 因为没有重置环境，每次reset后要清除先前的Goal
@@ -168,14 +168,13 @@ class ZBicycleNaviEnv(gymnasium.Env):
         processed_lidar_data = self._process_lidar_data(lidar_data=obs[6])
 
         distance_to_goal_temp = np.linalg.norm(np.array([obs[0], obs[1]]) - np.array(self.goal))
-        angle_to_target = my_tools.calculate_angle_to_target(obs[0], obs[1], obs[2], self.goal[0], self.goal[1])
-
+        angle_to_target = my_tools.calculate_goal_angle_gemini(obs[0], obs[1], obs[2], self.goal[0], self.goal[1])
         bicycle_obs = np.array([distance_to_goal_temp, angle_to_target, obs[4], obs[5]], dtype=np.float32)
         self.prev_dist_to_goal = distance_to_goal_temp
         total_obs = np.concatenate((processed_lidar_data, bicycle_obs))
         return total_obs, {}
 
-    def _reward_fun(self, obs, roll_angle, processed_lidar_data, bicycle_yaw, is_collided=False, is_proximity=False):
+    def _reward_fun(self, obs, roll_angle, processed_lidar_data, handbar_angle, is_collided=False, is_proximity=False):
         self.terminated = False
         self.truncated = False
         # action 车把角度
@@ -209,30 +208,45 @@ class ZBicycleNaviEnv(gymnasium.Env):
             if self.gui:
                 print(f">>>碰撞！存活{self._elapsed_steps}步，奖励值{self.episode_rwd}")
 
-        middle_elements = processed_lidar_data[self.start_index:self.end_index]  # 使用数组切片取出中间元素
-        # 离障碍物一定范围内开始做惩罚
-        min_val = np.min(middle_elements)
-        obstacle_penalty = 0.0
-        if min_val <= 4.0:
-            obstacle_penalty = max(0.1, min_val)
-            obstacle_penalty = -1.0 / (obstacle_penalty * 50)
-        
+        # middle_elements = processed_lidar_data[self.start_index:self.end_index]  # 使用数组切片取出中间元素
+        # # 离障碍物一定范围内开始做惩罚
+        # min_val = np.min(middle_elements)
+        # obstacle_penalty = 0.0
+        # if min_val <= 3.5:
+        #     obstacle_penalty = max(0.1, min_val)
+        #     obstacle_penalty = -1.0 / (obstacle_penalty * 50)
+        # obstacle_penalty = 0.0
+        indices_less_than_5  = np.where(processed_lidar_data < 4.0)[0]  # 找出距离小于n的元素的索引
+        turn_rwd = 0.0  # 车把打角
+        if len(indices_less_than_5) > 0:
+            # 转换到以自行车yaw为y轴正方向的坐标系下
+            handbar_angle += (math.pi / 2.0)
+            obstacle_direction = np.array(self.radians_array[indices_less_than_5])
+            absolute_differences = np.abs(obstacle_direction - handbar_angle)
+            min_absolute_difference = np.min(absolute_differences)
+            # print("数组 processed_lidar_data 中数值小于 5 的元素的索引:", indices_less_than_5)
+            # print("数组 obstacle_direction 中元素与 handbar_angle 做差取绝对值的结果:", absolute_differences)
+            # print("根据索引从 radians_array 中提取的角度数组 obstacle_direction:", obstacle_direction)
+            # print(f"最小的值:{min_absolute_difference}, handbar_angle:{handbar_angle}" )
+            if min_absolute_difference < 0.17:
+                turn_rwd = -0.005
+
         # 太靠近给固定惩罚
         proximity_penalty = 0.0
         if is_proximity:
-            proximity_penalty = -0.025
+            proximity_penalty = -0.04
 
         # ds_rwd = self._deepseek_design_rwd(bicycle_yaw, processed_lidar_data, self.radians_array) / 100000.0
 
-        avoid_obstacle_rwd = collision_penalty + obstacle_penalty + proximity_penalty
+        avoid_obstacle_rwd = collision_penalty + proximity_penalty + turn_rwd
         # ========== 避障奖励 ==========
 
         # if self.gui:
-        #     print(f"distance_rwd: {distance_rwd}, obstacle_penalty: {obstacle_penalty}, ds_rwd: {ds_rwd}, "
+        #     print(f"distance_rwd: {distance_rwd}, obstacle_penalty: {turn_rwd}, ds_rwd: {turn_rwd}, "
         #             f"proximity_penalty: {proximity_penalty}")
             
         self.episode_rwd["1"] += distance_rwd
-        self.episode_rwd["2"] += obstacle_penalty
+        self.episode_rwd["2"] += turn_rwd
         # self.episode_rwd["3"] += ds_rwd
 
         total_reward = balance_rwd + navigation_rwd + avoid_obstacle_rwd
