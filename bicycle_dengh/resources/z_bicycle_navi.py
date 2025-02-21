@@ -19,7 +19,7 @@ class ZBicycleNavi:
             f_name = os.path.join(os.path.dirname(__file__), 'bicycle_urdf/bike.xml')
 
         startOrientation = p.getQuaternionFromEuler([0, 0, 1.57])
-        self.bicycleId = p.loadURDF(fileName=f_name, basePosition=[0, -1, 1], baseOrientation=startOrientation,
+        self.bicycleId = p.loadURDF(fileName=f_name, basePosition=[-4, -1, 1], baseOrientation=startOrientation,
                                     physicsClientId=self.client)
         # Number of joints: 7
         # jointIndex: 0 jointName: 'frame_to_handlebar'
@@ -47,8 +47,7 @@ class ZBicycleNavi:
         self.initial_joint_velocities = None
         self.initial_position, self.initial_orientation = p.getBasePositionAndOrientation(self.bicycleId, self.client)
 
-        self.lidar_update_frequency = 3  # 每 n 帧更新一次激光雷达
-        self.collision_check_frequency = 3  # 每 n 帧检查一次碰撞
+        self.update_frequency = 5  # 每 n 帧更新一次
         self.frame_count = 0
         # 初始化 last_lidar_info 用于在不更新激光雷达信息的帧中，仍然提供一个值，避免程序出错
         self.last_lidar_info = np.full(self.num_rays, self.ray_len, dtype=np.float32)
@@ -129,7 +128,7 @@ class ZBicycleNavi:
         lidar_info = None  # 初始化 lidar_info
         is_collided = False
         is_proximity = False
-        if self.frame_count % self.lidar_update_frequency == 0:
+        if self.frame_count % self.update_frequency == 0:
             lidar_info = self._get_lidar_info4(pos, yaw_angle)
             is_collided, is_proximity = self._is_collided_and_proximity()
 
@@ -151,8 +150,7 @@ class ZBicycleNavi:
         return observation
 
     def reset(self):
-        p.resetBasePositionAndOrientation(self.bicycleId, self.initial_position,
-                                          self.initial_orientation, self.client)
+        p.resetBasePositionAndOrientation(self.bicycleId, self.initial_position, self.initial_orientation, self.client)
         p.resetJointState(self.bicycleId, self.handlebar_joint, 0, 0, self.client)
         p.resetJointState(self.bicycleId, self.fly_wheel_joint, 0, 0, self.client)
         p.resetJointState(self.bicycleId, self.front_wheel_joint, 0, 0, self.client)

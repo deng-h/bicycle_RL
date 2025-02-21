@@ -3,16 +3,16 @@ from utils.my_feature_extractor import MyFeatureExtractorLidar, ZFeatureExtracto
 hyperparams = {
     "ZBicycleNaviEnv-v0": dict(
         policy="MlpPolicy",
-        normalize=dict(norm_obs=True, norm_reward=False),
-        n_envs=10,
-        n_steps=3000,
+        normalize=dict(norm_obs=True, norm_reward=True),
+        n_envs=6,
+        n_steps=5000,
         batch_size=30000,  # n_steps * n_envs
         gamma=0.99,
-        n_epochs=4,
-        ent_coef=0.05,
+        n_epochs=3,
+        ent_coef=0.1,
         n_timesteps=6000000,
         policy_kwargs=dict(
-            net_arch=dict(pi=[256, 256, 256], vf=[256, 256, 256])
+            net_arch=dict(pi=[256, 256], vf=[256, 256])
         ),
     ),
 

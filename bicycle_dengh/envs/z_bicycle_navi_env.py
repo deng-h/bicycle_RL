@@ -189,8 +189,14 @@ class ZBicycleNaviEnv(gymnasium.Env):
         # ========== 平衡奖励 ==========
 
         # ========== 导航奖励 ==========
-        diff_dist = (self.prev_dist_to_goal - distance_to_goal) * 9.0
-        distance_rwd = diff_dist if diff_dist > 0 else 1.2 * diff_dist
+        diff_dist = (self.prev_dist_to_goal - distance_to_goal) * 10.0
+        distance_rwd = diff_dist if diff_dist > 0.0 else 1.3 * diff_dist
+
+        if distance_to_goal <= 7.0:
+            if distance_rwd > 0.0:
+                distance_rwd *= 1.2
+            else:
+                distance_rwd *= 1.5
 
         goal_rwd = 0.0
         if distance_to_goal <= self.goal_threshold:
@@ -225,8 +231,8 @@ class ZBicycleNaviEnv(gymnasium.Env):
             no_obstacle_direction = np.array(self.radians_array[indices_great_than_4])
             absolute_differences = np.abs(no_obstacle_direction - goal_angle)
             min_absolute_difference = np.min(absolute_differences)
-            if min_absolute_difference < 0.45 and np.abs(handbar_angle - goal_angle) < 0.17:
-                direction_rwd = 0.002
+            if min_absolute_difference < 0.45 and np.abs(handbar_angle - goal_angle) < 0.43:
+                direction_rwd = 0.02
 
         turn_rwd = 0.0  # 车把打角奖励，目的是不要朝着障碍物方向走
         if len(indices_less_than_4) > 0:
@@ -238,7 +244,7 @@ class ZBicycleNaviEnv(gymnasium.Env):
             # print("根据索引从 radians_array 中提取的角度数组 obstacle_direction:", obstacle_direction)
             # print(f"最小的值:{min_absolute_difference}, handbar_angle:{handbar_angle}" )
             if min_absolute_difference < 0.17:
-                turn_rwd = -0.0005
+                turn_rwd = -0.001
 
         # 太靠近给固定惩罚
         proximity_penalty = 0.0
