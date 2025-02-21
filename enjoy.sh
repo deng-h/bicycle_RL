@@ -8,7 +8,7 @@ echo "开始执行"
 --algo ppo \
 --env ZBicycleNaviEnv-v0 \
 --folder logs/ \
---exp-id 10 \
+--exp-id 11 \
 --env-kwargs gui:True \
 --load-best \
 --no-render \

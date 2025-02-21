@@ -139,7 +139,7 @@ class ZBicycleNaviEnv(gymnasium.Env):
                 p.resetDebugVisualizerCamera(camera_distance, camera_yaw, camera_pitch, bike_pos)
 
         reward = self._reward_fun(bicycle_obs, roll_angle=obs[3], processed_lidar_data=processed_lidar_data,
-                                  handbar_angle=obs[4], is_collided=obs[7], is_proximity=obs[8])
+                                  handbar_angle=obs[4], goal_angle=angle_to_target,is_collided=obs[7], is_proximity=obs[8])
 
         self.prev_dist_to_goal = distance_to_goal_temp
 
@@ -161,9 +161,9 @@ class ZBicycleNaviEnv(gymnasium.Env):
             p.removeBody(self.prev_goal_id, self.client)
         self.prev_goal_id = goal.id
         if self.gui:
-            print(f"episode_rwd: {self.episode_rwd}")
-            print(f"前往目标点: {self.goal}")
-        self.episode_rwd = {"1": 0, "2": 0, "3": 0, "4": 0, "5": 0}
+            print(f">>>episode_rwd: {self.episode_rwd}")
+            print(f">>>前往目标点: {self.goal}")
+        self.episode_rwd = {"1": 0, "2": 0, "3": 0, "4": 0}
         obs = self.bicycle.reset()
         processed_lidar_data = self._process_lidar_data(lidar_data=obs[6])
 
@@ -174,7 +174,7 @@ class ZBicycleNaviEnv(gymnasium.Env):
         total_obs = np.concatenate((processed_lidar_data, bicycle_obs))
         return total_obs, {}
 
-    def _reward_fun(self, obs, roll_angle, processed_lidar_data, handbar_angle, is_collided=False, is_proximity=False):
+    def _reward_fun(self, obs, roll_angle, processed_lidar_data, handbar_angle, goal_angle, is_collided=False, is_proximity=False):
         self.terminated = False
         self.truncated = False
         # action 车把角度
@@ -216,12 +216,21 @@ class ZBicycleNaviEnv(gymnasium.Env):
         #     obstacle_penalty = max(0.1, min_val)
         #     obstacle_penalty = -1.0 / (obstacle_penalty * 50)
         # obstacle_penalty = 0.0
-        indices_less_than_5  = np.where(processed_lidar_data < 4.0)[0]  # 找出距离小于n的元素的索引
-        turn_rwd = 0.0  # 车把打角
-        if len(indices_less_than_5) > 0:
-            # 转换到以自行车yaw为y轴正方向的坐标系下
-            handbar_angle += (math.pi / 2.0)
-            obstacle_direction = np.array(self.radians_array[indices_less_than_5])
+        indices_less_than_4  = np.where(processed_lidar_data < 4.0)[0]  # 找出距离小于n的元素的索引
+        indices_great_than_4 = np.where(processed_lidar_data > 4.0)[0]
+        # 转换到以自行车yaw为y轴正方向的坐标系下
+        handbar_angle += (math.pi / 2.0)
+        direction_rwd = 0.0  # 如果目标点位于激光雷达的空旷范围内 并且 车头朝向目标点 加分
+        if len(indices_great_than_4) > 0:
+            no_obstacle_direction = np.array(self.radians_array[indices_great_than_4])
+            absolute_differences = np.abs(no_obstacle_direction - goal_angle)
+            min_absolute_difference = np.min(absolute_differences)
+            if min_absolute_difference < 0.45 and np.abs(handbar_angle - goal_angle) < 0.17:
+                direction_rwd = 0.002
+
+        turn_rwd = 0.0  # 车把打角奖励，目的是不要朝着障碍物方向走
+        if len(indices_less_than_4) > 0:
+            obstacle_direction = np.array(self.radians_array[indices_less_than_4])
             absolute_differences = np.abs(obstacle_direction - handbar_angle)
             min_absolute_difference = np.min(absolute_differences)
             # print("数组 processed_lidar_data 中数值小于 5 的元素的索引:", indices_less_than_5)
@@ -229,7 +238,7 @@ class ZBicycleNaviEnv(gymnasium.Env):
             # print("根据索引从 radians_array 中提取的角度数组 obstacle_direction:", obstacle_direction)
             # print(f"最小的值:{min_absolute_difference}, handbar_angle:{handbar_angle}" )
             if min_absolute_difference < 0.17:
-                turn_rwd = -0.005
+                turn_rwd = -0.0005
 
         # 太靠近给固定惩罚
         proximity_penalty = 0.0
@@ -238,7 +247,7 @@ class ZBicycleNaviEnv(gymnasium.Env):
 
         # ds_rwd = self._deepseek_design_rwd(bicycle_yaw, processed_lidar_data, self.radians_array) / 100000.0
 
-        avoid_obstacle_rwd = collision_penalty + proximity_penalty + turn_rwd
+        avoid_obstacle_rwd = collision_penalty + proximity_penalty + turn_rwd + direction_rwd
         # ========== 避障奖励 ==========
 
         # if self.gui:
