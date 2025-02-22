@@ -230,8 +230,6 @@ def generate_target_position(min_distance_to_obstacle=1.5):
     x_range = (-14, 14) # 左右墙的 x 坐标范围
     y_range = (1, 25) # 上下墙的 y 坐标范围
     max_attempts = 100  # 最大尝试次数，避免无限循环
-
-    random.seed(42)
     
     for _ in range(max_attempts):
         # 在指定 x 和 y 范围内生成随机坐标

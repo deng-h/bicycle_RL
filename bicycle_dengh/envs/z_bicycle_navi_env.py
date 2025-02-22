@@ -20,7 +20,6 @@ from utils import my_tools
 from simple_pid import PID
 import yaml
 import platform
-import random
 
 
 class ZBicycleNaviEnv(gymnasium.Env):
@@ -200,15 +199,14 @@ class ZBicycleNaviEnv(gymnasium.Env):
 
         # ========== 导航奖励 ==========
         diff_dist = (self.prev_dist_to_goal - distance_to_goal) * 10.0
-        approach_rwd = diff_dist if diff_dist > 0.0 else 1.3 * diff_dist
+        approach_rwd = diff_dist if diff_dist > 0.0 else 1.2 * diff_dist
 
         if distance_to_goal <= 7.0:
             if approach_rwd > 0.0:
                 approach_rwd *= 1.2
             else:
-                approach_rwd *= 1.5
+                approach_rwd *= 1.3
         
-
         # 转换到以自行车yaw为y轴正方向的坐标系下
         handbar_angle += (math.pi / 2.0)
         direction_rwd = math.cos(handbar_angle - goal_angle) * 0.01
