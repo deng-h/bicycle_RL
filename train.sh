@@ -13,9 +13,10 @@ else
     CONF_FILE="ppo_config"
 fi
 
-/home/chen/anaconda3/envs/denghang/bin/python train.py \
+#/home/chen/anaconda3/envs/denghang/bin/python train.py \
+python train.py \
 --algo ppo \
---env ZBicycleNaviEnv-v0 \
+--env BicycleFinalEnv-v0 \
 --conf-file "$CONF_FILE" \
 --vec-env subproc \
 --progress \

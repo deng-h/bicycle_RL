@@ -1,6 +1,7 @@
 import pybullet as p
 import random
 import math
+import platform
 
 
 def create_obstacle(client_id):
@@ -97,33 +98,6 @@ def create_obstacle(client_id):
         [25 + 0.5, 23 + 0.5, 1],
     ]
 
-    obstacle_positions2 = [
-        [3 + 0.5, 8 + 0.5, 1],
-        [3 + 0.5, 9 + 0.5, 1],
-        [4 + 0.5, 8 + 0.5, 1],
-        [4 + 0.5, 9 + 0.5, 1],
-
-        [-2 + 0.5, 12 + 0.5, 1],
-        [-2 + 0.5, 13 + 0.5, 1],
-        [-1 + 0.5, 12 + 0.5, 1],
-        [-1 + 0.5, 13 + 0.5, 1],
-
-        [11 + 0.5, 6 + 0.5, 1],
-        [11 + 0.5, 7 + 0.5, 1],
-        [12 + 0.5, 6 + 0.5, 1],
-        [12 + 0.5, 7 + 0.5, 1],
-
-        [15 + 0.5, 12 + 0.5, 1],
-        [15 + 0.5, 13 + 0.5, 1],
-        [16 + 0.5, 12 + 0.5, 1],
-        [16 + 0.5, 13 + 0.5, 1],
-
-        [9 + 0.5, 15 + 0.5, 1],
-        [9 + 0.5, 16 + 0.5, 1],
-        [10 + 0.5, 15 + 0.5, 1],
-        [10 + 0.5, 16 + 0.5, 1],
-    ]
-
     collision_shape = p.createCollisionShape(p.GEOM_CYLINDER, halfExtents=[0.5, 0.5, 1.0], radius=1., height=3.0)
     visual_shape = p.createVisualShape(p.GEOM_CYLINDER, halfExtents=[0.5, 0.5, 1.0],
                                        rgbaColor=[0.92, 0.94, 0.94, 1], radius=1., length=3.0)
@@ -171,9 +145,9 @@ def create_wall(x1, y1, x2, y2):
     return wall_id
 
 
-def generate_obstacle_positions_from_file(
-        file_path='/home/chen/denghang/bicycle-rl/playground/a_start/obstacle_map.txt'):
+def generate_obstacle_positions_from_file():
     """
+    file_path='/home/chen/denghang/bicycle-rl/playground/a_start/obstacle_map.txt'
     从图画文件读取障碍物位置并生成 obstacle_positions2 列表。
     **修改：**
     1.  **坐标原点：** txt 最后一行中间为 (0, 0)。
@@ -188,6 +162,12 @@ def generate_obstacle_positions_from_file(
     Returns:
         list: obstacle_positions2 列表。
     """
+    system = platform.system()
+    if system == "Windows":
+        file_path = "D:\data\\1-L\9-bicycle\\bicycle-rl\playground\\a_start\obstacle_map.txt"
+    else:
+        file_path = "/home/chen/denghang/bicycle-rl/playground/a_start/obstacle_map.txt"
+
     obstacle_positions = []
     try:
         with open(file_path, 'r') as file:

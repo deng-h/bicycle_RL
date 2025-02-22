@@ -59,4 +59,20 @@ hyperparams = {
         ),
         # monitor_kwargs=dict(info_keywords=('reward',))
     ),
+
+    "BicycleFinalEnv-v0": dict(
+        policy="MlpPolicy",
+        normalize=dict(norm_obs=True, norm_reward=True),
+        n_envs=6,
+        n_steps=5000,
+        batch_size=30000,  # n_steps * n_envs
+        gamma=0.99,
+        n_epochs=5,
+        ent_coef=0.02,
+        learning_rate=3e-4,
+        n_timesteps=5000000,
+        policy_kwargs=dict(
+            net_arch=dict(pi=[256, 256], vf=[256, 256])
+        ),
+    ),
 }

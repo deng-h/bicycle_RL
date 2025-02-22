@@ -67,3 +67,18 @@ register(
     id="BicycleDmzEnv-v0",
     entry_point='bicycle_dengh.envs:BicycleDmzEnv'
 )
+
+register(
+    id="ZBicycleFinalEnv-v0",
+    entry_point='bicycle_dengh.envs:ZBicycleFinalEnv'
+)
+
+register(
+    id="BicycleDenghEnvCopy-v0",
+    entry_point='bicycle_dengh.envs:BicycleDenghEnvCopy'
+)
+
+register(
+    id="BicycleFinalEnv-v0",
+    entry_point='bicycle_dengh.envs:BicycleFinalEnv'
+)
