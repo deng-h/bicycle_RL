@@ -4,6 +4,7 @@ import math
 import os
 import platform
 import numpy as np
+from playground.pure_pursuit.PurePursuitController import PurePursuitController
 
 
 
@@ -28,7 +29,8 @@ class ZBicycleFinal:
         self.gyros_link = 5
         self.MAX_FORCE = 2000
         self.proximity_threshold = 0.3
-        self.bicycle_vel = 0.5
+        self.bicycle_vel = 0.8
+        self.pure_pursuit_controller = None
 
         self.num_rays = 180
         self.ray_len = 12.0
@@ -53,6 +55,11 @@ class ZBicycleFinal:
                          maxJointVelocity=120.0,
                          physicsClientId=self.client)
 
+    def init_pure_pursuit_controller(self, bicycle_object, lookahead_distance=2.5, wheelbase=1.2):
+        self.pure_pursuit_controller = PurePursuitController(bicycle_object,
+                                                             lookahead_distance=lookahead_distance,
+                                                             wheelbase=wheelbase)
+        
     def apply_action(self, action):
         """
         Apply the action to the bicycle.
@@ -62,11 +69,12 @@ class ZBicycleFinal:
         action[1]控制前后轮速度
         action[2]控制飞轮
         """
+        pure_pursuit_action, _ = self.pure_pursuit_controller.get_control_action(action)
         # action[0] = frame_to_handlebar 车把位置控制
         p.setJointMotorControl2(bodyUniqueId=self.bicycleId,
                                 jointIndex=self.handlebar_joint,
                                 controlMode=p.POSITION_CONTROL,
-                                targetPosition=action[0],
+                                targetPosition=pure_pursuit_action[0],
                                 force=self.MAX_FORCE,
                                 physicsClientId=self.client)
 
@@ -74,7 +82,7 @@ class ZBicycleFinal:
         p.setJointMotorControl2(bodyUniqueId=self.bicycleId,
                                 jointIndex=self.front_wheel_joint,
                                 controlMode=p.VELOCITY_CONTROL,
-                                targetVelocity=action[1],
+                                targetVelocity=self.bicycle_vel,
                                 force=self.MAX_FORCE,
                                 physicsClientId=self.client)
 
@@ -82,7 +90,7 @@ class ZBicycleFinal:
         p.setJointMotorControl2(bodyUniqueId=self.bicycleId,
                                 jointIndex=self.back_wheel_joint,
                                 controlMode=p.VELOCITY_CONTROL,
-                                targetVelocity=action[1],
+                                targetVelocity=self.bicycle_vel,
                                 force=self.MAX_FORCE,
                                 physicsClientId=self.client)
 
@@ -90,7 +98,7 @@ class ZBicycleFinal:
         p.setJointMotorControl2(bodyUniqueId=self.bicycleId,
                                 jointIndex=self.fly_wheel_joint,
                                 controlMode=p.VELOCITY_CONTROL,
-                                targetVelocity=action[2],
+                                targetVelocity=pure_pursuit_action[2],
                                 force=self.MAX_FORCE,
                                 physicsClientId=self.client)
 

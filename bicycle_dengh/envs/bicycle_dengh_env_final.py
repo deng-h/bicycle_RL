@@ -65,8 +65,8 @@ class BicycleFinalEnv(gymnasium.Env):
 
         # 上层网络的引导角度（弧度）
         self.actual_action_space = gymnasium.spaces.box.Box(
-            low=np.array([-1.4]),
-            high=np.array([1.4]),
+            low=np.array([-1.2]),
+            high=np.array([1.2]),
             shape=(1,),
             dtype=np.float32)
 
@@ -113,12 +113,14 @@ class BicycleFinalEnv(gymnasium.Env):
 
         reward = self._reward_fun(distance_to_goal=self.obs_for_navi[-4], turn_angle=turn_angle, is_fall_down=info['fall_down'], is_collided=info['is_collided'], is_proximity=info['is_proximity'])
 
-        self.prev_dist_to_goal = self.obs_for_navi[-4]
         self._elapsed_steps += 1
         if self._elapsed_steps >= self._max_episode_steps:
             formatted_dict = {key: "{:.8f}".format(value) for key, value in self.episode_rwd.items()}
             print(f">>>[上层环境] 跑满啦！奖励值{formatted_dict}")
             self.truncated = True
+
+        self.last_turn_angle = turn_angle
+        self.prev_dist_to_goal = self.obs_for_navi[-4]
 
         return self.obs_for_navi, reward, self.terminated, self.truncated, {"reached_goal": info['reached_goal']}
 
@@ -177,11 +179,13 @@ class BicycleFinalEnv(gymnasium.Env):
         fall_down_penalty = 0.0
         if is_fall_down:
             formatted_dict = {key: "{:.8f}".format(value) for key, value in self.episode_rwd.items()}
-            # print(f">>>[上层环境] 摔倒！存活{self._elapsed_steps}步，奖励值{formatted_dict}")
+            print(f">>>[上层环境] 摔倒！存活{self._elapsed_steps}步，奖励值{formatted_dict}")
             fall_down_penalty = -20.0
             self.terminated = True
 
-        turn_penalty = math.cos(self.last_turn_angle - turn_angle) * 0.02
+        turn_penalty = math.cos(self.last_turn_angle - turn_angle) * 0.01
+        # if np.abs(self.last_turn_angle - turn_angle) > 0.5:
+        #     turn_penalty = -0.01
 
         # middle_elements = processed_lidar_data[self.start_index:self.end_index]  # 使用数组切片取出中间元素
         # # 离障碍物一定范围内开始做惩罚
@@ -222,7 +226,8 @@ class BicycleFinalEnv(gymnasium.Env):
         #     print(f"approach_rwd: {approach_rwd}, distance_rwd: {distance_rwd}, "
         #             f"proximity_penalty: {proximity_penalty}")
 
-        self.episode_rwd["1"] += proximity_penalty
+        self.episode_rwd["1"] += distance_rwd
+        self.episode_rwd["2"] += turn_penalty
 
         total_reward = avoid_obstacle_rwd + goal_rwd + distance_rwd + fall_down_penalty + turn_penalty
 

@@ -119,6 +119,9 @@ class BicycleDenghEnvCopy(gym.Env):
 
         obstacle_ids = create_obstacle(self.client)
         self.bicycle = ZBicycleFinal(client=self.client, obstacle_ids=obstacle_ids)
+        self.bicycle.init_pure_pursuit_controller(self.bicycle,
+                                                  lookahead_distance=4.0,
+                                                  wheelbase=1.2)
         p.setGravity(0, 0, -10, physicsClientId=self.client)
         p.setAdditionalSearchPath(pybullet_data.getDataPath())
         p.loadURDF("plane.urdf", physicsClientId=self.client)
@@ -133,7 +136,7 @@ class BicycleDenghEnvCopy(gym.Env):
         self.pursuit_point = pursuit_point
 
     def step(self, action):
-        self.bicycle.apply_action(action)
+        self.bicycle.apply_action(self.pursuit_point)
         p.stepSimulation(physicsClientId=self.client)
         obs = self.bicycle.get_observation()
 

@@ -208,7 +208,7 @@ def generate_target_position(min_distance_to_obstacle=1.5):
     obstacle_positions = generate_obstacle_positions_from_file() # 获取障碍物位置
     # 定义墙的边界，用于生成目标点的范围
     x_range = (-14, 14) # 左右墙的 x 坐标范围
-    y_range = (5, 25) # 上下墙的 y 坐标范围
+    y_range = (10, 25) # 上下墙的 y 坐标范围
     max_attempts = 100  # 最大尝试次数，避免无限循环
     
     for _ in range(max_attempts):

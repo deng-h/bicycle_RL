@@ -6,9 +6,9 @@ echo "开始执行"
 # 导航
 /home/chen/anaconda3/envs/denghang/bin/python enjoy.py \
 --algo ppo \
---env ZBicycleNaviEnv-v0 \
+--env BicycleFinalEnv-v0 \
 --folder logs/ \
---exp-id 28 \
+--exp-id 7 \
 --env-kwargs gui:True \
 --load-best \
 --no-render \
