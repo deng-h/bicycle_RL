@@ -27,17 +27,18 @@ class BicycleDmz:
         self.fly_wheel_joint = 4
         self.gyros_link = 5
         self.MAX_FORCE = 2000
+        self.proximity_threshold = 0.3
+        self.bicycle_vel = 1.0
 
         self.number_of_frames = 3
-        self.num_rays = 120
-        self.ray_len = 50
-        self.lidar_origin_offset = [0., 0., .7]  # 激光雷达相对于小车的位置偏移量
+        self.num_rays = 180
+        self.ray_len = 12.0
+        self.lidar_origin_offset = [0., 0.55, .7]  # 激光雷达相对于小车的位置偏移量
         self.initial_joint_positions = None
         self.initial_joint_velocities = None
         self.initial_position, self.initial_orientation = p.getBasePositionAndOrientation(self.bicycleId, self.client)
 
-        self.lidar_update_frequency = 2  # 每 n 帧更新一次激光雷达
-        self.collision_check_frequency = 2  # 每 n 帧检查一次碰撞
+        self.update_frequency = 2  # 每 n 帧更新一次激光雷达
         self.frame_count = 0
         # 初始化 last_lidar_info 用于在不更新激光雷达信息的帧中，仍然提供一个值，避免程序出错
         self.last_lidar_info = np.full(self.num_rays, self.ray_len, dtype=np.float32)
@@ -66,7 +67,7 @@ class BicycleDmz:
                                                              lookahead_distance=lookahead_distance,
                                                              wheelbase=wheelbase)
 
-    def apply_action3(self, fly_wheel_action, points):
+    def apply_action4(self, pursuit_pt):
         """
         Apply the action to the bicycle.控制分为两部分，前后轮速度和车把位置是RL控制，飞轮是PID控制。
 
@@ -75,9 +76,7 @@ class BicycleDmz:
         RL_action[1]控制前后轮速度
         PID_action[0]控制飞轮
         """
-        bicycle_vel = 0.5
-        # Pure Pursuit 控制车把
-        pure_pursuit_action, _ = self.pure_pursuit_controller.get_control_action(points)
+        pure_pursuit_action, _ = self.pure_pursuit_controller.get_control_action(pursuit_pt)
         # action[0] = frame_to_handlebar 车把位置控制
         p.setJointMotorControl2(bodyUniqueId=self.bicycleId,
                                 jointIndex=self.handlebar_joint,
@@ -90,7 +89,7 @@ class BicycleDmz:
         p.setJointMotorControl2(bodyUniqueId=self.bicycleId,
                                 jointIndex=self.front_wheel_joint,
                                 controlMode=p.VELOCITY_CONTROL,
-                                targetVelocity=bicycle_vel,
+                                targetVelocity=self.bicycle_vel,
                                 force=self.MAX_FORCE,
                                 physicsClientId=self.client)
 
@@ -98,7 +97,7 @@ class BicycleDmz:
         p.setJointMotorControl2(bodyUniqueId=self.bicycleId,
                                 jointIndex=self.back_wheel_joint,
                                 controlMode=p.VELOCITY_CONTROL,
-                                targetVelocity=bicycle_vel,
+                                targetVelocity=self.bicycle_vel,
                                 force=self.MAX_FORCE,
                                 physicsClientId=self.client)
 
@@ -107,49 +106,6 @@ class BicycleDmz:
                                 jointIndex=self.fly_wheel_joint,
                                 controlMode=p.VELOCITY_CONTROL,
                                 targetVelocity=pure_pursuit_action[2],
-                                force=self.MAX_FORCE,
-                                physicsClientId=self.client)
-
-    def apply_action4(self, handlebar_action):
-        """
-        Apply the action to the bicycle.控制分为两部分，前后轮速度和车把位置是RL控制，飞轮是PID控制。
-
-        Parameters:
-        RL_action[0]控制车把位置
-        RL_action[1]控制前后轮速度
-        PID_action[0]控制飞轮
-        """
-        bicycle_vel = 1.0
-        roll_angle_control = self.pure_pursuit_controller.get_roll_angle_control()
-        # action[0] = frame_to_handlebar 车把位置控制
-        p.setJointMotorControl2(bodyUniqueId=self.bicycleId,
-                                jointIndex=self.handlebar_joint,
-                                controlMode=p.POSITION_CONTROL,
-                                targetPosition=handlebar_action,
-                                force=self.MAX_FORCE,
-                                physicsClientId=self.client)
-
-        # handlebar_to_frontwheel 前轮速度控制
-        p.setJointMotorControl2(bodyUniqueId=self.bicycleId,
-                                jointIndex=self.front_wheel_joint,
-                                controlMode=p.VELOCITY_CONTROL,
-                                targetVelocity=bicycle_vel,
-                                force=self.MAX_FORCE,
-                                physicsClientId=self.client)
-
-        # frame_to_backwheel 后轮速度控制
-        p.setJointMotorControl2(bodyUniqueId=self.bicycleId,
-                                jointIndex=self.back_wheel_joint,
-                                controlMode=p.VELOCITY_CONTROL,
-                                targetVelocity=bicycle_vel,
-                                force=self.MAX_FORCE,
-                                physicsClientId=self.client)
-
-        # action[2] = flyWheelLink_to_flyWheel 飞轮控制
-        p.setJointMotorControl2(bodyUniqueId=self.bicycleId,
-                                jointIndex=self.fly_wheel_joint,
-                                controlMode=p.VELOCITY_CONTROL,
-                                targetVelocity=roll_angle_control,
                                 force=self.MAX_FORCE,
                                 physicsClientId=self.client)
 
@@ -182,12 +138,10 @@ class BicycleDmz:
         fly_wheel_joint_vel = fly_wheel_joint_state[1]
 
         lidar_info = None  # 初始化 lidar_info
-        if self.frame_count % self.lidar_update_frequency == 0:
-            lidar_info = self._get_lidar_info3(pos)
-
-        is_collided = False
-        if self.frame_count % self.collision_check_frequency == 0:
-            is_collided = self._is_collided()
+        is_collided, is_proximity = False, False
+        if self.frame_count % self.update_frequency == 0:
+            lidar_info = self._get_lidar_info4(pos, yaw_angle)
+            is_collided, is_proximity = self._is_collided_and_proximity()
 
         observation = [pos[0],
                        pos[1],
@@ -219,6 +173,25 @@ class BicycleDmz:
 
         return observation
 
+    def _is_collided_and_proximity(self):
+        """
+        检测机器人是否与任何障碍物发生真实碰撞 (使用 getContactPoints)
+        检测机器人是否接近障碍物 (使用 getClosestPoints)，返回true为太靠近，false为不是很靠近
+        返回碰撞检测和接近检测结果
+        """
+        for obstacle_id in self.obstacle_ids:
+            contact_points = p.getContactPoints(bodyA=self.bicycleId, bodyB=obstacle_id, physicsClientId=self.client)
+            closest_points = p.getClosestPoints(bodyA=self.bicycleId, bodyB=obstacle_id,
+                                                distance=self.proximity_threshold, physicsClientId=self.client)
+            is_collided = len(contact_points) > 0  # getContactPoints 返回的列表不为空，表示有接触点，即发生碰撞
+            is_proximity = len(closest_points) > 0  # getClosestPoints 返回的列表不为空，表示在阈值距离内有最近点
+
+            if is_collided:
+                return True, True
+            elif is_collided is False and is_proximity is True:
+                return False, True
+        return False, False
+
     def reset(self):
         p.resetBasePositionAndOrientation(self.bicycleId, self.initial_position,
                                           self.initial_orientation, self.client)
@@ -230,37 +203,47 @@ class BicycleDmz:
         self.frame_count = 0
         return self.get_observation()
 
-    def _is_collided(self):
-        for obstacle_id in self.obstacle_ids:
-            contact_points = p.getClosestPoints(self.bicycleId, obstacle_id, distance=0.2, physicsClientId=self.client)
-            if len(contact_points) > 0:
-                return True
-        return False
-
-    def _get_lidar_info3(self, bicycle_pos):
+    def _get_lidar_info4(self, bicycle_pos, bicycle_yaw):
         # 计算射线起点的坐标
         ray_start = np.array(bicycle_pos) + np.array(self.lidar_origin_offset)
 
         # 创建射线起点和终点的数组
         rayFrom = np.tile(ray_start, (self.num_rays, 1))
-        rayTo = rayFrom + np.column_stack((self.sin_array, self.cos_array, np.zeros(self.num_rays)))
+        rayTo = np.zeros((self.num_rays, 3))  # 初始化 rayTo
+
+        # 计算每条射线的角度，并根据yaw角进行调整
+        start_angle = bicycle_yaw - math.pi / 2  # 扫描范围的起始角度
+        for i in range(self.num_rays):
+            angle = start_angle + (math.pi * float(i) / (self.num_rays - 1))  # 180度范围内的角度
+            rayTo[i] = rayFrom[i] + [self.ray_len * math.cos(angle), self.ray_len * math.sin(angle), 0]
 
         results = p.rayTestBatch(rayFromPositions=rayFrom.tolist(), rayToPositions=rayTo.tolist())
 
+        # p.removeAllUserDebugItems()
         # for i, result in enumerate(results):
-        #     if result[0] < 0:
-        #         p.addUserDebugLine(rayFrom[i], rayTo[i], lineColorRGB=[0, 1, 0], lineWidth=1.0)
-        #     else:
-        #         hit_position = result[3]
-        #         # 计算击中点到射线起点的距离
-        #         distance = ((hit_position[0] - rayFrom[i][0]) ** 2 +
-        #                     (hit_position[1] - rayFrom[i][1]) ** 2 +
-        #                     (hit_position[2] - rayFrom[i][2]) ** 2) ** 0.5
-        #         # 在击中点附近显示距离
-        #         text_position = (hit_position[0], hit_position[1], hit_position[2] + 0.1)  # 提高文本显示位置
-        #         p.addUserDebugText(f"{distance:.2f} m", text_position, textColorRGB=[1, 1, 1], textSize=1.0)
-        #         # 显示击中点的射线
-        #         p.addUserDebugLine(rayFrom[i], hit_position, lineColorRGB=[1, 0, 0], lineWidth=1.0)
+            # if i == 0:
+            #     p.addUserDebugLine(rayFrom[i], rayTo[i], lineColorRGB=[1, 0, 0], lineWidth=2.0)
+            # elif i == 30:
+            #     p.addUserDebugLine(rayFrom[i], rayTo[i], lineColorRGB=[0, 1, 0], lineWidth=2.0)
+            # elif i == 60:
+            #     p.addUserDebugLine(rayFrom[i], rayTo[i], lineColorRGB=[0, 0, 1], lineWidth=2.0)
+            # elif i == 90:
+            #     p.addUserDebugLine(rayFrom[i], rayTo[i], lineColorRGB=[1, 1, 1], lineWidth=2.0)
+            # elif i == 120:
+            #     p.addUserDebugLine(rayFrom[i], rayTo[i], lineColorRGB=[0, 0, 0], lineWidth=2.0)
+            # if result[0] < 0:
+            #     p.addUserDebugLine(rayFrom[i], rayTo[i], lineColorRGB=[0, 1, 0], lineWidth=1.0)
+            # else:
+            #     hit_position = result[3]
+            #     # 计算击中点到射线起点的距离
+            #     distance = ((hit_position[0] - rayFrom[i][0]) ** 2 +
+            #                 (hit_position[1] - rayFrom[i][1]) ** 2 +
+            #                 (hit_position[2] - rayFrom[i][2]) ** 2) ** 0.5
+            #     # 在击中点附近显示距离
+            #     text_position = (hit_position[0], hit_position[1], hit_position[2] + 0.1)  # 提高文本显示位置
+            #     p.addUserDebugText(f"{distance:.2f} m", text_position, textColorRGB=[1, 1, 1], textSize=1.0)
+            #     # 显示击中点的射线
+            #     p.addUserDebugLine(rayFrom[i], hit_position, lineColorRGB=[1, 0, 0], lineWidth=1.0)
 
         # 计算距离
         distance = np.array([
@@ -268,6 +251,14 @@ class BicycleDmz:
             for res in results
         ], dtype=np.float32)
 
+        # distance_reshaped = distance.reshape(60, 3)  # 使用reshape将其变为(60, 3)的形状，方便每3个元素进行平均
+        # averaged_distance = np.mean(distance_reshaped, axis=1, keepdims=True).flatten().tolist()  # 对每一行取平均值
+        # p.removeAllUserDebugItems()
+        # for i in range(0, 60, 10):
+        #     result = averaged_distance[i]
+        #     angle = start_angle + (math.pi * float(i) / (60 - 1))  # 180度范围内的角度
+        #     rayTo[i] = rayFrom[i] + [result * math.cos(angle), result * math.sin(angle), 0]
+        #     p.addUserDebugLine(rayFrom[i], rayTo[i], lineColorRGB=[1, 0, 0], lineWidth=1.0)
         return distance
 
     def draw_circle(self, center_pos, radius, num_segments=24, color=None):

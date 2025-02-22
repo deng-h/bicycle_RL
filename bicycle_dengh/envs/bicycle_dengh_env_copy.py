@@ -76,6 +76,8 @@ class BicycleDenghEnvCopy(gym.Env):
         self.pursuit_point = None
         self.final_goal = None
         self.client = None
+        self.index = 0
+        self.pursuit_debug_point_id = None
 
         # action_space[车把角度，前后轮速度, 飞轮速度]
         self.action_space = gym.spaces.box.Box(
@@ -136,9 +138,19 @@ class BicycleDenghEnvCopy(gym.Env):
         self.pursuit_point = pursuit_point
 
     def step(self, action):
-        self.bicycle.apply_action(self.pursuit_point)
+        self.bicycle.apply_action(action)
         p.stepSimulation(physicsClientId=self.client)
         obs = self.bicycle.get_observation()
+
+        # self.index += 1
+        # if self.index % 30 == 0:
+        #     print(f"pure_pursuit_point: {self.pursuit_point}")
+        #     p.removeAllUserDebugItems()
+        #     if self.pursuit_debug_point_id is not None:
+        #         p.removeUserDebugItem(self.pursuit_debug_point_id, physicsClientId=self.client)
+        #     self.pursuit_debug_point_id = p.addUserDebugPoints([[self.pursuit_point[0], self.pursuit_point [1], 0.0]],
+        #                                                    [[0, 1, 0]], pointSize=10, physicsClientId=self.client)
+        #     self.bicycle.draw_circle(center_pos=[obs[0], obs[1], 0.0], radius=4.0, color=[1, 0, 0])
 
         # p.removeAllUserDebugItems()
         # p.addUserDebugPoints([[self.pursuit_point[0], self.pursuit_point[1], 0.0]], [[1,0,0]], pointSize=15, physicsClientId=self.client)
@@ -170,16 +182,19 @@ class BicycleDenghEnvCopy(gym.Env):
         self.prev_dist_to_goal = distance_to_goal
 
         # 给上层网络的观测数据
-        handbar_angle = obs[5]
         bicycle_yaw = obs[2]
+        handbar_angle = obs[5]
+        handbar_vel = obs[6]
         processed_lidar_data = self._process_lidar_data(lidar_data=obs[9])
         distance_to_goal = math.sqrt((self.final_goal[0] - obs[0]) ** 2 + (self.final_goal[1] - obs[1]) ** 2)
         angle_to_goal = calculate_angle_to_target(obs[0], obs[1], obs[2], self.final_goal[0], self.final_goal[1])
-        bicycle_obs = np.array([distance_to_goal, angle_to_goal, bicycle_yaw, handbar_angle], dtype=np.float32)
+        bicycle_obs = np.array([distance_to_goal, angle_to_goal, bicycle_yaw, handbar_angle, handbar_vel], dtype=np.float32)
         for_navi_obs = np.concatenate((processed_lidar_data, bicycle_obs))
 
         return (normalized_obs, reward, self.terminated, self.truncated,
-                {"for_navi_obs": for_navi_obs, "reached_goal": self.reached_goal, "fall_down": self.fall_down, "is_collided": obs[10], "is_proximity": obs[11]})
+                {"for_navi_obs": for_navi_obs, "reached_goal": self.reached_goal, "fall_down": self.fall_down,
+                 "bicycle_x": obs[0], "bicycle_y": obs[1],
+                 "is_collided": obs[10], "is_proximity": obs[11]})
 
     def reset(self, seed=None, options=None, pursuit_point=None, final_goal=None):
         # print(f">>>[下层环境] 收到全局目标点: ({final_goal[0]:.2F},{final_goal[1]:.2F})")
@@ -191,10 +206,10 @@ class BicycleDenghEnvCopy(gym.Env):
         self.pursuit_point = pursuit_point
         self.final_goal = final_goal
 
-        goal = Goal(self.client, self.final_goal)
         # 因为没有重置环境，每次reset后要清除先前的Goal
         if self.prev_goal_id is not None:
             p.removeBody(self.prev_goal_id)
+        goal = Goal(self.client, self.final_goal)
         self.prev_goal_id = goal.id
 
         # 机器人位置与目标位置差x, 机器人位置与目标位置差y, 偏航角, 翻滚角, 翻滚角角速度, 车把角度, 车把角速度, 后轮速度, 飞轮速度
@@ -209,15 +224,22 @@ class BicycleDenghEnvCopy(gym.Env):
         normalized_obs = np.array(normalized_obs, dtype=np.float32)
 
         # 给上层网络的观测数据
-        handbar_angle = obs[5]
         bicycle_yaw = obs[2]
+        handbar_angle = obs[5]
+        handbar_vel = obs[6]
         processed_lidar_data = self._process_lidar_data(lidar_data=obs[9])
         distance_to_goal = math.sqrt((self.final_goal[0] - obs[0]) ** 2 + (self.final_goal[1] - obs[1]) ** 2)
         angle_to_goal = calculate_angle_to_target(obs[0], obs[1], obs[2], self.final_goal[0], self.final_goal[1])
-        bicycle_obs = np.array([distance_to_goal, angle_to_goal, bicycle_yaw, handbar_angle], dtype=np.float32)
+        bicycle_obs = np.array([distance_to_goal, angle_to_goal, bicycle_yaw, handbar_angle, handbar_vel], dtype=np.float32)
         for_navi_obs = np.concatenate((processed_lidar_data, bicycle_obs))
 
-        return normalized_obs, {"for_navi_obs": for_navi_obs, "reached_goal": self.reached_goal, "fall_down": self.fall_down, "is_collided": obs[10], "is_proximity": obs[11]}
+        self.pursuit_debug_point_id = None
+        self.index = 0
+
+
+        return normalized_obs, {"for_navi_obs": for_navi_obs, "reached_goal": self.reached_goal,
+                                "fall_down": self.fall_down, "is_collided": obs[10], "is_proximity": obs[11],
+                                "bicycle_x": obs[0], "bicycle_y": obs[1]}
 
     def _reward_fun(self, obs, action):
         self.terminated = False
@@ -233,14 +255,15 @@ class BicycleDenghEnvCopy(gym.Env):
         bicycle_vel = obs[6]
         flywheel_vel = obs[7]
 
-        roll_angle_rwd = 0.4 * (0.3 - min(10.0 * (roll_angle ** 2), 0.3)) / 0.3
-        roll_angle_vel_rwd = 0.3 * (225.0 - min((roll_angle_vel ** 2), 225.0)) / 225.0
+        # roll_angle_rwd = 0.4 * (0.3 - min(10.0 * (roll_angle ** 2), 0.3)) / 0.3
+        # roll_angle_vel_rwd = 0.3 * (225.0 - min((roll_angle_vel ** 2), 225.0)) / 225.0
         # handlebar_angle_vel_rwd = 0.0
-        flywheel_rwd = 0.3 * (40.0 - min(0.001 * (flywheel_vel ** 2), 40.0)) / 40.0
+        # flywheel_rwd = 0.3 * (40.0 - min(0.001 * (flywheel_vel ** 2), 40.0)) / 40.0
 
         balance_rwd = 0.0
         # if math.fabs(roll_angle) >= 0.17:
         if math.fabs(roll_angle) >= 0.35:
+            print(f">>>[下层环境] 摔倒！车把角速度={handlebar_angle_vel:.2F}")
             self.terminated = True
             self.fall_down = True
             balance_rwd = -8.0
@@ -251,8 +274,9 @@ class BicycleDenghEnvCopy(gym.Env):
 
         #  到达目标点奖励
         goal_rwd = 0.0
-        if math.fabs(obs[0]) <= 1.0:
+        if math.fabs(obs[0]) <= 2.0:
             # 到达子目标点后不能truncated
+            # print(f">>>[下层环境] 到达子目标点：({self.pursuit_point[0]:.2F},{self.pursuit_point[1]:.2F})")
             # self.truncated = True
             self.reached_goal = True
             goal_rwd = 10.0

@@ -29,12 +29,12 @@ class ZBicycleFinal:
         self.gyros_link = 5
         self.MAX_FORCE = 2000
         self.proximity_threshold = 0.3
-        self.bicycle_vel = 0.8
+        self.bicycle_vel = 0.5
         self.pure_pursuit_controller = None
 
         self.num_rays = 180
         self.ray_len = 12.0
-        self.lidar_origin_offset = [0., 0.55, .7]  # 激光雷达相对于小车的位置偏移量
+        self.lidar_origin_offset = [0., 0., .7]  # 激光雷达相对于小车的位置偏移量
         self.initial_joint_positions = None
         self.initial_joint_velocities = None
         self.initial_position, self.initial_orientation = p.getBasePositionAndOrientation(self.bicycleId)
@@ -69,12 +69,12 @@ class ZBicycleFinal:
         action[1]控制前后轮速度
         action[2]控制飞轮
         """
-        pure_pursuit_action, _ = self.pure_pursuit_controller.get_control_action(action)
+        # pure_pursuit_action, _ = self.pure_pursuit_controller.get_control_action(action)
         # action[0] = frame_to_handlebar 车把位置控制
         p.setJointMotorControl2(bodyUniqueId=self.bicycleId,
                                 jointIndex=self.handlebar_joint,
                                 controlMode=p.POSITION_CONTROL,
-                                targetPosition=pure_pursuit_action[0],
+                                targetPosition=action[0],
                                 force=self.MAX_FORCE,
                                 physicsClientId=self.client)
 
@@ -98,7 +98,7 @@ class ZBicycleFinal:
         p.setJointMotorControl2(bodyUniqueId=self.bicycleId,
                                 jointIndex=self.fly_wheel_joint,
                                 controlMode=p.VELOCITY_CONTROL,
-                                targetVelocity=pure_pursuit_action[2],
+                                targetVelocity=action[2],
                                 force=self.MAX_FORCE,
                                 physicsClientId=self.client)
 
@@ -243,3 +243,32 @@ class ZBicycleFinal:
         #     rayTo[i] = rayFrom[i] + [result * math.cos(angle), result * math.sin(angle), 0]
         #     p.addUserDebugLine(rayFrom[i], rayTo[i], lineColorRGB=[1, 0, 0], lineWidth=1.0)
         return distance
+
+    def draw_circle(self, center_pos, radius, num_segments=24, color=None):
+        """
+        在PyBullet中绘制圆形。
+
+        Args:
+            center_pos (list or np.array): 圆心位置 [x, y, z]。
+            radius (float): 圆的半径。
+            num_segments (int): 用于近似圆形的线段数量。默认值为24。
+            color (list): 圆形的颜色，RGB格式，例如 [1, 0, 0] 代表红色。
+        """
+        if color is None:
+            color = [1, 0, 0]
+        points = []
+        for i in range(num_segments):
+            angle = 2 * np.pi * i / num_segments
+            x = center_pos[0] + radius * np.cos(angle)
+            y = center_pos[1] + radius * np.sin(angle)
+            z = center_pos[2]  # 保持与圆心相同的z坐标
+            points.append([x, y, z])
+
+        # 绘制线段连接点，形成圆形
+        for i in range(num_segments):
+            p.addUserDebugLine(
+                lineFromXYZ=points[i],
+                lineToXYZ=points[(i + 1) % num_segments],  # 连接到下一个点，最后一个点连接到第一个点
+                lineColorRGB=color,
+                physicsClientId=self.client
+            )

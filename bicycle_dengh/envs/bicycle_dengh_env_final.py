@@ -6,9 +6,8 @@ from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 from stable_baselines3.common.env_util import make_vec_env
 from stable_baselines3.common.env_checker import check_env
 from bicycle_dengh.resources.z_bicycle_final import ZBicycleFinal
-from bicycle_dengh.resources.goal import Goal
 from playground.normalize_action import NormalizeAction
-
+import pybullet as p
 import math
 from playground.a_start.create_obstacle import generate_target_position
 import yaml
@@ -62,6 +61,7 @@ class BicycleFinalEnv(gymnasium.Env):
         self.obs_for_navi = None
         self.prev_dist_to_goal = None
         self.last_turn_angle = None
+        self.reset_flg = False
 
         # 上层网络的引导角度（弧度）
         self.actual_action_space = gymnasium.spaces.box.Box(
@@ -80,9 +80,9 @@ class BicycleFinalEnv(gymnasium.Env):
         # 使用 numpy.tile 快速创建重复的 low 和 high 数组
         part1_low = np.tile(group1_low, num_groups)
         part1_high = np.tile(group1_high, num_groups)
-        # 第二部分：离目标点距离、离目标点角度、车身偏航角、车把角度
-        part2_low = np.array([-50.0, -math.pi, -math.pi, -1.57])
-        part2_high = np.array([50.0, math.pi, math.pi, 1.57])
+        # 第二部分：离目标点距离、离目标点角度、车身偏航角、车把角度、车把角速度
+        part2_low = np.array([-50.0, -math.pi, -math.pi, -1.57, -20.0])
+        part2_high = np.array([50.0, math.pi, math.pi, 1.57, 20.0])
         # 合并两部分 low 和 high 数组
         low = np.concatenate([part1_low, part2_low])
         high = np.concatenate([part1_high, part2_high])
@@ -91,27 +91,33 @@ class BicycleFinalEnv(gymnasium.Env):
         self.observation_space = gymnasium.spaces.Box(low=low, high=high, dtype=np.float32)
 
     def step(self, action):
-        # 上层的action
-        rescaled_action = self._rescale_action(action)
-        turn_angle = rescaled_action[0]
-        self.pursuit_point = self._calculate_new_position(self.prev_bicycle_pos[0],
-                                                          self.prev_bicycle_pos[1],
-                                                          self.prev_yaw_angle,
-                                                          self.center_radius,
-                                                          turn_angle)
+        if self.reset_flg:
+            self.reset_flg = False
+            action = np.array([0.0], np.float32)
 
         # 控制下层环境
         lower_action, _ = self.ppo_model.predict(self.obs_for_bicycle, deterministic=True)
         lower_obs, _, _, _, info = self.lower_env.step(lower_action)
 
+        # 上层的action
+        rescaled_action = self._rescale_action(action)
+        turn_angle = rescaled_action[0]
         # 传递pursuit_point给下层的self.lower_env 如果自行车到达了跟踪点，才给下一个点
         if info['reached_goal']:
+            self.pursuit_point = self._calculate_new_position(self.prev_bicycle_pos[0],
+                                                              self.prev_bicycle_pos[1],
+                                                              self.prev_yaw_angle,
+                                                              self.center_radius,
+                                                              turn_angle)
+            # print(f">>>[上层环境] 到达子目标点！更新点为{self.pursuit_point}")
             self.lower_env.set_pursuit_point(self.pursuit_point)
 
         self.obs_for_bicycle = lower_obs
         self.obs_for_navi = info['for_navi_obs']
 
-        reward = self._reward_fun(distance_to_goal=self.obs_for_navi[-4], turn_angle=turn_angle, is_fall_down=info['fall_down'], is_collided=info['is_collided'], is_proximity=info['is_proximity'])
+        reward = self._reward_fun(distance_to_goal=self.obs_for_navi[-5], turn_angle=turn_angle,
+                                  processed_lidar_data=self.obs_for_navi[:60], is_fall_down=info['fall_down'],
+                                  is_collided=info['is_collided'], is_proximity=info['is_proximity'])
 
         self._elapsed_steps += 1
         if self._elapsed_steps >= self._max_episode_steps:
@@ -120,14 +126,16 @@ class BicycleFinalEnv(gymnasium.Env):
             self.truncated = True
 
         self.last_turn_angle = turn_angle
-        self.prev_dist_to_goal = self.obs_for_navi[-4]
+        self.prev_dist_to_goal = self.obs_for_navi[-5]
+        self.prev_yaw_angle = self.obs_for_navi[-3]
+        self.prev_bicycle_pos = (info['bicycle_x'], info['bicycle_y'])
 
         return self.obs_for_navi, reward, self.terminated, self.truncated, {"reached_goal": info['reached_goal']}
 
     def reset(self, seed=None, options=None):
         self.terminated = False
         self.truncated = False
-
+        self.reset_flg = True
         self._elapsed_steps = 0
         self.goal = generate_target_position()  # 全局目标点
 
@@ -143,14 +151,16 @@ class BicycleFinalEnv(gymnasium.Env):
         self.obs_for_bicycle, info = self.lower_env.reset(pursuit_point=self.pursuit_point, final_goal=self.goal)
         self.obs_for_navi = info['for_navi_obs']
 
-        self.prev_dist_to_goal = self.obs_for_navi[-4]
+        self.prev_dist_to_goal = self.obs_for_navi[-5]
         self.last_turn_angle = 0.0
+        self.prev_yaw_angle = self.obs_for_navi[-3]
+        self.prev_bicycle_pos = (info['bicycle_x'], info['bicycle_y'])
 
         self.episode_rwd = {"1": 0, "2": 0, "3": 0}
 
         return self.obs_for_navi, {}
 
-    def _reward_fun(self, distance_to_goal, turn_angle, is_fall_down=False, is_collided=False, is_proximity=False):
+    def _reward_fun(self, distance_to_goal, turn_angle, processed_lidar_data, is_fall_down=False, is_collided=False, is_proximity=False):
         self.terminated = False
         self.truncated = False
 
@@ -165,7 +175,7 @@ class BicycleFinalEnv(gymnasium.Env):
         if is_collided:
             collision_penalty = -20.0
             self.terminated = True
-            formatted_dict = {key: "{:.8f}".format(value) for key, value in self.episode_rwd.items()}
+            # formatted_dict = {key: "{:.8f}".format(value) for key, value in self.episode_rwd.items()}
             # print(f">>>[上层环境] 碰撞！存活{self._elapsed_steps}步，奖励值{formatted_dict}")
 
         # 距离目标点奖励
@@ -183,17 +193,19 @@ class BicycleFinalEnv(gymnasium.Env):
             fall_down_penalty = -20.0
             self.terminated = True
 
-        turn_penalty = math.cos(self.last_turn_angle - turn_angle) * 0.01
-        # if np.abs(self.last_turn_angle - turn_angle) > 0.5:
-        #     turn_penalty = -0.01
+        # turn_penalty = math.cos(self.last_turn_angle - turn_angle) * 0.01
+        # print(f"turn_angle: {turn_angle}, handlebar_vel: {handlebar_vel}")
 
-        # middle_elements = processed_lidar_data[self.start_index:self.end_index]  # 使用数组切片取出中间元素
-        # # 离障碍物一定范围内开始做惩罚
-        # min_val = np.min(middle_elements)
-        # obstacle_penalty = 0.0
-        # if min_val <= 3.5:
-        #     obstacle_penalty = max(0.1, min_val)
-        #     obstacle_penalty = -1.0 / (obstacle_penalty * 50)
+        middle_elements = processed_lidar_data[self.start_index:self.end_index]  # 使用数组切片取出中间元素
+        # 离障碍物一定范围内开始做惩罚
+        min_val = np.min(middle_elements)
+        obstacle_penalty = 0.0
+        if min_val <= 0.5:
+            obstacle_penalty = max(0.1, min_val)
+            obstacle_penalty = -1.0 / (obstacle_penalty * 50)
+        elif min_val <= 1.0:
+            obstacle_penalty = max(0.1, min_val)
+            obstacle_penalty = -1.0 / (obstacle_penalty * 50)
         # obstacle_penalty = 0.0
         # indices_less_than_4  = np.where(processed_lidar_data < 4.0)[0]  # 找出距离小于n的元素的索引
         # indices_great_than_4 = np.where(processed_lidar_data > 4.0)[0]
@@ -222,14 +234,12 @@ class BicycleFinalEnv(gymnasium.Env):
 
         avoid_obstacle_rwd = collision_penalty + proximity_penalty
 
-        # if self.gui:
-        #     print(f"approach_rwd: {approach_rwd}, distance_rwd: {distance_rwd}, "
-        #             f"proximity_penalty: {proximity_penalty}")
+        # print(f"distance_rwd: {distance_rwd}, "
+        #         f"turn_penalty: {turn_penalty}")
 
         self.episode_rwd["1"] += distance_rwd
-        self.episode_rwd["2"] += turn_penalty
 
-        total_reward = avoid_obstacle_rwd + goal_rwd + distance_rwd + fall_down_penalty + turn_penalty
+        total_reward = avoid_obstacle_rwd + goal_rwd + distance_rwd + fall_down_penalty + obstacle_penalty
 
         return total_reward
 

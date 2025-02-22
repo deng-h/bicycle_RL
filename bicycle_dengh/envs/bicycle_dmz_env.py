@@ -19,6 +19,7 @@ from utils import my_tools
 from simple_pid import PID
 import yaml
 import platform
+from playground.a_start.create_obstacle import generate_target_position
 
 
 class BicycleDmzEnv(gymnasium.Env):
@@ -58,24 +59,32 @@ class BicycleDmzEnv(gymnasium.Env):
         # 找到一个既能保证跟踪性能，又能使 steering_angle 保持平稳的折衷值
         # 限制车把转速 changeDynamics
 
-        # 车把角度
-        self.action_space = gymnasium.spaces.box.Box(low=-1., high=1., shape=(1,), dtype=np.float32)
+        # 上层网络的引导角度（弧度）
         self.actual_action_space = gymnasium.spaces.box.Box(
-            low=np.array([-1.5]),
-            high=np.array([1.5]),
+            low=np.array([-1.4]),
+            high=np.array([1.4]),
             shape=(1,),
             dtype=np.float32)
-        self.action_low, self.action_high = self.actual_action_space.low, self.actual_action_space.high
 
-        # 机器人与目标点距离, 机器人与目标点的角度, 翻滚角, 翻滚角角速度, 车把角度, 车把角速度
-        self.observation_space = gymnasium.spaces.Dict({
-            "lidar": gymnasium.spaces.box.Box(low=0., high=50., shape=(120,), dtype=np.float32),
-            "bicycle": gymnasium.spaces.box.Box(
-                low=np.array([0.0, -math.pi, -math.pi, -15.0, -1.57, -30.0]),
-                high=np.array([100.0, math.pi, math.pi, 15.0, 1.57, 30.0]),
-                shape=(6,),
-                dtype=np.float32),
-        })
+        self.action_low, self.action_high = self.actual_action_space.low, self.actual_action_space.high
+        self.action_space = gymnasium.spaces.box.Box(low=-1., high=1., shape=(1,), dtype=np.float32)
+
+        # 第一部分：60 个 [-12.0] ~ [12.0]
+        num_groups = 60
+        group1_low = np.array([-12.0])
+        group1_high = np.array([12.0])
+        # 使用 numpy.tile 快速创建重复的 low 和 high 数组
+        part1_low = np.tile(group1_low, num_groups)
+        part1_high = np.tile(group1_high, num_groups)
+        # 第二部分：离目标点距离、离目标点角度、车身偏航角、车把角度
+        part2_low = np.array([-50.0, -math.pi, -math.pi, -1.57])
+        part2_high = np.array([50.0, math.pi, math.pi, 1.57])
+        # 合并两部分 low 和 high 数组
+        low = np.concatenate([part1_low, part2_low])
+        high = np.concatenate([part1_high, part2_high])
+
+        # 60个距离数据, 机器人与目标点距离, 机器人与目标点的角度, 车把角度, 车把角速度
+        self.observation_space = gymnasium.spaces.Box(low=low, high=high, dtype=np.float32)
 
         if self.gui:
             self.client = p.connect(p.GUI)
@@ -107,27 +116,22 @@ class BicycleDmzEnv(gymnasium.Env):
 
     def step(self, action):
         rescaled_action = self._rescale_action(action)
-        # fly_wheel_action = rescaled_action[0]
         center_angle = rescaled_action[0]
-        # if self.index == 0:
-        #     print(f"center_angle: {center_angle:.3f}, action:{action}")
-        #     self.index += 1
-        # print(f"center_angle: {center_angle:.3f}")
-        # pure_pursuit_point = None
-        # if self.prev_dist_to_goal <= 5.0:
-        #     pure_pursuit_point = self.goal
-        # else:
-        #     pure_pursuit_point = self._calculate_new_position(self.prev_bicycle_pos[0],
-        #                                                       self.prev_bicycle_pos[1],
-        #                                                       self.prev_yaw_angle,
-        #                                                       self.center_radius,
-        #                                                       center_angle)
-        self.bicycle.apply_action4(handlebar_action=center_angle)
+        self.pursuit_point = self._calculate_new_position(self.prev_bicycle_pos[0],
+                                                          self.prev_bicycle_pos[1],
+                                                          self.prev_yaw_angle,
+                                                          self.center_radius,
+                                                          center_angle)
+        self.bicycle.apply_action4(pursuit_pt=self.pursuit_point)
         p.stepSimulation(physicsClientId=self.client)
+
         obs = self.bicycle.get_observation()
-        distance_to_goal, angle_to_target = my_tools.world_to_polar_with_yaw(obs[0], obs[1], obs[2], self.goal[0], self.goal[1])
-        bicycle_obs = np.array(
-            [distance_to_goal, angle_to_target, obs[3], obs[4], obs[5], obs[6]], dtype=np.float32)
+
+        distance_to_goal = np.linalg.norm(np.array([obs[0], obs[1]]) - np.array(self.goal))
+        angle_to_goal = my_tools.calculate_goal_angle_gemini(obs[0], obs[1], obs[2], self.goal[0], self.goal[1])
+        processed_lidar_data = self._process_lidar_data(lidar_data=obs[9])
+        bicycle_obs = np.array([distance_to_goal, angle_to_goal, obs[2], obs[5]], dtype=np.float32)
+        ret_obs = np.concatenate((processed_lidar_data, bicycle_obs))
 
         if self.gui:
             bike_pos, _ = p.getBasePositionAndOrientation(self.bicycle.bicycleId, physicsClientId=self.client)
@@ -158,36 +162,43 @@ class BicycleDmzEnv(gymnasium.Env):
         if self._elapsed_steps >= self._max_episode_steps:
             self.truncated = True
 
-        return {"lidar": obs[9], "bicycle": bicycle_obs}, reward, self.terminated, self.truncated, {"reward": reward}
+        return ret_obs, reward, self.terminated, self.truncated, {"reward": reward}
 
     def reset(self, seed=None, options=None):
         self.terminated = False
         self.truncated = False
         self._elapsed_steps = 0
+
         self.pursuit_debug_point_id = None
         self.index = 0
+
         if self.gui:
             print(f"self.episode_rwd={self.episode_rwd}")
         self.episode_rwd = {"1": 0.0, "2": 0.0, "3": 0.0, "4": 0.0}
 
-        x = random.randint(-5, 5)
-        y = random.randint(10, 20)
-        self.goal = (x, y)
+        self.goal = generate_target_position()
+        if self.goal == None:
+            print(f">>>[上层环境] 目标点生成失败，重置环境...")
+            self.reset()
         goal = Goal(self.client, self.goal)
         if self.prev_goal_id is not None:
             p.removeBody(self.prev_goal_id, self.client)
         self.prev_goal_id = goal.id
 
         obs = self.bicycle.reset()
-        distance_to_goal, angle_to_target = my_tools.world_to_polar_with_yaw(obs[0], obs[1], obs[2], self.goal[0], self.goal[1])
-        bicycle_obs = np.array([distance_to_goal, angle_to_target, obs[3], obs[4], obs[5], obs[6]], dtype=np.float32)
+
+        distance_to_goal = np.linalg.norm(np.array([obs[0], obs[1]]) - np.array(self.goal))
+        angle_to_goal = my_tools.calculate_goal_angle_gemini(obs[0], obs[1], obs[2], self.goal[0], self.goal[1])
+        processed_lidar_data = self._process_lidar_data(lidar_data=obs[9])
+        bicycle_obs = np.array([distance_to_goal, angle_to_goal, obs[2], obs[5]], dtype=np.float32)
+        ret_obs = np.concatenate((processed_lidar_data, bicycle_obs))
 
         self.prev_dist_to_goal = distance_to_goal
         # self.prev_bicycle_pos = (obs[0], obs[1])
         # self.prev_center_angle = math.pi / 2
         # self.prev_yaw_angle = math.pi / 2
 
-        return {"lidar": obs[9], "bicycle": bicycle_obs}, {}
+        return ret_obs, {}
 
     def _reward_fun(self, obs, lidar_data, is_collision=False):
         self.terminated = False
@@ -259,6 +270,11 @@ class BicycleDmzEnv(gymnasium.Env):
         :return: (np.ndarray)
         """
         return self.action_low + (0.5 * (scaled_action + 1.0) * (self.action_high - self.action_low))
+
+    def _process_lidar_data(self, lidar_data):
+        distance_reshaped = lidar_data.reshape(60, 3)  # 使用reshape将其变为(60, 3)的形状，方便每3个元素进行平均
+        averaged_distance = np.mean(distance_reshaped, axis=1, keepdims=True).flatten().tolist()  # 对每一行取平均值
+        return np.array(averaged_distance, dtype=np.float32)
 
     def _calculate_new_position(self, robot_x, robot_y, yaw, distance, angle):
         """
