@@ -1,4 +1,5 @@
 import pybullet as p
+import random
 import math
 
 
@@ -123,9 +124,9 @@ def create_obstacle(client_id):
         [10 + 0.5, 16 + 0.5, 1],
     ]
 
-    collision_shape = p.createCollisionShape(p.GEOM_CYLINDER, halfExtents=[0.5, 0.5, 1.0], radius=1.25, height=3.0)
+    collision_shape = p.createCollisionShape(p.GEOM_CYLINDER, halfExtents=[0.5, 0.5, 1.0], radius=1., height=3.0)
     visual_shape = p.createVisualShape(p.GEOM_CYLINDER, halfExtents=[0.5, 0.5, 1.0],
-                                       rgbaColor=[0.92, 0.94, 0.94, 1], radius=1.25, length=3.0)
+                                       rgbaColor=[0.92, 0.94, 0.94, 1], radius=1., length=3.0)
     obstacle_ids = []
     obstacle_positions1 = generate_obstacle_positions_from_file()
     for obstacle_pos in obstacle_positions1:
@@ -209,3 +210,45 @@ def generate_obstacle_positions_from_file(
         print(f"错误：文件 {file_path} 未找到！请确保文件路径正确。")
         return None
     return obstacle_positions
+
+
+def generate_target_position(min_distance_to_obstacle=1.5):
+    """
+    在指定范围内随机生成目标点位置，且避开障碍物。
+
+    参数:
+        obstacle_positions (list): 障碍物位置列表，每个位置为 [x, y, z]。
+        x_range (tuple): x 坐标范围 (min_x, max_x)。
+        y_range (tuple): y 坐标范围 (min_y, max_y)。
+        min_distance_to_obstacle (float): 目标点与障碍物中心点的最小距离。
+
+    返回:
+        list: 随机生成的目标点位置 [x, y, z]，如果无法生成则返回 None。
+    """
+    obstacle_positions = generate_obstacle_positions_from_file() # 获取障碍物位置
+    # 定义墙的边界，用于生成目标点的范围
+    x_range = (-14, 14) # 左右墙的 x 坐标范围
+    y_range = (1, 25) # 上下墙的 y 坐标范围
+    max_attempts = 100  # 最大尝试次数，避免无限循环
+
+    random.seed(42)
+    
+    for _ in range(max_attempts):
+        # 在指定 x 和 y 范围内生成随机坐标
+        x_target = random.uniform(x_range[0], x_range[1])
+        y_target = random.uniform(y_range[0], y_range[1])
+
+        is_safe = True # 假设初始位置是安全的
+
+        # 检查目标点是否离所有障碍物都足够远
+        for obstacle_pos in obstacle_positions:
+            distance = math.sqrt((x_target - obstacle_pos[0])**2 + (y_target - obstacle_pos[1])**2)
+            if distance < min_distance_to_obstacle:
+                is_safe = False # 如果距离太近，则认为是不安全的位置
+                break # 只要找到一个障碍物距离太近，就没必要继续检查了
+
+        if is_safe:
+            return (x_target, y_target) # 如果位置安全，则返回目标点
+
+    print("警告：在多次尝试后未能找到安全的目标位置。")
+    return None # 如果无法生成安全的目标点，返回 None
