@@ -156,13 +156,15 @@ class BicycleFinalEnv(gymnasium.Env):
         if distance_to_goal < self.goal_threshold:
             self.truncated = True
             goal_rwd = 100.0
+            formatted_dict = {key: "{:.8f}".format(value) for key, value in self.episode_rwd.items()}
+            print(f">>>[上层环境] 到达目标点({self.goal[0]:.2F}, {self.goal[1]:.2F})！存活{self._elapsed_steps}步，奖励值{formatted_dict}")
 
         collision_penalty = 0.0
         if is_collided:
             collision_penalty = -20.0
             self.terminated = True
             formatted_dict = {key: "{:.8f}".format(value) for key, value in self.episode_rwd.items()}
-            print(f">>>[上层环境] 碰撞！存活{self._elapsed_steps}步，奖励值{formatted_dict}")
+            # print(f">>>[上层环境] 碰撞！存活{self._elapsed_steps}步，奖励值{formatted_dict}")
 
         # 距离目标点奖励
         diff_dist_to_goal = self.prev_dist_to_goal - distance_to_goal
@@ -175,7 +177,7 @@ class BicycleFinalEnv(gymnasium.Env):
         fall_down_penalty = 0.0
         if is_fall_down:
             formatted_dict = {key: "{:.8f}".format(value) for key, value in self.episode_rwd.items()}
-            print(f">>>[上层环境] 摔倒！存活{self._elapsed_steps}步，奖励值{formatted_dict}")
+            # print(f">>>[上层环境] 摔倒！存活{self._elapsed_steps}步，奖励值{formatted_dict}")
             fall_down_penalty = -20.0
             self.terminated = True
 
