@@ -13,6 +13,8 @@ from playground.a_start.create_obstacle import generate_target_position
 import yaml
 import platform
 from stable_baselines3 import PPO
+import csv
+from datetime import datetime
 
 
 class BicycleFinalEnv(gymnasium.Env):
@@ -62,6 +64,7 @@ class BicycleFinalEnv(gymnasium.Env):
         self.prev_dist_to_goal = None
         self.last_turn_angle = None
         self.reset_flg = False
+        self.success_traj = []
 
         # 上层网络的引导角度（弧度）
         self.actual_action_space = gymnasium.spaces.box.Box(
@@ -129,6 +132,7 @@ class BicycleFinalEnv(gymnasium.Env):
         self.prev_dist_to_goal = self.obs_for_navi[-5]
         self.prev_yaw_angle = self.obs_for_navi[-3]
         self.prev_bicycle_pos = (info['bicycle_x'], info['bicycle_y'])
+        self.success_traj.append(self.prev_bicycle_pos)
 
         return self.obs_for_navi, reward, self.terminated, self.truncated, {"reached_goal": info['reached_goal']}
 
@@ -137,6 +141,7 @@ class BicycleFinalEnv(gymnasium.Env):
         self.truncated = False
         self.reset_flg = True
         self._elapsed_steps = 0
+        self.success_traj = []
         self.goal = generate_target_position()  # 全局目标点
 
         if self.goal == None:
@@ -155,6 +160,7 @@ class BicycleFinalEnv(gymnasium.Env):
         self.last_turn_angle = 0.0
         self.prev_yaw_angle = self.obs_for_navi[-3]
         self.prev_bicycle_pos = (info['bicycle_x'], info['bicycle_y'])
+        self.success_traj.append(self.prev_bicycle_pos)
 
         self.episode_rwd = {"1": 0, "2": 0, "3": 0}
 
@@ -168,10 +174,19 @@ class BicycleFinalEnv(gymnasium.Env):
         if distance_to_goal < self.goal_threshold:
             self.truncated = True
             goal_rwd = 100.0
-            formatted_dict = {key: "{:.8f}".format(value) for key, value in self.episode_rwd.items()}
-            print(f">>>[上层环境] 到达目标点({self.goal[0]:.2F}, {self.goal[1]:.2F})！存活{self._elapsed_steps}步，奖励值{formatted_dict}")
+            now = datetime.now()  # 获取当前时间
+            formatted_time = now.strftime("%Y%m%d_%H%M%S_%f")[:-3]  # 由于%f输出的是微秒（6 位数字），而我们通常只需要毫秒（3 位数字），所以使用切片操作去掉最后3位
+            filename = f"{formatted_time}.csv"
 
-        collision_penalty = 0.0
+            # 'w' 模式表示写入文件，newline='' 用于防止出现空行
+            with open(filename, 'w', newline='') as csvfile:
+                csv_writer = csv.writer(csvfile)
+                csv_writer.writerows(self.success_traj)  # writerows() 方法直接写入整个列表 (每行一个元组)
+            formatted_dict = {key: "{:.8f}".format(value) for key, value in self.episode_rwd.items()}
+            print(f">>>[上层环境] 到达目标点({self.goal[0]:.2F}, {self.goal[1]:.2F})！存活{self._elapsed_steps}步，奖励值{formatted_dict},已保存轨迹")
+
+        collision_penalty = 0.0            # 指定保存的文件名
+
         if is_collided:
             collision_penalty = -20.0
             self.terminated = True

@@ -3,13 +3,12 @@
 clear
 echo "开始执行"
 
-# 导航
-#/home/chen/anaconda3/envs/denghang/bin/python enjoy.py \
-python enjoy.py \
+# python enjoy.py \
+/home/chen/anaconda3/envs/denghang/bin/python enjoy.py \
 --algo ppo \
 --env BicycleFinalEnv-v0 \
 --folder logs/ \
---exp-id 20 \
+--exp-id 17 \
 --env-kwargs gui:True \
 --load-best \
 --no-render \
