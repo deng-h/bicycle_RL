@@ -15,6 +15,7 @@ import platform
 from stable_baselines3 import PPO
 import csv
 from datetime import datetime
+from scipy.signal import savgol_filter
 
 
 class BicycleFinalEnv(gymnasium.Env):
@@ -32,8 +33,8 @@ class BicycleFinalEnv(gymnasium.Env):
         self.lower_env = gymnasium.make('BicycleDenghEnvCopy-v0', gui=gui)
         self.lower_env = NormalizeAction(self.lower_env)
         self.lower_env_client = self.lower_env.client
-        self.ppo_model = PPO.load("bicycle_dengh/envs/ppo_model_omni_0607_1820.zip", env=self.lower_env, device='cpu')
-        # self.ppo_model = PPO.load("./ppo_model_omni_0607_1820.zip", env=self.lower_env, device='cpu')
+        # self.ppo_model = PPO.load("bicycle_dengh/envs/ppo_model_omni_0607_1820.zip", env=self.lower_env, device='cpu')
+        self.ppo_model = PPO.load("./ppo_model_omni_0607_1820.zip", env=self.lower_env, device='cpu')
 
         self.goal = (1, 1)
         self.terminated = False
@@ -93,6 +94,40 @@ class BicycleFinalEnv(gymnasium.Env):
         # 60个距离数据, 机器人与目标点距离, 机器人与目标点的角度, 车把角度, 车把角速度
         self.observation_space = gymnasium.spaces.Box(low=low, high=high, dtype=np.float32)
 
+        self.mid_pts_index = 0
+        self.mid_pts = []
+        # 打开 CSV 文件
+        file_path = 'D:\data\\1-L\9-bicycle\\bicycle-rl\exp_data\\navi_traj\omni\9\s\s\\20250226_152045_087_mid_pt.csv'
+        # file_path = 'D:\data\\1-L\9-bicycle\\bicycle-rl\exp_data\\navi_traj\omni\\5\s\\20250226_144115_705_mid_pt.csv'
+        with open(file_path, 'r', encoding='utf-8') as csvfile:
+            reader = csv.reader(csvfile)
+            for row in reader:
+                # 将每行数据转换为浮点数并存储为元组
+                point = tuple(float(value) for value in row)
+                self.mid_pts.append(point)
+        # self.mid_pts[6] = (-8.89853875535164,9.441907330739937)  # 9\s\s\\20250226_152045_087_mid_pt.csv
+        # self.mid_pts[6] = (-1.574898976906605,15.529624038287142)  # 5\s\\20250225_224811_628_mid_pt.csv
+        # self.mid_pts[7] = self.mid_pts[8] = self.mid_pts[9] = self.mid_pts[10]  # 5\s\\20250226_140355_618_mid_pt.csv
+        print(f"mid_pts: {self.mid_pts}")
+        trajectory_array = np.array(self.mid_pts)
+        x_coords = trajectory_array[:, 0]
+        y_coords = trajectory_array[:, 1]
+
+        # Savitzky-Golay 滤波器参数，可以根据需要调整
+        window_length = 7  # 窗口长度，必须是奇数
+        polyorder = 3     # 多项式阶数，通常小于窗口长度
+
+        if window_length >= len(x_coords): # 窗口长度不能大于等于数据长度
+            print(f"警告: 轨迹点太少 ({len(x_coords)}), 无法应用平滑，跳过平滑处理。")
+
+        try:
+            smoothed_x = savgol_filter(x_coords, window_length, polyorder)
+            smoothed_y = savgol_filter(y_coords, window_length, polyorder)
+            self.mid_pts = np.column_stack([smoothed_x, smoothed_y]).tolist()
+            print(f"轨迹 '{file_path}' 已应用平滑处理。")
+        except Exception as e:
+            print(f"平滑轨迹 '{file_path}' 时出错: {e}, 跳过平滑处理。")
+
     def step(self, action):
         if self.reset_flg:
             self.reset_flg = False
@@ -107,12 +142,16 @@ class BicycleFinalEnv(gymnasium.Env):
         turn_angle = rescaled_action[0]
         # 传递pursuit_point给下层的self.lower_env 如果自行车到达了跟踪点，才给下一个点
         if info['reached_goal']:
-            self.pursuit_point = self._calculate_new_position(self.prev_bicycle_pos[0],
-                                                              self.prev_bicycle_pos[1],
-                                                              self.prev_yaw_angle,
-                                                              self.center_radius,
-                                                              turn_angle)
-            # print(f">>>[上层环境] 到达子目标点！更新点为{self.pursuit_point}")
+            # self.pursuit_point = self._calculate_new_position(self.prev_bicycle_pos[0],
+            #                                                   self.prev_bicycle_pos[1],
+            #                                                   self.prev_yaw_angle,
+            #                                                   self.center_radius,
+            #                                                   turn_angle)
+            self.mid_pts_index += 1
+            if self.mid_pts_index >= len(self.mid_pts):
+                self.mid_pts_index = 0
+            self.pursuit_point = self.mid_pts[self.mid_pts_index]
+            print(f">>>[上层环境] 更新点为{self.pursuit_point}")
             self.lower_env.set_pursuit_point(self.pursuit_point)
 
         self.obs_for_bicycle = lower_obs
@@ -142,7 +181,8 @@ class BicycleFinalEnv(gymnasium.Env):
         self.reset_flg = True
         self._elapsed_steps = 0
         self.success_traj = []
-        self.goal = generate_target_position()  # 全局目标点
+        # self.goal = generate_target_position()  # 全局目标点
+        self.goal = self.mid_pts[-1]  # 全局目标点
 
         if self.goal == None:
             print(f">>>[上层环境] 目标点生成失败，重置环境...")
@@ -150,7 +190,9 @@ class BicycleFinalEnv(gymnasium.Env):
             self.reset()
             self.lower_env.reset(pursuit_point=(100, 100), final_goal=self.goal)
 
-        self.pursuit_point = (-4, 1)
+        # self.pursuit_point = (-4, 1)
+        self.mid_pts_index = 0
+        self.pursuit_point = self.mid_pts[self.mid_pts_index]
         self.lower_env.set_pursuit_point(self.pursuit_point)
 
         self.obs_for_bicycle, info = self.lower_env.reset(pursuit_point=self.pursuit_point, final_goal=self.goal)
@@ -191,7 +233,7 @@ class BicycleFinalEnv(gymnasium.Env):
             collision_penalty = -20.0
             self.terminated = True
             # formatted_dict = {key: "{:.8f}".format(value) for key, value in self.episode_rwd.items()}
-            # print(f">>>[上层环境] 碰撞！存活{self._elapsed_steps}步，奖励值{formatted_dict}")
+            print(f">>>[上层环境] 碰撞！存活{self._elapsed_steps}步")
 
         # 距离目标点奖励
         diff_dist_to_goal = self.prev_dist_to_goal - distance_to_goal
@@ -333,24 +375,15 @@ def check_observation_space(observation, observation_space):
 if __name__ == '__main__':
     env = gymnasium.make('BicycleFinalEnv-v0', gui=True)
     obs, _ = env.reset()
-    angle_array = [-1.4, -1.2, -1.0, -0.8, -0.6, -0.4, -0.2, 0.0, 0.2, 0.4, 0.6, 0.8, 1.0, 1.2, 1.4]
     # check_observation_space(obs, env.observation_space)
-    index = 0
-    angle = angle_array[index]
     for i in range(10000):
         action = np.array([0], np.float32)
-        obs, _, terminated, truncated, infos = env.step(action)
-        if infos["reached_goal"]:
-            index += 1
-            if index >= len(angle_array):
-                index = 0
-            angle = angle_array[index]
-            # print(">>>[上层环境] 到达子目标点！")
-
-        # time.sleep(0.1)
+        _, _, terminated, truncated, infos = env.step(action)
+        # if infos["reached_goal"]:
+        #     print(">>>[上层环境] 到达子目标点！")
         if terminated or truncated:
             obs, _ = env.reset()
-        time.sleep(1. / 24.)
+        time.sleep(1. / 50.)
 
     env.close()
 

@@ -14,3 +14,4 @@ from bicycle_dengh.envs.bicycle_dmz_env import BicycleDmzEnv
 from bicycle_dengh.envs.z_bicycle_final_env import ZBicycleFinalEnv
 from bicycle_dengh.envs.bicycle_dengh_env_copy import BicycleDenghEnvCopy
 from bicycle_dengh.envs.bicycle_dengh_env_final import BicycleFinalEnv
+from bicycle_dengh.envs.bicycle_balance_real import BicycleBalanceReal

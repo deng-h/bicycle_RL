@@ -1,3 +1,5 @@
+import csv
+
 import pybullet as p
 import numpy as np
 import math
@@ -19,7 +21,7 @@ class PurePursuitController:
         self.bicycle = bicycle
         self.lookahead_distance = lookahead_distance
         self.wheelbase = wheelbase  # 自行车轴距，需要根据你的自行车模型调整
-        self.roll_angle_pid = PID(1000, 0, 0, setpoint=0.0)
+        self.roll_angle_pid = PID(1200, 750, 40, setpoint=0.0)
 
     def set_lookahead_distance(self, lookahead_distance):
         """动态调整lookahead distance"""
@@ -88,7 +90,7 @@ class PurePursuitController:
         lookahead_point:  Lookahead point 坐标 [x, y]
         """
         # observation = self.bicycle.get_observation()
-        observation = self.bicycle.get_observation_simple()
+        observation = self.bicycle.get_observation()
         current_position = [observation[0], observation[1]]  # x, y 位置
         current_yaw = observation[2]  # 偏航角 yaw_angle
         roll_angle = observation[3]  # 翻滚角 roll_angle
@@ -167,18 +169,19 @@ if __name__ == '__main__':
     p.setGravity(0, 0, -10)
     p.setAdditionalSearchPath(pybullet_data.getDataPath())
     plane_id = p.loadURDF("plane.urdf")
+    p.changeDynamics(plane_id, -1, lateralFriction=3.5)  # -1表示所有部件
     p.setRealTimeSimulation(0)  # 关闭实时仿真，手动step
     time_step = 1. / 24.
     p.setTimeStep(time_step)
-    bicycle = Bicycle(client)
+    bicycle = Bicycle(client, 120.0)
     pure_pursuit_controller = PurePursuitController(bicycle, lookahead_distance=2.0, wheelbase=1.2) # 创建控制器实例
-    create_obstacle(client)
-    grid_map = create_grid_map2(client, 30, 30)
-    goal_pos = get_goal_pos()
-    goal_id = Goal(client, goal_pos)
-    smoothed_path_world = get_path(client=client, grid_map=grid_map, bicycle_start_pos=(1, 1), goal_pos=goal_pos)
-    zeros_column = np.zeros((smoothed_path_world.shape[0], 1))  # 创建一个形状为 (行数, 1) 的全零数组
-    planned_path = np.hstack((smoothed_path_world, zeros_column))  # 将全零数组与原始数组水平拼接
+    # create_obstacle(client)
+    # grid_map = create_grid_map2(client, 30, 30)
+    # goal_pos = get_goal_pos()
+    # goal_id = Goal(client, goal_pos)
+    # smoothed_path_world = get_path(client=client, grid_map=grid_map, bicycle_start_pos=(1, 1), goal_pos=goal_pos)
+    # zeros_column = np.zeros((smoothed_path_world.shape[0], 1))  # 创建一个形状为 (行数, 1) 的全零数组
+    # planned_path = np.hstack((smoothed_path_world, zeros_column))  # 将全零数组与原始数组水平拼接
     # print(smoothed_path_world)
     # print(planned_path)
     draw_trajectory = True
@@ -195,15 +198,22 @@ if __name__ == '__main__':
     path_index = 0  # 路径点索引
     target_threshold = 3.0  # 到达目标点的阈值
 
-    for step in range(10000):
+    roll_angle_array = []  # 存储翻滚角数据
+    for step in range(1000):
         current_pos = bicycle.get_observation()[:2]
-        action, lookahead_point = pure_pursuit_controller.get_control_action(planned_path)  # Pure Pursuit 控制
-        bicycle.apply_action(action)
+        action, lookahead_point = pure_pursuit_controller.get_control_action([(1, 1), (2,2)])  # Pure Pursuit 控制
+        # bicycle.apply_action(action)
+        bicycle.apply_action([0, 0, action[2]])  # 仅控制飞轮
         p.stepSimulation()
+        roll_angle = bicycle.get_observation()[3]
+        roll_angle_array.append(roll_angle)
+
+        if 700 <= step <= 701:
+            bicycle.apply_lateral_disturbance(35.0, [-0.3, -0.0, 1.5])
 
         #  -----  绘制轨迹  -----
-        if draw_trajectory:
-            draw_trajectory_fun(client, bicycle.get_observation(), trajectory_points, trajectory_lines)
+        # if draw_trajectory:
+        #     draw_trajectory_fun(client, bicycle.get_observation(), trajectory_points, trajectory_lines)
 
         #  -----  (可选) 可视化  -----
         #  Debug Lookahead Point (红色球)
@@ -216,18 +226,30 @@ if __name__ == '__main__':
         #         p.removeBody(lookahead_body_id)
 
         #  -----  检查是否到达目标点 (最后一个路径点)  -----
-        target_point = planned_path[-1][:2]  # 最后一个路径点作为目标点
-        distance_to_target = np.linalg.norm(np.array(current_pos) - np.array(target_point))
-        if distance_to_target < target_threshold and path_index >= len(planned_path) - 1 :
-            print("到达目标点!")
-            break
-
-        keys = p.getKeyboardEvents()
-        if ord(' ') in keys and keys[ord(' ')] & p.KEY_WAS_TRIGGERED:
-            time.sleep(10000)
-        elif ord('z') in keys and keys[ord('z')] & p.KEY_WAS_TRIGGERED:
-            p.resetDebugVisualizerCamera(cameraDistance=10, cameraYaw=0, cameraPitch=-89, cameraTargetPosition=[15, 12, 10])
+        # target_point = planned_path[-1][:2]  # 最后一个路径点作为目标点
+        # distance_to_target = np.linalg.norm(np.array(current_pos) - np.array(target_point))
+        # if distance_to_target < target_threshold and path_index >= len(planned_path) - 1 :
+        #     print("到达目标点!")
+        #     break
+        #
+        # keys = p.getKeyboardEvents()
+        # if ord(' ') in keys and keys[ord(' ')] & p.KEY_WAS_TRIGGERED:
+        #     time.sleep(10000)
+        # elif ord('z') in keys and keys[ord('z')] & p.KEY_WAS_TRIGGERED:
+        #     p.resetDebugVisualizerCamera(cameraDistance=10, cameraYaw=0, cameraPitch=-89, cameraTargetPosition=[15, 12, 10])
 
         time.sleep(time_step)
+        if step % 100 == 0:
+            print(f"Step: {step}, Roll Angle: {roll_angle}")
+
+    with open(
+            'D:\data\\1-L\\9-bicycle\\bicycle-rl\exp_data\平衡实验数据处理\倾斜角实验\\roll_angle_pid.csv',
+            'w', newline='') as csvfile:
+        csv_writer = csv.writer(csvfile)
+        csv_writer.writerow(['roll_angle'])  # 写入 CSV 文件的头部 写入列名，第一行
+        # 将每个浮点数转换为包含该浮点数的列表
+        rows = [[angle] for angle in roll_angle_array]
+        csv_writer.writerows(rows)  # writerows 可以一次写入多行
+        print("数据已保存到 roll_angle_pid.csv")
 
     p.disconnect()

@@ -34,11 +34,11 @@ hyperparams = {
         policy="MlpPolicy",
         normalize=dict(norm_obs=True, norm_reward=False),
         n_envs=6,
-        n_steps=128,
-        batch_size=768,  # n_steps * n_envs
+        n_steps=1024,
+        batch_size=6144,  # n_steps * n_envs
         gamma=0.99,
         n_epochs=4,
-        n_timesteps=500000,
+        n_timesteps=2000000,
         policy_kwargs=dict(
             # net_arch=dict(pi=[64, 64], vf=[64, 64])
         ),

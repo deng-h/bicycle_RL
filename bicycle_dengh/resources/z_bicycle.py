@@ -3,6 +3,7 @@ import math
 import os
 import numpy as np
 import platform
+import random
 
 
 class ZBicycle:
@@ -15,8 +16,8 @@ class ZBicycle:
         else:
             f_name = os.path.join(os.path.dirname(__file__), 'bicycle_urdf/bike.xml')
 
-        startOrientation = p.getQuaternionFromEuler([0, 0, 0])
-        self.bicycleId = p.loadURDF(fileName=f_name, basePosition=[1, 1, 1], baseOrientation=startOrientation,
+        startOrientation = p.getQuaternionFromEuler([0., 0., 0.])
+        self.bicycleId = p.loadURDF(fileName=f_name, basePosition=[0., 0., 1], baseOrientation=startOrientation,
                                     physicsClientId=self.client)
         # Number of joints: 7
         # jointIndex: 0 jointName: 'frame_to_handlebar'
@@ -102,46 +103,18 @@ class ZBicycle:
                                 force=self.MAX_FORCE,
                                 physicsClientId=self.client)
 
-    def apply_action2(self, RL_action, PID_action):
-        """
-        Apply the action to the bicycle.控制分为两部分，前后轮速度和车把位置是RL控制，飞轮是PID控制。
+        # 产生随机扰动
+        # random_number = random.random()
+        # if random_number < 0.3:
+        #     force_magnitude = 30
+        #     p.applyExternalForce(objectUniqueId=self.bicycleId,
+        #                          linkIndex=-1,  # link index or -1 for the base
+        #                          forceObj=[0, random.uniform(-force_magnitude, force_magnitude), 0],
+        #                          posObj=[-0.3, -0.0, 1.5],
+        #                          flags=p.WORLD_FRAME,
+        #                          physicsClientId=self.client
+        #                          )
 
-        Parameters:
-        RL_action[0]控制车把位置
-        RL_action[1]控制前后轮速度
-        PID_action[0]控制飞轮
-        """
-        # action[0] = frame_to_handlebar 车把位置控制
-        p.setJointMotorControl2(bodyUniqueId=self.bicycleId,
-                                jointIndex=self.handlebar_joint,
-                                controlMode=p.POSITION_CONTROL,
-                                targetPosition=RL_action[0],
-                                force=self.MAX_FORCE,
-                                physicsClientId=self.client)
-
-        # action[1] = handlebar_to_frontwheel 前轮速度控制
-        p.setJointMotorControl2(bodyUniqueId=self.bicycleId,
-                                jointIndex=self.front_wheel_joint,
-                                controlMode=p.VELOCITY_CONTROL,
-                                targetVelocity=RL_action[1],
-                                force=self.MAX_FORCE,
-                                physicsClientId=self.client)
-
-        # action[1] = frame_to_backwheel 后轮速度控制
-        p.setJointMotorControl2(bodyUniqueId=self.bicycleId,
-                                jointIndex=self.back_wheel_joint,
-                                controlMode=p.VELOCITY_CONTROL,
-                                targetVelocity=RL_action[1],
-                                force=self.MAX_FORCE,
-                                physicsClientId=self.client)
-
-        # action[2] = flyWheelLink_to_flyWheel 飞轮控制
-        p.setJointMotorControl2(bodyUniqueId=self.bicycleId,
-                                jointIndex=self.fly_wheel_joint,
-                                controlMode=p.VELOCITY_CONTROL,
-                                targetVelocity=PID_action,
-                                force=self.MAX_FORCE,
-                                physicsClientId=self.client)
 
     def get_observation(self):
         self.frame_count += 1
@@ -216,63 +189,19 @@ class ZBicycle:
                 return True
         return False
 
-    def _get_lidar_info3(self, bicycle_pos):
-        # 计算射线起点的坐标
-        ray_start = np.array(bicycle_pos) + np.array(self.lidar_origin_offset)
-
-        # 创建射线起点和终点的数组
-        rayFrom = np.tile(ray_start, (self.num_rays, 1))
-        rayTo = rayFrom + np.column_stack((self.sin_array, self.cos_array, np.zeros(self.num_rays)))
-
-        results = p.rayTestBatch(rayFromPositions=rayFrom.tolist(), rayToPositions=rayTo.tolist())
-
-        # for i, result in enumerate(results):
-        #     if result[0] < 0:
-        #         p.addUserDebugLine(rayFrom[i], rayTo[i], lineColorRGB=[0, 1, 0], lineWidth=1.0)
-        #     else:
-        #         hit_position = result[3]
-        #         # 计算击中点到射线起点的距离
-        #         distance = ((hit_position[0] - rayFrom[i][0]) ** 2 +
-        #                     (hit_position[1] - rayFrom[i][1]) ** 2 +
-        #                     (hit_position[2] - rayFrom[i][2]) ** 2) ** 0.5
-        #         # 在击中点附近显示距离
-        #         text_position = (hit_position[0], hit_position[1], hit_position[2] + 0.1)  # 提高文本显示位置
-        #         p.addUserDebugText(f"{distance:.2f} m", text_position, textColorRGB=[1, 1, 1], textSize=1.0)
-        #         # 显示击中点的射线
-        #         p.addUserDebugLine(rayFrom[i], hit_position, lineColorRGB=[1, 0, 0], lineWidth=1.0)
-
-        # 计算距离
-        distance = np.array([
-            self.ray_len if res[0] < 0 else np.linalg.norm(np.array(res[3]) - ray_start)
-            for res in results
-        ], dtype=np.float32)
-
-        return distance
-
-    def draw_circle(self, center_pos, radius, num_segments=24, color=None):
+    def apply_lateral_disturbance(self, disturbance_force, disturbance_position):
         """
-        在PyBullet中绘制圆形。
+        Apply lateral disturbance to the bicycle.
 
-        Args:
-            center_pos (list or np.array): 圆心位置 [x, y, z]。
-            radius (float): 圆的半径。
-            num_segments (int): 用于近似圆形的线段数量。默认值为24。
-            color (list): 圆形的颜色，RGB格式，例如 [1, 0, 0] 代表红色。
+        Parameters:
+        disturbance_force (float): The force of the lateral disturbance.
+        disturbance_position (list): The position of the lateral disturbance [x, y, z].
         """
-        if color is None:
-            color = [1, 0, 0]
-        points = []
-        for i in range(num_segments):
-            angle = 2 * np.pi * i / num_segments
-            x = center_pos[0] + radius * np.cos(angle)
-            y = center_pos[1] + radius * np.sin(angle)
-            z = center_pos[2]  # 保持与圆心相同的z坐标
-            points.append([x, y, z])
-
-        # 绘制线段连接点，形成圆形
-        for i in range(num_segments):
-            p.addUserDebugLine(
-                lineFromXYZ=points[i],
-                lineToXYZ=points[(i + 1) % num_segments],  # 连接到下一个点，最后一个点连接到第一个点
-                lineColorRGB=color
-            )
+        p.applyExternalForce(
+            objectUniqueId=self.bicycleId,
+            linkIndex=-1,
+            forceObj=[0, disturbance_force, 0],
+            posObj=disturbance_position,
+            flags=p.WORLD_FRAME,
+            physicsClientId=self.client
+        )

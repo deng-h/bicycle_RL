@@ -1,3 +1,5 @@
+import csv
+
 import gymnasium as gym
 import numpy as np
 import pybullet as p
@@ -109,7 +111,7 @@ class BicycleDenghEnvCopy(gym.Env):
             self.flywheel_param = p.addUserDebugParameter('flywheel_param', -40, 40, 0)
             # 设置俯视视角
             p.resetDebugVisualizerCamera(cameraDistance=10, cameraYaw=0, cameraPitch=-89,
-                                         cameraTargetPosition=[0, 12, 10])
+                                         cameraTargetPosition=[0, 12, 9])
         else:
             self.client = p.connect(p.DIRECT)
 
@@ -236,7 +238,6 @@ class BicycleDenghEnvCopy(gym.Env):
         self.pursuit_debug_point_id = None
         self.index = 0
 
-
         return normalized_obs, {"for_navi_obs": for_navi_obs, "reached_goal": self.reached_goal,
                                 "fall_down": self.fall_down, "is_collided": obs[10], "is_proximity": obs[11],
                                 "bicycle_x": obs[0], "bicycle_y": obs[1]}
@@ -311,4 +312,26 @@ class BicycleDenghEnvCopy(gym.Env):
 
 
 if __name__ == '__main__':
-    env = BicycleDenghEnvCopy(gui=False)
+    env = gym.make('BicycleDenghEnvCopy-v0', gui=True)
+    obs, _ = env.reset()
+    # angle_array = [-1.4, -1.2, -1.0, -0.8, -0.6, -0.4, -0.2, 0.0, 0.2, 0.4, 0.6, 0.8, 1.0, 1.2, 1.4]
+    # # check_observation_space(obs, env.observation_space)
+    # index = 0
+    # angle = angle_array[index]
+    # for i in range(10000):
+    #     action = np.array([0], np.float32)
+    #     obs, _, terminated, truncated, infos = env.step(action)
+    #     if infos["reached_goal"]:
+    #         index += 1
+    #         if index >= len(angle_array):
+    #             index = 0
+    #         angle = angle_array[index]
+    #         # print(">>>[上层环境] 到达子目标点！")
+    #
+    #     # time.sleep(0.1)
+    #     if terminated or truncated:
+    #         obs, _ = env.reset()
+    #     # time.sleep(1. / 24.)
+    #     time.sleep(100)
+
+    env.close()

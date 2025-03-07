@@ -3,16 +3,17 @@
 clear
 echo "开始执行"
 
-# python enjoy.py \
-/home/chen/anaconda3/envs/denghang/bin/python enjoy.py \
+
+#/home/chen/anaconda3/envs/denghang/bin/python enjoy.py \
+python enjoy.py \
 --algo ppo \
---env BicycleFinalEnv-v0 \
+--env ZBicycleBalanceEnv-v0 \
 --folder logs/ \
---exp-id 17 \
+--exp-id 15 \
 --env-kwargs gui:True \
 --load-best \
 --no-render \
 --seed 42 \
 --deterministic \
 --device cpu \
---n-timesteps 1000000
+--n-timesteps 1100

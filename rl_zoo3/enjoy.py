@@ -2,6 +2,7 @@ import argparse
 import importlib
 import os
 import sys
+import time
 
 import numpy as np
 import torch as th
@@ -219,6 +220,7 @@ def enjoy() -> None:  # noqa: C901
                 deterministic=deterministic,
             )
             obs, reward, done, infos = env.step(action)
+            time.sleep(1. / 24.)
 
             episode_start = done
 

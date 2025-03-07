@@ -6,7 +6,7 @@ from bicycle_dengh.resources.balance_bicycle import BalanceBicycle
 import math
 import time
 import csv
-
+from simple_pid import PID
 
 class BicycleBalanceEnv(gymnasium.Env):
     metadata = {'render_modes': ['rgb_array']}
@@ -101,31 +101,31 @@ class BicycleBalanceEnv(gymnasium.Env):
         wheel_vel = obs[3]
 
         """平衡奖励"""
-        # balance_rwd = 0.0
-        # if math.fabs(roll_angle) >= 0.35:
-        #     self.terminated = True
-        #     balance_rwd = -10.0
-        # else:
-        #     # 计算奖励值，倾角越小，奖励越大
-        #     balance_rwd = 1.0 - (math.fabs(roll_angle) / 0.35) * 2.0
-        #     # 限制奖励值在范围[-max_reward, max_reward]之间
-        #     balance_rwd = max(-1.0, min(1.0, balance_rwd))
+        balance_rwd = 0.0
+        if math.fabs(roll_angle) >= 0.35:
+            self.terminated = True
+            balance_rwd = -10.0
+        else:
+            # 计算奖励值，倾角越小，奖励越大
+            balance_rwd = 1.0 - (math.fabs(roll_angle) / 0.35) * 2.0
+            # 限制奖励值在范围[-max_reward, max_reward]之间
+            balance_rwd = max(-1.0, min(1.0, balance_rwd))
         #
         # r2 = -0.001 * math.fabs(wheel_vel)  # 惯性轮速度惩罚
 
-        balance_rwd_dui_bi = 0.0
-        if math.fabs(roll_angle) >= 0.35:
-            self.terminated = True
-            balance_rwd_dui_bi = -10.0
-        elif math.fabs(roll_angle) >= 0.25:
-            balance_rwd_dui_bi = -1.0
-        elif math.fabs(roll_angle) >= 0.15:
-            balance_rwd_dui_bi = -0.5
-        else:
-            balance_rwd_dui_bi = 1.0
+        # balance_rwd_dui_bi = 0.0
+        # if math.fabs(roll_angle) >= 0.35:
+        #     self.terminated = True
+        #     balance_rwd_dui_bi = -10.0
+        # elif math.fabs(roll_angle) >= 0.25:
+        #     balance_rwd_dui_bi = -1.0
+        # elif math.fabs(roll_angle) >= 0.15:
+        #     balance_rwd_dui_bi = -0.5
+        # else:
+        #     balance_rwd_dui_bi = 1.0
 
         # return balance_rwd + r2
-        return balance_rwd_dui_bi
+        return balance_rwd
 
     def render(self):
         pass
@@ -133,11 +133,11 @@ class BicycleBalanceEnv(gymnasium.Env):
     def close(self):
         p.disconnect(self.client)
         # 以写入模式打开 CSV 文件
-        with open("离散奖励函数的飞轮数据.csv", mode='w', newline='') as file:
-            # 创建一个 CSV 写入器对象
-            writer = csv.writer(file)
-            for value in self.flywheel_vel:
-                writer.writerow([value])  # 每个值写成一行
+        # with open("离散奖励函数的飞轮数据.csv", mode='w', newline='') as file:
+        #     # 创建一个 CSV 写入器对象
+        #     writer = csv.writer(file)
+        #     for value in self.flywheel_vel:
+        #         writer.writerow([value])  # 每个值写成一行
 
     def _rescale_action(self, scaled_action):
         """
@@ -149,14 +149,17 @@ class BicycleBalanceEnv(gymnasium.Env):
 
 
 if __name__ == '__main__':
+    roll_angle_pid = PID(600, 100, 0, setpoint=0.0)
     env = gymnasium.make('BicycleBalance-v0', gui=True)
     obs, _ = env.reset()
     for i in range(40000):
-        action = np.array([0.5], np.float32)
+        roll_angle_control = roll_angle_pid(obs[0])
+        action = np.array([-roll_angle_control], np.float32)
+
         obs, _, terminated, truncated, _ = env.step(action)
 
         if terminated or truncated:
             obs, _ = env.reset()
-        # time.sleep(1)
+        time.sleep(1. / 24.)
 
     env.close()

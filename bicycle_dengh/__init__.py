@@ -82,3 +82,8 @@ register(
     id="BicycleFinalEnv-v0",
     entry_point='bicycle_dengh.envs:BicycleFinalEnv'
 )
+
+register(
+    id="BicycleBalanceReal-v0",
+    entry_point='bicycle_dengh.envs:BicycleBalanceReal'
+)

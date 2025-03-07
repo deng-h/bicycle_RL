@@ -1,6 +1,8 @@
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib import rcParams
+import matplotlib
+matplotlib.use('QtAgg')  # 保持 TkAgg 后端，如果之前您使用了其他后端并工作正常，可以修改这里
 
 rcParams['font.sans-serif'] = ['SimHei']  # 使用黑体 ('SimHei') 或其他支持中文的字体
 rcParams['axes.unicode_minus'] = False  # 解决负号 '-' 显示为方块的问题

@@ -15,7 +15,7 @@ class Bicycle:
         else:
             f_name = os.path.join(os.path.dirname(__file__), 'bicycle_urdf/bike.xml')
 
-        startOrientation = p.getQuaternionFromEuler([0, 0, 1.57])
+        startOrientation = p.getQuaternionFromEuler([0, 0, 0])
         self.bicycleId = p.loadURDF(fileName=f_name, basePosition=[0, 0, 1], baseOrientation=startOrientation)
 
         self.handlebar_joint = 0
@@ -117,3 +117,20 @@ class Bicycle:
         p.resetJointState(self.bicycleId, self.front_wheel_joint, targetValue=0, targetVelocity=0)
         p.resetJointState(self.bicycleId, self.back_wheel_joint, targetValue=0, targetVelocity=0)
         return self.get_observation()
+
+    def apply_lateral_disturbance(self, disturbance_force, disturbance_position):
+        """
+        Apply lateral disturbance to the bicycle.
+
+        Parameters:
+        disturbance_force (float): The force of the lateral disturbance.
+        disturbance_position (list): The position of the lateral disturbance [x, y, z].
+        """
+        p.applyExternalForce(
+            objectUniqueId=self.bicycleId,
+            linkIndex=-1,
+            forceObj=[0, disturbance_force, 0],
+            posObj=disturbance_position,
+            flags=p.WORLD_FRAME,
+            physicsClientId=self.client
+        )

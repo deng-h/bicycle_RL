@@ -29,7 +29,7 @@ class ZBicycleFinal:
         self.gyros_link = 5
         self.MAX_FORCE = 2000
         self.proximity_threshold = 0.3
-        self.bicycle_vel = 0.5
+        self.bicycle_vel = 3.5
         self.pure_pursuit_controller = None
 
         self.num_rays = 180

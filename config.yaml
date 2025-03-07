@@ -1,0 +1,21 @@
+env_name: 'BicycleBalanceReal-v0'
+total_timesteps: 1200010     # 总训练步数
+n_steps: 256               # 每次策略更新的步数
+batch_size: 1536            # 批大小
+gamma: 0.99                # 折扣因子
+n_epochs: 4                # 每个批次数据用于训练的轮数
+ent_coef: 0.05             # 熵系数
+save_freq: 10000           # 模型保存频率 (每多少步保存一次)
+eval_freq: 10000           # 评估频率 (每多少步评估一次) 并行训练时新的eval_freq=原始eval_freq*n_envs
+num_envs: 6                # 环境数量
+max_episode_steps: 10000    # 每回合最大步数
+
+
+# n_steps: 在多环境并行训练中，n_steps参数仍然代表每个环境在每次策略更新前运行的步数
+# 因此，总的采样步数将是n_steps*n_envs，其中n_envs是你设置的并行环境数量
+# 例如，如果n_steps=256，n_envs=4，那么每次策略更新前，模型会从所有并行环境中总共收集256*4=1024步的经验数据
+
+# batch_size: batch_size参数仍然是每个批次用于训练的数据量
+# 如果batch_size=256， 那么每次梯度更新时，会使用从所有并行环境中收集的batch_size个样本进行训练
+# 常见的做法是将batch_size设置为n_steps*n_envs的整数倍，以充分利用所有收集到的数据
+# 例如，可以将batch_size也设置为1024， 或者设置为512(1024的一半)等
