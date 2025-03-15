@@ -111,7 +111,7 @@ class ZBicycleBalanceEnv(gymnasium.Env):
 
         if self._elapsed_steps == 1000:
             with open(
-                    'D:\data\\1-L\\9-bicycle\\bicycle-rl\exp_data\平衡实验数据处理\倾斜角实验\\roll_angle_ppo.csv',
+                    'D:\data\\1-L\\9-bicycle\\bicycle-rl\exp_data\平衡实验数据处理\倾斜角实验\\roll_angle_ppo_BN.csv',
                     'w', newline='') as csvfile:
                 csv_writer = csv.writer(csvfile)
                 csv_writer.writerow(['roll_angle'])  # 写入 CSV 文件的头部 写入列名，第一行
@@ -120,7 +120,7 @@ class ZBicycleBalanceEnv(gymnasium.Env):
                 csv_writer.writerows(rows)  # writerows 可以一次写入多行
                 print("roll_angle_ppo.csv 写入完成")
         elif 700 <= self._elapsed_steps <= 701:
-            self.bicycle.apply_lateral_disturbance(30.0, [-0.3, -0.0, 1.5])
+            self.bicycle.apply_lateral_disturbance(32.0, [-0.3, -0.0, 1.5])
             print("施加扰动")
 
         return np.array(ret_obs, dtype=np.float32), reward, self.terminated, self.truncated, {}

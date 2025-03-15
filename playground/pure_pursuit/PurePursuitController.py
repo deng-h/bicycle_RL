@@ -243,7 +243,7 @@ if __name__ == '__main__':
             print(f"Step: {step}, Roll Angle: {roll_angle}")
 
     with open(
-            'D:\data\\1-L\\9-bicycle\\bicycle-rl\exp_data\平衡实验数据处理\倾斜角实验\\roll_angle_pid.csv',
+            'D:\data\\1-L\\9-bicycle\\bicycle-rl\exp_data\平衡实验数据处理\倾斜角实验\\roll_angle_pid_BN.csv',
             'w', newline='') as csvfile:
         csv_writer = csv.writer(csvfile)
         csv_writer.writerow(['roll_angle'])  # 写入 CSV 文件的头部 写入列名，第一行

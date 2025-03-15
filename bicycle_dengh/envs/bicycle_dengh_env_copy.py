@@ -6,7 +6,7 @@ import pybullet as p
 import pybullet_data
 from bicycle_dengh.resources.bicycle import Bicycle
 from bicycle_dengh.resources.z_bicycle_final import ZBicycleFinal
-
+from datetime import datetime
 from bicycle_dengh.resources.goal import Goal
 import math
 import random
@@ -196,7 +196,7 @@ class BicycleDenghEnvCopy(gym.Env):
         return (normalized_obs, reward, self.terminated, self.truncated,
                 {"for_navi_obs": for_navi_obs, "reached_goal": self.reached_goal, "fall_down": self.fall_down,
                  "bicycle_x": obs[0], "bicycle_y": obs[1],
-                 "is_collided": obs[10], "is_proximity": obs[11]})
+                 "is_collided": obs[10], "is_proximity": obs[11], "roll_angle": obs[3]})
 
     def reset(self, seed=None, options=None, pursuit_point=None, final_goal=None):
         # print(f">>>[下层环境] 收到全局目标点: ({final_goal[0]:.2F},{final_goal[1]:.2F})")
@@ -240,7 +240,7 @@ class BicycleDenghEnvCopy(gym.Env):
 
         return normalized_obs, {"for_navi_obs": for_navi_obs, "reached_goal": self.reached_goal,
                                 "fall_down": self.fall_down, "is_collided": obs[10], "is_proximity": obs[11],
-                                "bicycle_x": obs[0], "bicycle_y": obs[1]}
+                                "bicycle_x": obs[0], "bicycle_y": obs[1], "roll_angle": obs[3]}
 
     def _reward_fun(self, obs, action):
         self.terminated = False

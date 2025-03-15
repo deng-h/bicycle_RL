@@ -66,6 +66,7 @@ class BicycleFinalEnv(gymnasium.Env):
         self.last_turn_angle = None
         self.reset_flg = False
         self.success_traj = []
+        self.roll_angle = []
 
         # 上层网络的引导角度（弧度）
         self.actual_action_space = gymnasium.spaces.box.Box(
@@ -97,15 +98,16 @@ class BicycleFinalEnv(gymnasium.Env):
         self.mid_pts_index = 0
         self.mid_pts = []
         # 打开 CSV 文件
-        file_path = 'D:\data\\1-L\9-bicycle\\bicycle-rl\exp_data\\navi_traj\omni\9\s\s\\20250226_152045_087_mid_pt.csv'
-        # file_path = 'D:\data\\1-L\9-bicycle\\bicycle-rl\exp_data\\navi_traj\omni\\5\s\\20250226_144115_705_mid_pt.csv'
+        # file_path = 'D:\data\\1-L\9-bicycle\\bicycle-rl\exp_data\\navi_traj\omni\\9\s\s\\20250226_152045_087_mid_pt.csv'
+        file_path = 'D:\data\\1-L\9-bicycle\\bicycle-rl\exp_data\\navi_traj\omni\\5\s\\20250226_144115_705_mid_pt.csv'
         with open(file_path, 'r', encoding='utf-8') as csvfile:
             reader = csv.reader(csvfile)
             for row in reader:
                 # 将每行数据转换为浮点数并存储为元组
                 point = tuple(float(value) for value in row)
                 self.mid_pts.append(point)
-        # self.mid_pts[6] = (-8.89853875535164,9.441907330739937)  # 9\s\s\\20250226_152045_087_mid_pt.csv
+        # self.mid_pts[6] = (-10.89853875535164, 7.841907330739937)  # 9\s\s\\20250226_152045_087_mid_pt.csv
+        # self.mid_pts[5] = (-9.89853875535164, 8.441907330739937)  # 9\s\s\\20250226_152045_087_mid_pt.csv
         # self.mid_pts[6] = (-1.574898976906605,15.529624038287142)  # 5\s\\20250225_224811_628_mid_pt.csv
         # self.mid_pts[7] = self.mid_pts[8] = self.mid_pts[9] = self.mid_pts[10]  # 5\s\\20250226_140355_618_mid_pt.csv
         print(f"mid_pts: {self.mid_pts}")
@@ -172,6 +174,7 @@ class BicycleFinalEnv(gymnasium.Env):
         self.prev_yaw_angle = self.obs_for_navi[-3]
         self.prev_bicycle_pos = (info['bicycle_x'], info['bicycle_y'])
         self.success_traj.append(self.prev_bicycle_pos)
+        self.roll_angle.append(info['roll_angle'])
 
         return self.obs_for_navi, reward, self.terminated, self.truncated, {"reached_goal": info['reached_goal']}
 
@@ -205,6 +208,8 @@ class BicycleFinalEnv(gymnasium.Env):
         self.success_traj.append(self.prev_bicycle_pos)
 
         self.episode_rwd = {"1": 0, "2": 0, "3": 0}
+        self.roll_angle = []
+        self.roll_angle.append(info['roll_angle'])
 
         return self.obs_for_navi, {}
 
@@ -223,7 +228,10 @@ class BicycleFinalEnv(gymnasium.Env):
             # 'w' 模式表示写入文件，newline='' 用于防止出现空行
             with open(filename, 'w', newline='') as csvfile:
                 csv_writer = csv.writer(csvfile)
-                csv_writer.writerows(self.success_traj)  # writerows() 方法直接写入整个列表 (每行一个元组)
+                # csv_writer.writerows(self.success_traj)  # writerows() 方法直接写入整个列表 (每行一个元组)
+                for angle in self.roll_angle:
+                    csv_writer.writerow([angle])
+
             formatted_dict = {key: "{:.8f}".format(value) for key, value in self.episode_rwd.items()}
             print(f">>>[上层环境] 到达目标点({self.goal[0]:.2F}, {self.goal[1]:.2F})！存活{self._elapsed_steps}步，奖励值{formatted_dict},已保存轨迹")
 
@@ -383,7 +391,8 @@ if __name__ == '__main__':
         #     print(">>>[上层环境] 到达子目标点！")
         if terminated or truncated:
             obs, _ = env.reset()
-        time.sleep(1. / 50.)
+        # time.sleep(1. / 50.)
+        time.sleep(1000)
 
     env.close()
 

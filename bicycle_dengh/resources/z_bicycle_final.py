@@ -5,6 +5,7 @@ import os
 import platform
 import numpy as np
 from playground.pure_pursuit.PurePursuitController import PurePursuitController
+from simple_pid import PID
 
 
 
@@ -29,8 +30,10 @@ class ZBicycleFinal:
         self.gyros_link = 5
         self.MAX_FORCE = 2000
         self.proximity_threshold = 0.3
-        self.bicycle_vel = 3.5
+        self.bicycle_vel = 0.5
         self.pure_pursuit_controller = None
+        self.roll_angle_pid = PID(1200, 750, 20, setpoint=0.0)
+        self.roll_angle = 0.0
 
         self.num_rays = 180
         self.ray_len = 12.0
@@ -71,6 +74,7 @@ class ZBicycleFinal:
         """
         # pure_pursuit_action, _ = self.pure_pursuit_controller.get_control_action(action)
         # action[0] = frame_to_handlebar 车把位置控制
+        roll_angle = self.roll_angle_pid(self.roll_angle)
         p.setJointMotorControl2(bodyUniqueId=self.bicycleId,
                                 jointIndex=self.handlebar_joint,
                                 controlMode=p.POSITION_CONTROL,
@@ -98,7 +102,8 @@ class ZBicycleFinal:
         p.setJointMotorControl2(bodyUniqueId=self.bicycleId,
                                 jointIndex=self.fly_wheel_joint,
                                 controlMode=p.VELOCITY_CONTROL,
-                                targetVelocity=action[2],
+                                targetVelocity=-roll_angle,
+                                # targetVelocity=action[2],
                                 force=self.MAX_FORCE,
                                 physicsClientId=self.client)
 
@@ -152,6 +157,7 @@ class ZBicycleFinal:
                        is_proximity
                        ]
 
+        self.roll_angle = roll_angle
         # 保存激光雷达信息，下次使用
         self.last_lidar_info = lidar_info if lidar_info is not None else self.last_lidar_info
 
@@ -165,6 +171,7 @@ class ZBicycleFinal:
         p.resetJointState(self.bicycleId, self.back_wheel_joint, targetValue=0, targetVelocity=0)
         self.last_lidar_info = np.full(self.num_rays, self.ray_len, dtype=np.float32)  # 初始化 last_lidar_info
         self.frame_count = 0
+        self.roll_angle = 0.0
         return self.get_observation()
 
     def _is_collided_and_proximity(self):
